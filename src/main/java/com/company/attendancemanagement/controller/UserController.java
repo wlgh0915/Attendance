@@ -10,6 +10,7 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequiredArgsConstructor
@@ -25,7 +26,8 @@ public class UserController {
 
     @PostMapping("/users/new")
     public String createUser(@Valid @ModelAttribute("userCreateDto") UserCreateDto dto,
-                             BindingResult bindingResult) {
+                             BindingResult bindingResult,
+                             RedirectAttributes redirectAttributes) {
 
         if (bindingResult.hasErrors()) {
             return "user/create";
@@ -38,6 +40,7 @@ public class UserController {
             return "user/create";
         }
 
+        redirectAttributes.addFlashAttribute("successMessage", "사원 등록에 성공했습니다.");
         return "redirect:/";
     }
 }

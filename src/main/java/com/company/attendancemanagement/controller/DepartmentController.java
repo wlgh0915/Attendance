@@ -12,6 +12,7 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import static com.company.attendancemanagement.common.SessionConst.LOGIN_USER;
 
@@ -49,7 +50,8 @@ public class DepartmentController {
     @PostMapping("/departments/new")
     public String create(@Valid @ModelAttribute("departmentCreateDto") DepartmentCreateDto dto,
                          BindingResult bindingResult,
-                         HttpSession session) {
+                         HttpSession session,
+                         RedirectAttributes redirectAttributes) {
 
         LoginUserDto loginUser = (LoginUserDto) session.getAttribute(LOGIN_USER);
         if (loginUser == null) {
@@ -69,6 +71,7 @@ public class DepartmentController {
             return "department/create";
         }
 
+        redirectAttributes.addFlashAttribute("successMessage", "부서 등록에 성공했습니다.");
         return "redirect:/departments";
     }
 }

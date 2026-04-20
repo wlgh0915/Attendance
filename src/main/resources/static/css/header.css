@@ -58,3 +58,20 @@
 .logout-btn:hover {
     background: #c0392b;
 }
+
+/* 링크 스타일 초기화 및 애니메이션 설정 */
+.header-logo-link {
+    text-decoration: none;
+    color: inherit;
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 8px;
+    background: transparent;
+    transition: transform 0.2s ease-in-out, background 0.2s ease-in-out;
+}
+
+/* 마우스 호버 시 확대 + 주변 배경 밝아지는 효과 */
+.header-logo-link:hover {
+    transform: scale(1.05);
+    background: rgba(255, 255, 255, 0.15);
+}

@@ -1,0 +1,35 @@
+.success-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #eafaf1;
+    color: #1e8449;
+    border: 1px solid #a9dfbf;
+    border-left: 4px solid #27ae60;
+    padding: 16px 20px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-size: 15px;
+    font-family: 'Malgun Gothic', sans-serif;
+    font-weight: 600;
+    width: 100%;
+    box-sizing: border-box;
+
+    /* 나타났다가 사라지는 애니메이션 */
+    animation: slideInFadeOut 3.5s ease forwards;
+}
+
+.success-banner span:first-child {
+    font-size: 18px;
+}
+
+@keyframes slideInFadeOut {
+    /* 위에서 슬라이드 인 */
+    0%   { opacity: 0; max-height: 0;    margin-bottom: 0;  padding-top: 0; padding-bottom: 0; transform: translateY(-16px); }
+    /* 완전히 표시 */
+    15%  { opacity: 1; max-height: 80px; margin-bottom: 20px; padding-top: 16px; padding-bottom: 16px; transform: translateY(0); }
+    /* 잠시 유지 */
+    65%  { opacity: 1; max-height: 80px; margin-bottom: 20px; padding-top: 16px; padding-bottom: 16px; transform: translateY(0); }
+    /* 사라지면서 공간도 축소 */
+    100% { opacity: 0; max-height: 0;    margin-bottom: 0;  padding-top: 0; padding-bottom: 0; transform: translateY(-8px); }
+}

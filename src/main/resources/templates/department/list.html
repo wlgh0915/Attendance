@@ -6,10 +6,15 @@
     <meta charset="UTF-8">
     <title>부서 목록</title>
     <link rel="stylesheet" th:href="@{/css/department-list.css}">
+    <link rel="stylesheet" th:href="@{/css/success-banner.css}">
 </head>
 <body>
 <div layout:fragment="content">
     <div class="content-wrapper">
+        <div th:if="${successMessage}" class="success-banner">
+            <span>✓</span>
+            <span th:text="${successMessage}"></span>
+        </div>
         <h2>부서 목록</h2>
         <table>
             <thead>
