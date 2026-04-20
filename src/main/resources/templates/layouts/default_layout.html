@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout">
+<head>
+    <meta charset="UTF-8">
+    <title>근태 관리 시스템</title>
+    <link rel="stylesheet" th:href="@{/css/common.css}">
+</head>
+<body>
+<th:block th:replace="~{fragments/header :: headerFragment}"></th:block>
+
+<div style="display: flex;">
+    <th:block th:replace="~{fragments/sideNav :: sideNavFragment}"></th:block>
+
+    <main layout:fragment="content" style="flex: 1; padding: 20px;">
+    </main>
+</div>
+
+<script th:src="@{/js/common.js}"></script>
+</body>
+</html>

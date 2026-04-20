@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<div th:fragment="sideNavFragment">
+    <nav style="width: 200px; float: left;">
+        <ul>
+            <li><a th:href="@{/}">대시보드</a></li>
+            <li><a th:href="@{/attendance/apply}">근태 신청</a></li>
+            <li><a th:href="@{/dept/manage}">부서 관리</a></li>
+        </ul>
+    </nav>
+</div>
+</html>
