@@ -39,6 +39,10 @@
             <li>
                 <a th:href="@{/attendance/department/month}" class="menu-link">부서별 월 근태조회</a>
             </li>
+
+            <li class="menu-item">
+                <a th:href="@{/users/new}" class="menu-link">사원 등록</a>
+            </li>
         </ul>
         <div class="logout-section">
             <form th:action="@{/logout}" method="post" onsubmit="return confirm('로그아웃 하시겠습니까?');">

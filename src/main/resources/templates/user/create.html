@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>사원 등록</title>
+</head>
+<body>
+<h2>사원 등록</h2>
+
+<form th:action="@{/users/new}" th:object="${userCreateDto}" method="post">
+    <div>
+        <label>회사코드</label>
+        <input type="text" th:field="*{company}">
+        <div th:errors="*{company}"></div>
+    </div>
+
+    <div>
+        <label>사번</label>
+        <input type="text" th:field="*{empCode}">
+        <div th:errors="*{empCode}"></div>
+    </div>
+
+    <div>
+        <label>이름</label>
+        <input type="text" th:field="*{empName}">
+        <div th:errors="*{empName}"></div>
+    </div>
+
+    <div>
+        <label>비밀번호</label>
+        <input type="password" th:field="*{password}">
+        <div th:errors="*{password}"></div>
+    </div>
+
+    <div>
+        <label>부서코드</label>
+        <input type="text" th:field="*{deptCode}">
+        <div th:errors="*{deptCode}"></div>
+    </div>
+
+    <div>
+        <label>권한코드</label>
+        <input type="text" th:field="*{roleCode}">
+        <div th:errors="*{roleCode}"></div>
+    </div>
+
+    <div th:if="${#fields.hasGlobalErrors()}">
+        <p th:each="err : ${#fields.globalErrors()}" th:text="${err}"></p>
+    </div>
+
+    <button type="submit">등록</button>
+</form>
+
+<p><a th:href="@{/}">메인으로</a></p>
+</body>
+</html>
