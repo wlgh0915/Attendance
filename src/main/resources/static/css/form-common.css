@@ -1,0 +1,174 @@
+/*
+   공통 폼 스타일 (사원 등록 / 부서 등록)
+*/
+
+/* 전체 컨텐츠 영역 중앙 배치 */
+.content-wrapper {
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px;
+}
+
+.form-container {
+    width: 100%;
+    max-width: 700px;
+    background-color: transparent;
+}
+
+/* 폼 헤더 */
+.form-header {
+    margin-bottom: 30px;
+    border-left: 5px solid #2c3e50;
+    padding-left: 15px;
+}
+
+.form-header h2 {
+    color: #2c3e50;
+    margin: 0;
+    font-size: 1.8rem;
+}
+
+/* 성공 배너 */
+.success-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #eafaf1;
+    color: #1e8449;
+    border: 1px solid #a9dfbf;
+    border-left: 4px solid #27ae60;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    font-family: 'Malgun Gothic', sans-serif;
+    animation: fadeInDown 0.3s ease;
+}
+
+/* 전역 에러 */
+.global-error {
+    background: #fdf2f2;
+    color: #c0392b;
+    border: 1px solid #f5b7b1;
+    border-left: 4px solid #e74c3c;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+/* 폼 레이아웃 */
+.user-form,
+.dept-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* 폼 그룹 */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: #34495e;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+/* 필수 항목 표시 */
+.form-group label.required::after {
+    content: ' *';
+    color: #e74c3c;
+}
+
+/* 입력 필드 */
+.form-group input,
+.form-group select {
+    width: 100%;
+    max-width: 500px;
+    padding: 12px;
+    border: 1px solid #ced4da;
+    border-radius: 0;
+    background-color: #f8f9fa;
+    font-size: 15px;
+    font-family: 'Malgun Gothic', sans-serif;
+    transition: all 0.2s;
+    color: #2c3e50;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    border-color: #2c3e50;
+    background-color: #fff;
+    outline: none;
+}
+
+/* 읽기 전용 필드 */
+.form-group input[readonly] {
+    background-color: #e9ecef;
+    color: #6c757d;
+    cursor: not-allowed;
+}
+
+/* 에러 메시지 */
+.error-text {
+    color: #e74c3c;
+    font-size: 13px;
+    margin-top: 5px;
+}
+
+/* 버튼 영역 */
+.form-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+/* 등록 버튼 */
+.btn-submit {
+    align-self: flex-start;
+    background-color: #2c3e50;
+    color: white;
+    padding: 12px 40px;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: background 0.3s;
+    margin-top: 20px;
+}
+
+.btn-submit:hover {
+    background-color: #3e5871;
+}
+
+/* 목록으로 버튼 */
+.btn-cancel {
+    background-color: transparent;
+    color: #6c757d;
+    padding: 12px 24px;
+    border: 1px solid #ced4da;
+    cursor: pointer;
+    font-size: 15px;
+    font-family: 'Malgun Gothic', sans-serif;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+    background-color: #f8f9fa;
+    color: #2c3e50;
+    border-color: #2c3e50;
+}
+
+/* 애니메이션 */
+@keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}

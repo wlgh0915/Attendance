@@ -4,63 +4,75 @@
       layout:decorate="~{layouts/default_layout}">
 <head>
     <meta charset="UTF-8">
-    <title>부서 등록</title>
+    <title>부서 등록 - 근태 관리 시스템</title>
+    <link rel="stylesheet" th:href="@{/css/form-common.css}">
 </head>
 <body>
 <div layout:fragment="content">
-    <h2>부서 등록</h2>
+    <div class="content-wrapper">
+        <div class="form-container">
 
-    <form th:action="@{/departments/new}" th:object="${departmentCreateDto}" method="post">
-        <div>
-            <label>회사코드</label>
-            <input type="text" th:field="*{company}" readonly>
-            <div th:errors="*{company}"></div>
+            <div class="form-header">
+                <h2>부서 등록</h2>
+            </div>
+
+            <form th:action="@{/departments/new}" th:object="${departmentCreateDto}" method="post" class="dept-form">
+                <div th:if="${#fields.hasGlobalErrors()}" class="global-error">
+                    <p th:each="err : ${#fields.globalErrors()}" th:text="${err}"></p>
+                </div>
+
+                <div class="form-group">
+                    <label class="required">회사코드</label>
+                    <input type="text" th:field="*{company}" readonly>
+                    <div class="error-text" th:errors="*{company}"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="required">부서코드</label>
+                    <input type="text" th:field="*{deptCode}" placeholder="부서 코드를 입력하세요">
+                    <div class="error-text" th:errors="*{deptCode}"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="required">부서명</label>
+                    <input type="text" th:field="*{deptName}" placeholder="부서명을 입력하세요">
+                    <div class="error-text" th:errors="*{deptName}"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>상위부서코드</label>
+                    <input type="text" th:field="*{parentDept}" placeholder="상위 부서 코드를 입력하세요">
+                </div>
+
+                <div class="form-group">
+                    <label>부서장 사번</label>
+                    <input type="text" th:field="*{deptLeader}" placeholder="부서장 사번을 입력하세요">
+                </div>
+
+                <div class="form-group">
+                    <label>부서분류</label>
+                    <input type="text" th:field="*{deptCategory}" placeholder="부서 분류를 입력하세요">
+                </div>
+
+                <div class="form-group">
+                    <label>근태패턴코드</label>
+                    <input type="text" th:field="*{workPatternCode}" placeholder="근태 패턴 코드를 입력하세요">
+                </div>
+
+                <div class="form-group">
+                    <label class="required">사용여부</label>
+                    <select th:field="*{useYn}">
+                        <option value="">선택하세요</option>
+                        <option value="Y">Y - 사용</option>
+                        <option value="N">N - 미사용</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn-submit">등록하기</button>
+
+            </form>
         </div>
-
-        <div>
-            <label>부서코드</label>
-            <input type="text" th:field="*{deptCode}">
-            <div th:errors="*{deptCode}"></div>
-        </div>
-
-        <div>
-            <label>부서명</label>
-            <input type="text" th:field="*{deptName}">
-            <div th:errors="*{deptName}"></div>
-        </div>
-
-        <div>
-            <label>상위부서코드</label>
-            <input type="text" th:field="*{parentDept}">
-        </div>
-
-        <div>
-            <label>부서장 사번</label>
-            <input type="text" th:field="*{deptLeader}">
-        </div>
-
-        <div>
-            <label>부서분류</label>
-            <input type="text" th:field="*{deptCategory}">
-        </div>
-
-        <div>
-            <label>근태패턴코드</label>
-            <input type="text" th:field="*{workPatternCode}">
-        </div>
-
-        <div>
-            <label>사용여부</label>
-            <input type="text" th:field="*{useYn}">
-        </div>
-
-        <div th:if="${#fields.hasGlobalErrors()}">
-            <p th:each="err : ${#fields.globalErrors()}" th:text="${err}"></p>
-        </div>
-
-        <button type="submit">등록</button>
-        <a th:href="@{/departments}">목록</a>
-    </form>
+    </div>
 </div>
 </body>
 </html>
