@@ -2,35 +2,43 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>로그인</title>
+    <title>근태 관리 시스템 로그인</title>
+    <link rel="stylesheet" th:href="@{/css/login.css}">
 </head>
 <body>
-<h2>근태관리 로그인</h2>
 
-<form th:action="@{/login}" th:object="${loginRequestDto}" method="post">
-    <div>
-        <label>회사코드</label>
-        <input type="text" th:field="*{company}">
-        <div th:errors="*{company}"></div>
+<div class="login-container">
+    <div class="login-header">
+        <h2>근태 관리 시스템</h2>
+        <p style="color: #7f8c8d; font-size: 14px;">로그인이 필요합니다.</p>
     </div>
 
-    <div>
-        <label>사원코드</label>
-        <input type="text" th:field="*{empCode}">
-        <div th:errors="*{empCode}"></div>
-    </div>
+    <form th:action="@{/login}" th:object="${loginRequestDto}" method="post">
+        <div th:if="${#fields.hasGlobalErrors()}" class="global-error">
+            <p th:each="err : ${#fields.globalErrors()}" th:text="${err}"></p>
+        </div>
 
-    <div>
-        <label>비밀번호</label>
-        <input type="password" th:field="*{password}">
-        <div th:errors="*{password}"></div>
-    </div>
+        <div class="form-group">
+            <label>회사코드</label>
+            <input type="text" th:field="*{company}" placeholder="회사 코드를 입력하세요">
+            <div class="error-msg" th:errors="*{company}"></div>
+        </div>
 
-    <div th:if="${#fields.hasGlobalErrors()}">
-        <p th:each="err : ${#fields.globalErrors()}" th:text="${err}"></p>
-    </div>
+        <div class="form-group">
+            <label>사원코드</label>
+            <input type="text" th:field="*{empCode}" placeholder="사원 번호를 입력하세요">
+            <div class="error-msg" th:errors="*{empCode}"></div>
+        </div>
 
-    <button type="submit">로그인</button>
-</form>
+        <div class="form-group">
+            <label>비밀번호</label>
+            <input type="password" th:field="*{password}" placeholder="비밀번호를 입력하세요">
+            <div class="error-msg" th:errors="*{password}"></div>
+        </div>
+
+        <button type="submit" class="btn-login">로그인</button>
+    </form>
+</div>
+
 </body>
 </html>

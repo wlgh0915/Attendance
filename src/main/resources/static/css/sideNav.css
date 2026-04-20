@@ -1,0 +1,90 @@
+.sidebar {
+    width: 260px;
+    background: #2c3e50;
+    color: white;
+    min-height: 100vh;
+    font-family: 'Malgun Gothic', sans-serif;
+    display: flex;
+    flex-direction: column; /* 로그아웃 버튼을 아래로 보내기 위해 필요 */
+    height: 100vh;
+}
+
+.menu-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+/* 공통 스타일 */
+.menu-link,
+.menu-title-wrapper {
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    color: #ecf0f1;
+    text-decoration: none;
+    transition: background 0.3s;
+}
+
+.menu-link:hover,
+.menu-title-wrapper:hover {
+    background: #34495e;
+}
+
+/* 서브메뉴 스타일 */
+.sub-menu {
+    list-style: none;
+    padding: 0;
+    background: #1a252f;
+    display: none; /* 기본 숨김 */
+}
+
+.sub-menu li a {
+    display: block;
+    padding: 10px 20px 10px 40px;
+    color: #bdc3c7;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.sub-menu li a:hover {
+    color: white;
+    background: #3e5871;
+}
+
+/* Active 상태일 때 서브메뉴 보이기 */
+.menu-item.active .sub-menu {
+    display: block;
+}
+
+.arrow-icon {
+    font-size: 10px;
+}
+
+.logout-section {
+    margin-top: auto; /* 사이드바에 flex 설정이 있다면 하단으로 밀어냄 */
+    padding: 20px;
+    border-top: 1px solid #3e5871;
+}
+
+.logout-btn {
+    width: 100%;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: background 0.3s;
+}
+
+.logout-btn:hover {
+    background: #c0392b;
+}
