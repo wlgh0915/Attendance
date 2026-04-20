@@ -1,12 +1,96 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <div th:fragment="sideNavFragment">
-    <nav style="width: 200px; float: left;">
-        <ul>
-            <li><a th:href="@{/}">대시보드</a></li>
-            <li><a th:href="@{/attendance/apply}">근태 신청</a></li>
-            <li><a th:href="@{/dept/manage}">부서 관리</a></li>
+    <aside class="sidebar">
+        <ul class="menu-list">
+            <li class="menu-item">
+                <a th:href="@{/pattern/create}" class="menu-link">근태 패턴 생성</a>
+            </li>
+
+            <li class="menu-item has-sub">
+                <div class="menu-title-wrapper" onclick="toggleSubMenu(this)">
+                    <span class="menu-title">근태 신청 및 변경</span>
+                    <span class="arrow-icon">▼</span>
+                </div>
+                <ul class="sub-menu">
+                    <li><a th:href="@{/}">연장근로 신청</a></li>
+                    <li><a th:href="@{/}">기타 근태 신청</a></li>
+                    <li><a th:href="@{/}">휴일 근로 신청</a></li>
+                    <li><a th:href="@{/}">조퇴/외출/반차 신청</a></li>
+                    <li><a th:href="@{/}">근태 신청 내역</a></li>
+                </ul>
+            </li>
+
+            <li class="menu-item">
+                <a th:href="@{/dept/status}" class="menu-link">부서 근태 조회</a>
+            </li>
+
+            <li class="menu-item">
+                <a th:href="@{/dept/approval}" class="menu-link">부서원 근태 승인</a>
+            </li>
         </ul>
-    </nav>
+    </aside>
+
+    <script>
+        function toggleSubMenu(element) {
+            // 클릭된 메뉴의 부모(li.has-sub)를 찾음
+            const parent = element.parentElement;
+
+            // active 클래스가 있으면 제거, 없으면 추가 (토글)
+            parent.classList.toggle('active');
+
+            // 화살표 방향 변경을 위한 로직 (선택사항)
+            const arrow = element.querySelector('.arrow-icon');
+            if (parent.classList.contains('active')) {
+                arrow.innerText = '▲';
+            } else {
+                arrow.innerText = '▼';
+            }
+        }
+    </script>
+
+    <style>
+        .sidebar { width: 260px; background: #2c3e50; color: white; min-height: 100vh; font-family: 'Malgun Gothic', sans-serif; }
+        .menu-list { list-style: none; padding: 0; margin: 0; }
+
+        /* 공통 스타일 */
+        .menu-link, .menu-title-wrapper {
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            color: #ecf0f1;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+
+        .menu-link:hover, .menu-title-wrapper:hover { background: #34495e; }
+
+        /* 서브메뉴 스타일 (기본적으로 숨김) */
+        .sub-menu {
+            list-style: none;
+            padding: 0;
+            background: #1a252f;
+            display: none; /* 기본 숨김 */
+        }
+
+        .sub-menu li a {
+            display: block;
+            padding: 10px 20px 10px 40px;
+            color: #bdc3c7;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .sub-menu li a:hover { color: white; background: #3e5871; }
+
+        /* Active 상태일 때 서브메뉴 보이기 */
+        .menu-item.active .sub-menu {
+            display: block;
+        }
+
+        .arrow-icon { font-size: 10px; }
+    </style>
 </div>
 </html>
