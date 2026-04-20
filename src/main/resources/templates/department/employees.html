@@ -11,21 +11,27 @@
 <body>
 <div layout:fragment="content">
     <div class="content-wrapper">
-        <div th:if="${successMessage}" class="success-banner">
-            <span>✓</span>
-            <span th:text="${successMessage}"></span>
-        </div>
+
+        <a th:href="@{/departments}" class="btn-back">← 부서 목록으로</a>
 
         <h2>부서 사원 목록</h2>
 
-        <p>
-            회사코드: <span th:text="${company}"></span> /
-            부서코드: <span th:text="${deptCode}"></span>
-        </p>
-
-        <p>
-            <a th:href="@{/departments}">부서 목록으로</a>
-        </p>
+        <div class="dept-info-table">
+            <div class="dept-info-row">
+                <div class="dept-info-cell">
+                    <span class="dept-info-label">회사코드</span>
+                    <span class="dept-info-value" th:text="${company}"></span>
+                </div>
+                <div class="dept-info-cell">
+                    <span class="dept-info-label">부서명</span>
+                    <span class="dept-info-value" th:text="${deptName}"></span>
+                </div>
+                <div class="dept-info-cell">
+                    <span class="dept-info-label">부서코드</span>
+                    <span class="dept-info-value" th:text="${deptCode}"></span>
+                </div>
+            </div>
+        </div>
 
         <table>
             <thead>

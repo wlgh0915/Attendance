@@ -20,4 +20,5 @@ public interface DepartmentMapper {
     List<DepartmentDto> findAll(@Param("company") String company);
     List<DepartmentEmployeeDto> findEmployeesByDept(@Param("company") String company,
                                                     @Param("deptCode") String deptCode);
+    DepartmentDto findByDeptCode(String company, String deptCode);
 }

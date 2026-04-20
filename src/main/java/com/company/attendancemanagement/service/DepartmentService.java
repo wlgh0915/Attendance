@@ -29,6 +29,10 @@ public class DepartmentService {
         return departmentMapper.findAll(company);
     }
 
+    public DepartmentDto findByDeptCode(String company, String deptCode) {
+        return departmentMapper.findByDeptCode(company, deptCode);
+    }
+
     public List<DepartmentEmployeeDto> findEmployeesByDept(String company, String deptCode) {
         return departmentMapper.findEmployeesByDept(company, deptCode);
     }

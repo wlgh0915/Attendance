@@ -1,6 +1,7 @@
 package com.company.attendancemanagement.controller;
 
 import com.company.attendancemanagement.dto.department.DepartmentCreateDto;
+import com.company.attendancemanagement.dto.department.DepartmentDto;
 import com.company.attendancemanagement.dto.login.LoginUserDto;
 import com.company.attendancemanagement.service.DepartmentService;
 import jakarta.servlet.http.HttpSession;
@@ -86,8 +87,11 @@ public class DepartmentController {
             return "redirect:/login";
         }
 
+        DepartmentDto dept = departmentService.findByDeptCode(company, deptCode);
+
         model.addAttribute("company", company);
         model.addAttribute("deptCode", deptCode);
+        model.addAttribute("deptName", dept.getDeptName());
         model.addAttribute("employees",
                 departmentService.findEmployeesByDept(company, deptCode));
 

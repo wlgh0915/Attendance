@@ -9,46 +9,46 @@
         SELECT COUNT(*)
         FROM ORGDEPTMASTER01
         WHERE COMPANY = #{company}
-        AND DEPT_CODE = #{deptCode}
+          AND DEPT_CODE = #{deptCode}
     </select>
 
     <insert id="insertDepartment">
         INSERT INTO ORGDEPTMASTER01 (
-        COMPANY,
-        DEPT_CODE,
-        DEPT_NAME,
-        PARENT_DEPT,
-        DEPT_LEADER,
-        DEPT_CATEGORY,
-        WORK_PATTERN_CODE,
-        USE_YN,
-        CREATED_AT,
-        UPDATED_AT
+            COMPANY,
+            DEPT_CODE,
+            DEPT_NAME,
+            PARENT_DEPT,
+            DEPT_LEADER,
+            DEPT_CATEGORY,
+            WORK_PATTERN_CODE,
+            USE_YN,
+            CREATED_AT,
+            UPDATED_AT
         )
         VALUES (
-        #{company},
-        #{deptCode},
-        #{deptName},
-        NULLIF(#{parentDept}, ''),
-        NULLIF(#{deptLeader}, ''),
-        NULLIF(#{deptCategory}, ''),
-        NULLIF(#{workPatternCode}, ''),
-        COALESCE(NULLIF(#{useYn}, ''), 'Y'),
-        GETDATE(),
-        GETDATE()
-        )
+                   #{company},
+                   #{deptCode},
+                   #{deptName},
+                   NULLIF(#{parentDept}, ''),
+                   NULLIF(#{deptLeader}, ''),
+                   NULLIF(#{deptCategory}, ''),
+                   NULLIF(#{workPatternCode}, ''),
+                   COALESCE(NULLIF(#{useYn}, ''), 'Y'),
+                   GETDATE(),
+                   GETDATE()
+               )
     </insert>
 
     <select id="findAll" resultType="com.company.attendancemanagement.dto.department.DepartmentDto">
         SELECT
-        COMPANY AS company,
-        DEPT_CODE AS deptCode,
-        DEPT_NAME AS deptName,
-        PARENT_DEPT AS parentDept,
-        DEPT_LEADER AS deptLeader,
-        DEPT_CATEGORY AS deptCategory,
-        WORK_PATTERN_CODE AS workPatternCode,
-        USE_YN AS useYn
+            COMPANY AS company,
+            DEPT_CODE AS deptCode,
+            DEPT_NAME AS deptName,
+            PARENT_DEPT AS parentDept,
+            DEPT_LEADER AS deptLeader,
+            DEPT_CATEGORY AS deptCategory,
+            WORK_PATTERN_CODE AS workPatternCode,
+            USE_YN AS useYn
         FROM ORGDEPTMASTER01
         WHERE COMPANY = #{company}
         ORDER BY DEPT_CODE
@@ -57,15 +57,30 @@
     <select id="findEmployeesByDept"
             resultType="com.company.attendancemanagement.dto.department.DepartmentEmployeeDto">
         SELECT
-        COMPANY AS company,
-        EMP_CODE AS empCode,
-        EMP_NAME AS empName,
-        DEPT_CODE AS deptCode,
-        ROLE_CODE AS roleCode
+            COMPANY AS company,
+            EMP_CODE AS empCode,
+            EMP_NAME AS empName,
+            DEPT_CODE AS deptCode,
+            ROLE_CODE AS roleCode
         FROM HRIMASTER01
         WHERE COMPANY = #{company}
-        AND DEPT_CODE = #{deptCode}
+          AND DEPT_CODE = #{deptCode}
         ORDER BY EMP_CODE
+    </select>
+
+    <select id="findByDeptCode" resultType="com.company.attendancemanagement.dto.department.DepartmentDto">
+        SELECT
+            COMPANY AS company,
+            DEPT_CODE AS deptCode,
+            DEPT_NAME AS deptName,
+            PARENT_DEPT AS parentDept,
+            DEPT_LEADER AS deptLeader,
+            DEPT_CATEGORY AS deptCategory,
+            WORK_PATTERN_CODE AS workPatternCode,
+            USE_YN AS useYn
+        FROM ORGDEPTMASTER01
+        WHERE COMPANY = #{company}
+          AND DEPT_CODE = #{deptCode}
     </select>
 
 </mapper>

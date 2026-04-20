@@ -13,6 +13,65 @@ h2 {
     border-bottom: 2px solid #2c3e50;
 }
 
+/* ===== 부서 목록으로 버튼 ===== */
+.btn-back {
+    display: inline-block;
+    margin-bottom: 16px;
+    padding: 8px 18px;
+    background-color: #2c3e50;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 5px;
+    font-size: 13px;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.btn-back:hover {
+    background-color: #3e5871;
+}
+
+/* ===== 부서 정보 표 ===== */
+.dept-info-table {
+    display: inline-block;
+    margin-bottom: 24px;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.dept-info-row {
+    display: flex;
+}
+
+.dept-info-cell {
+    display: flex;
+    flex-direction: column;
+    padding: 12px 24px;
+    border-right: 1px solid #d0d7de;
+    min-width: 140px;
+}
+
+.dept-info-cell:last-child {
+    border-right: none;
+}
+
+.dept-info-label {
+    font-size: 11px;
+    color: #7f8c8d;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+}
+
+.dept-info-value {
+    font-size: 15px;
+    font-weight: 700;
+    color: #2c3e50;
+}
+
 /* ===== 테이블 ===== */
 table {
     width: 100%;
@@ -47,7 +106,6 @@ tbody tr:last-child {
     border-bottom: none;
 }
 
-/* 줄무늬 */
 tbody tr:nth-child(odd) {
     background: #ffffff;
 }
@@ -58,7 +116,11 @@ tbody tr:nth-child(even) {
 
 tbody tr:hover {
     background: #d6e4f0 !important;
-    cursor: default;
+    cursor: pointer;
+}
+
+tr.clickable-row {
+    cursor: pointer;
 }
 
 tbody td {
@@ -82,9 +144,6 @@ thead th:last-child {
     border-right: none;
 }
 
-/* ===== 사용여부 뱃지 ===== */
 tbody td:last-child {
     font-weight: bold;
 }
-
-/* Y/N 색상은 JS 없이 CSS attr으로 처리 불가 → Thymeleaf에서 class 분기 추천 */
