@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.company.attendancemanagement.mapper.LoginMapper">
+
+    <select id="findLoginUser" resultType="com.company.attendancemanagement.dto.login.LoginUserDto">
+        SELECT
+            COMPANY   AS company,
+            EMP_CODE  AS empCode,
+            EMP_NAME  AS empName,
+            DEPT_CODE AS deptCode,
+            ROLE_CODE AS roleCode
+        FROM HRIMASTER01
+        WHERE COMPANY = #{company}
+            AND EMP_CODE = #{empCode}
+            AND PASSWORD_HASH = #{password}
+    </select>
+
+</mapper>
