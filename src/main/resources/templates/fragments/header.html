@@ -1,8 +1,20 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <div th:fragment="headerFragment">
-    <header style="background: #333; color: #fff; padding: 1rem;">
-        <h1>근태 관리 시스템</h1>
+    <header class="main-header">
+        <h1 class="header-title">근태 관리 시스템</h1>
+        <div class="header-right">
+            <span class="user-info">
+                <span th:text="${session.loginUser.empName} + ' 님 접속 중'"></span>
+            </span>
+            <form th:action="@{/logout}" method="post" onsubmit="return confirm('로그아웃 하시겠습니까?');" style="margin: 0;">
+                <button type="submit" class="logout-btn">
+                    <span>⊘</span> 로그아웃
+                </button>
+            </form>
+        </div>
     </header>
+
+    <link rel="stylesheet" th:href="@{/css/header.css}">
 </div>
 </html>

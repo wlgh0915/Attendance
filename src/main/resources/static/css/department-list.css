@@ -1,0 +1,90 @@
+/* ===== 부서 목록 페이지 ===== */
+.content-wrapper {
+    padding: 30px;
+    font-family: 'Malgun Gothic', sans-serif;
+}
+
+h2 {
+    font-size: 35px;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #2c3e50;
+}
+
+/* ===== 테이블 ===== */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    border: none;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+thead {
+    background: #2c3e50;
+    color: #fff;
+}
+
+thead th {
+    padding: 13px 16px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 0.3px;
+    border: none;
+}
+
+tbody tr {
+    border-bottom: 1px solid #e0e0e0;
+    transition: background 0.15s;
+}
+
+tbody tr:last-child {
+    border-bottom: none;
+}
+
+/* 줄무늬 */
+tbody tr:nth-child(odd) {
+    background: #ffffff;
+}
+
+tbody tr:nth-child(even) {
+    background: #f2f4f7;
+}
+
+tbody tr:hover {
+    background: #d6e4f0 !important;
+    cursor: default;
+}
+
+tbody td {
+    padding: 13px 16px;
+    font-size: 13px;
+    color: #2c3e50;
+    text-align: center;
+    border: none;
+    border-right: 1px solid #e8eaed;
+}
+
+tbody td:last-child {
+    border-right: none;
+}
+
+thead th {
+    border-right: 1px solid #3d5166;
+}
+
+thead th:last-child {
+    border-right: none;
+}
+
+/* ===== 사용여부 뱃지 ===== */
+tbody td:last-child {
+    font-weight: bold;
+}
+
+/* Y/N 색상은 JS 없이 CSS attr으로 처리 불가 → Thymeleaf에서 class 분기 추천 */
