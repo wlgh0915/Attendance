@@ -74,4 +74,23 @@ public class DepartmentController {
         redirectAttributes.addFlashAttribute("successMessage", "부서 등록에 성공했습니다.");
         return "redirect:/departments";
     }
+
+    @GetMapping("/departments/employees")
+    public String employees(String company,
+                            String deptCode,
+                            HttpSession session,
+                            Model model) {
+
+        LoginUserDto loginUser = (LoginUserDto) session.getAttribute(LOGIN_USER);
+        if (loginUser == null) {
+            return "redirect:/login";
+        }
+
+        model.addAttribute("company", company);
+        model.addAttribute("deptCode", deptCode);
+        model.addAttribute("employees",
+                departmentService.findEmployeesByDept(company, deptCode));
+
+        return "department/employees";
+    }
 }

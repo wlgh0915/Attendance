@@ -54,4 +54,18 @@
         ORDER BY DEPT_CODE
     </select>
 
+    <select id="findEmployeesByDept"
+            resultType="com.company.attendancemanagement.dto.department.DepartmentEmployeeDto">
+        SELECT
+        COMPANY AS company,
+        EMP_CODE AS empCode,
+        EMP_NAME AS empName,
+        DEPT_CODE AS deptCode,
+        ROLE_CODE AS roleCode
+        FROM HRIMASTER01
+        WHERE COMPANY = #{company}
+        AND DEPT_CODE = #{deptCode}
+        ORDER BY EMP_CODE
+    </select>
+
 </mapper>

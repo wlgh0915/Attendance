@@ -5,7 +5,7 @@ import com.company.attendancemanagement.dto.department.DepartmentDto;
 import com.company.attendancemanagement.mapper.DepartmentMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
+import com.company.attendancemanagement.dto.department.DepartmentEmployeeDto;
 import java.util.List;
 
 @Service
@@ -27,5 +27,9 @@ public class DepartmentService {
 
     public List<DepartmentDto> findAll(String company) {
         return departmentMapper.findAll(company);
+    }
+
+    public List<DepartmentEmployeeDto> findEmployeesByDept(String company, String deptCode) {
+        return departmentMapper.findEmployeesByDept(company, deptCode);
     }
 }
