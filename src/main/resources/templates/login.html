@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>로그인</title>
+</head>
+<body>
+<h2>근태관리 로그인</h2>
+
+<form th:action="@{/login}" th:object="${loginRequestDto}" method="post">
+    <div>
+        <label>회사코드</label>
+        <input type="text" th:field="*{company}">
+        <div th:errors="*{company}"></div>
+    </div>
+
+    <div>
+        <label>사원코드</label>
+        <input type="text" th:field="*{empCode}">
+        <div th:errors="*{empCode}"></div>
+    </div>
+
+    <div>
+        <label>비밀번호</label>
+        <input type="password" th:field="*{password}">
+        <div th:errors="*{password}"></div>
+    </div>
+
+    <div th:if="${#fields.hasGlobalErrors()}">
+        <p th:each="err : ${#fields.globalErrors()}" th:text="${err}"></p>
+    </div>
+
+    <button type="submit">로그인</button>
+</form>
+</body>
+</html>

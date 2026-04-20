@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>메인</title>
+</head>
+<body>
+<h2>근태관리 메인</h2>
+
+<p>
+    <span th:text="${loginUser.empName}"></span>님 환영합니다.
+</p>
+
+<ul>
+    <li><a th:href="@{/departments}">부서 관리</a></li>
+    <li><a th:href="@{/work-patterns}">근태 패턴 관리</a></li>
+    <li><a th:href="@{/attendance-requests}">근태 신청</a></li>
+    <li><a th:href="@{/approvals}">부서원 근태 승인</a></li>
+    <li><a th:href="@{/attendance/history}">근태 신청 내역</a></li>
+    <li><a th:href="@{/attendance/department}">부서근태조회</a></li>
+    <li><a th:href="@{/attendance/department/week}">부서별 주 근태조회</a></li>
+    <li><a th:href="@{/attendance/department/month}">부서별 월 근태조회</a></li>
+</ul>
+
+<form th:action="@{/logout}" method="post">
+    <button type="submit">로그아웃</button>
+</form>
+</body>
+</html>
