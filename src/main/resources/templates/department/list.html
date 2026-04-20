@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/default_layout}">
+<head>
+    <meta charset="UTF-8">
+    <title>부서 목록</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <h2>부서 목록</h2>
+
+    <p>
+        <a th:href="@{/departments/new}">부서 등록</a>
+    </p>
+
+    <table border="1">
+        <thead>
+        <tr>
+            <th>회사코드</th>
+            <th>부서코드</th>
+            <th>부서명</th>
+            <th>상위부서</th>
+            <th>부서장</th>
+            <th>사용여부</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="dept : ${departments}">
+            <td th:text="${dept.company}"></td>
+            <td th:text="${dept.deptCode}"></td>
+            <td th:text="${dept.deptName}"></td>
+            <td th:text="${dept.parentDept}"></td>
+            <td th:text="${dept.deptLeader}"></td>
+            <td th:text="${dept.useYn}"></td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+</body>
+</html>

@@ -1,7 +1,57 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.company.attendancemanagement.mapper.DepartmentMapper">
+
+    <select id="countByDeptCode" resultType="int">
+        SELECT COUNT(*)
+        FROM ORGDEPTMASTER01
+        WHERE COMPANY = #{company}
+        AND DEPT_CODE = #{deptCode}
+    </select>
+
+    <insert id="insertDepartment">
+        INSERT INTO ORGDEPTMASTER01 (
+        COMPANY,
+        DEPT_CODE,
+        DEPT_NAME,
+        PARENT_DEPT,
+        DEPT_LEADER,
+        DEPT_CATEGORY,
+        WORK_PATTERN_CODE,
+        USE_YN,
+        CREATED_AT,
+        UPDATED_AT
+        )
+        VALUES (
+        #{company},
+        #{deptCode},
+        #{deptName},
+        NULLIF(#{parentDept}, ''),
+        NULLIF(#{deptLeader}, ''),
+        NULLIF(#{deptCategory}, ''),
+        NULLIF(#{workPatternCode}, ''),
+        COALESCE(NULLIF(#{useYn}, ''), 'Y'),
+        GETDATE(),
+        GETDATE()
+        )
+    </insert>
+
+    <select id="findAll" resultType="com.company.attendancemanagement.dto.department.DepartmentDto">
+        SELECT
+        COMPANY AS company,
+        DEPT_CODE AS deptCode,
+        DEPT_NAME AS deptName,
+        PARENT_DEPT AS parentDept,
+        DEPT_LEADER AS deptLeader,
+        DEPT_CATEGORY AS deptCategory,
+        WORK_PATTERN_CODE AS workPatternCode,
+        USE_YN AS useYn
+        FROM ORGDEPTMASTER01
+        WHERE COMPANY = #{company}
+        ORDER BY DEPT_CODE
+    </select>
 
 </mapper>
