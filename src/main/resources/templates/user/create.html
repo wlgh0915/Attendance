@@ -1,56 +1,65 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/default_layout}">
 <head>
-    <meta charset="UTF-8">
-    <title>사원 등록</title>
+    <title>사원 등록 - 근태 관리 시스템</title>
+    <link rel="stylesheet" th:href="@{/css/user-create.css}">
 </head>
 <body>
-<h2>사원 등록</h2>
+<div layout:fragment="content">
+    <div class="content-wrapper">
+        <div class="form-container">
+            <div class="form-header">
+                <h2>사원 등록</h2>
+            </div>
 
-<form th:action="@{/users/new}" th:object="${userCreateDto}" method="post">
-    <div>
-        <label>회사코드</label>
-        <input type="text" th:field="*{company}">
-        <div th:errors="*{company}"></div>
+            <form th:action="@{/users/new}" th:object="${userCreateDto}" method="post" class="user-form">
+
+                <div th:if="${#fields.hasGlobalErrors()}" class="global-error">
+                    <p th:each="err : ${#fields.globalErrors()}" th:text="${err}"></p>
+                </div>
+
+                <div class="form-group">
+                    <label>회사코드</label>
+                    <input type="text" th:field="*{company}" placeholder="회사 코드를 입력하세요">
+                    <div class="error-text" th:errors="*{company}"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>사번</label>
+                    <input type="text" th:field="*{empCode}" placeholder="사원 번호를 입력하세요">
+                    <div class="error-text" th:errors="*{empCode}"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>이름</label>
+                    <input type="text" th:field="*{empName}" placeholder="성함을 입력하세요">
+                    <div class="error-text" th:errors="*{empName}"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>비밀번호</label>
+                    <input type="password" th:field="*{password}" placeholder="초기 비밀번호 설정">
+                    <div class="error-text" th:errors="*{password}"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>부서코드</label>
+                    <input type="text" th:field="*{deptCode}" placeholder="부서 코드를 입력하세요">
+                    <div class="error-text" th:errors="*{deptCode}"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>권한코드</label>
+                    <input type="text" th:field="*{roleCode}" placeholder="권한 코드">
+                    <div class="error-text" th:errors="*{roleCode}"></div>
+                </div>
+
+                <button type="submit" class="btn-submit">등록하기</button>
+            </form>
+        </div>
     </div>
-
-    <div>
-        <label>사번</label>
-        <input type="text" th:field="*{empCode}">
-        <div th:errors="*{empCode}"></div>
-    </div>
-
-    <div>
-        <label>이름</label>
-        <input type="text" th:field="*{empName}">
-        <div th:errors="*{empName}"></div>
-    </div>
-
-    <div>
-        <label>비밀번호</label>
-        <input type="password" th:field="*{password}">
-        <div th:errors="*{password}"></div>
-    </div>
-
-    <div>
-        <label>부서코드</label>
-        <input type="text" th:field="*{deptCode}">
-        <div th:errors="*{deptCode}"></div>
-    </div>
-
-    <div>
-        <label>권한코드</label>
-        <input type="text" th:field="*{roleCode}">
-        <div th:errors="*{roleCode}"></div>
-    </div>
-
-    <div th:if="${#fields.hasGlobalErrors()}">
-        <p th:each="err : ${#fields.globalErrors()}" th:text="${err}"></p>
-    </div>
-
-    <button type="submit">등록</button>
-</form>
-
-<p><a th:href="@{/}">메인으로</a></p>
+</div>
 </body>
 </html>

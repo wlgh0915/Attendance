@@ -28,7 +28,7 @@
         #{empCode},
         #{empName},
         #{password},
-        #{deptCode},
+        NULLIF(#{deptCode}, ''),
         #{roleCode},
         GETDATE(),
         GETDATE()
