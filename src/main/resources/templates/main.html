@@ -10,10 +10,7 @@
 <body>
 <div layout:fragment="content">
 
-    <div th:if="${successMessage}" class="success-banner">
-        <span>✓</span>
-        <span th:text="${successMessage}"></span>
-    </div>
+    <div th:if="${successMessage}" class="toast-data" data-type="success" th:data-message="${successMessage}" style="display:none"></div>
 
     <div class="home-wrapper">
         <div class="home-card">

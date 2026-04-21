@@ -15,6 +15,29 @@
     font-family: 'Malgun Gothic', sans-serif;
 }
 
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.menu-toggle-btn {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 22px;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 6px;
+    line-height: 1;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+.menu-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
 .header-title {
     font-size: 30px;
     font-weight: bold;

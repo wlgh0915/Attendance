@@ -5,12 +5,19 @@
     width: 260px;
     height: calc(100vh - 90px);
     overflow-y: auto;
+    overflow-x: hidden;
     z-index: 99;
     background: #2c3e50;
     color: white;
     font-family: 'Malgun Gothic', sans-serif;
     display: flex;
     flex-direction: column;
+    transition: width 0.3s ease;
+    white-space: nowrap;
+}
+
+body.sidebar-collapsed .sidebar {
+    width: 0;
 }
 
 .menu-list {

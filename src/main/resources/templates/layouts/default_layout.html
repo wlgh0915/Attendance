@@ -11,8 +11,10 @@
 
 <th:block th:replace="~{fragments/sideNav :: sideNavFragment}"></th:block>
 
-<main layout:fragment="content" style="margin-left: 260px; margin-top: 90px; height: calc(100vh - 90px); overflow-y: auto; padding: 20px;">
+<main layout:fragment="content" class="page-main">
 </main>
+
+<div id="toast-container"></div>
 
 <script th:src="@{/js/common.js}"></script>
 </body>

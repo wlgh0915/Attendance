@@ -16,9 +16,8 @@
 
             <form th:action="@{/users/new}" th:object="${userCreateDto}" method="post" class="user-form">
 
-                <div th:if="${#fields.hasGlobalErrors()}" class="global-error">
-                    <p th:each="err : ${#fields.globalErrors()}" th:text="${err}"></p>
-                </div>
+                <div th:if="${#fields.hasGlobalErrors()}" class="toast-data" data-type="error"
+                     th:data-message="${#strings.listJoin(#fields.globalErrors(), ' | ')}" style="display:none"></div>
 
                 <div class="form-group">
                     <label>회사코드</label>

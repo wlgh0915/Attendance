@@ -17,9 +17,8 @@
             </div>
 
             <form th:action="@{/departments/new}" th:object="${departmentCreateDto}" method="post" class="dept-form">
-                <div th:if="${#fields.hasGlobalErrors()}" class="global-error">
-                    <p th:each="err : ${#fields.globalErrors()}" th:text="${err}"></p>
-                </div>
+                <div th:if="${#fields.hasGlobalErrors()}" class="toast-data" data-type="error"
+                     th:data-message="${#strings.listJoin(#fields.globalErrors(), ' | ')}" style="display:none"></div>
 
                 <div class="form-group">
                     <label class="required">회사코드</label>

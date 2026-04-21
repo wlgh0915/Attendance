@@ -2,9 +2,12 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <div th:fragment="headerFragment">
     <header class="main-header">
-        <a th:href="@{/}" class="header-logo-link">
-            <h1 class="header-title">근태 관리 시스템</h1>
-        </a>
+        <div class="header-left">
+            <button class="menu-toggle-btn" onclick="toggleSidebar()" aria-label="메뉴">☰</button>
+            <a th:href="@{/}" class="header-logo-link">
+                <h1 class="header-title">근태 관리 시스템</h1>
+            </a>
+        </div>
         <div class="header-right">
             <span class="user-info">
                 <span th:text="${session.loginUser.empName} + ' 님 접속 중'"></span>
