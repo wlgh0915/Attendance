@@ -157,7 +157,7 @@ public class DepartmentController {
         boolean result = departmentService.updateDepartment(dto);
 
         if (!result) {
-            bindingResult.reject("updateFailed", "부서 수정에 실패했습니다.");
+            bindingResult.reject("updateFailed", "부서에 소속된 직원이 있으면 사용 여부를 N으로 변경할 수 없습니다.");
             return "department/edit";
         }
 

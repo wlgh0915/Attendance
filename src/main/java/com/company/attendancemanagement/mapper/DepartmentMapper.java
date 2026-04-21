@@ -23,5 +23,8 @@ public interface DepartmentMapper {
                                                     @Param("deptCode") String deptCode);
     DepartmentDto findByDeptCode(String company, String deptCode);
 
+    int countEmployeesByDept(@Param("company") String company,
+                             @Param("deptCode") String deptCode);
+
     int updateDepartment(DepartmentUpdateDto dto);
 }

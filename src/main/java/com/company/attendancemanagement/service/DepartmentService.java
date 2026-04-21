@@ -39,6 +39,17 @@ public class DepartmentService {
     }
 
     public boolean updateDepartment(DepartmentUpdateDto dto) {
+        // useYn이 N으로 변경되는 경우, 해당 부서에 직원이 있는지 확인
+        DepartmentDto currentDept = departmentMapper.findByDeptCode(dto.getCompany(), dto.getDeptCode());
+
+        if ("Y".equals(currentDept.getUseYn()) && "N".equals(dto.getUseYn())) {
+            // Y에서 N으로 변경되는 경우, 직원이 없어야 함
+            int employeeCount = departmentMapper.countEmployeesByDept(dto.getCompany(), dto.getDeptCode());
+            if (employeeCount > 0) {
+                return false;
+            }
+        }
+
         int result = departmentMapper.updateDepartment(dto);
         return result > 0;
     }
