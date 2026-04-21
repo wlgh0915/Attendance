@@ -2,7 +2,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: calc(100vh - 90px);
+    min-height: 100%;
     padding: 40px 20px;
     font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
 }

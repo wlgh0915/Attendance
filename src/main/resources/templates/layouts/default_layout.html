@@ -9,12 +9,10 @@
 <body>
 <th:block th:replace="~{fragments/header :: headerFragment}"></th:block>
 
-<div style="display: flex;">
-    <th:block th:replace="~{fragments/sideNav :: sideNavFragment}"></th:block>
+<th:block th:replace="~{fragments/sideNav :: sideNavFragment}"></th:block>
 
-    <main layout:fragment="content" style="flex: 1; padding: 20px;">
-    </main>
-</div>
+<main layout:fragment="content" style="margin-left: 260px; margin-top: 90px; height: calc(100vh - 90px); overflow-y: auto; padding: 20px;">
+</main>
 
 <script th:src="@{/js/common.js}"></script>
 </body>

@@ -1,12 +1,16 @@
 .sidebar {
+    position: fixed;
+    top: 90px;
+    left: 0;
     width: 260px;
+    height: calc(100vh - 90px);
+    overflow-y: auto;
+    z-index: 99;
     background: #2c3e50;
     color: white;
-    min-height: 100vh;
     font-family: 'Malgun Gothic', sans-serif;
     display: flex;
-    flex-direction: column; /* 로그아웃 버튼을 아래로 보내기 위해 필요 */
-    height: 100vh;
+    flex-direction: column;
 }
 
 .menu-list {
