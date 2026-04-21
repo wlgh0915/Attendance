@@ -5,6 +5,7 @@ import com.company.attendancemanagement.dto.department.DepartmentDto;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import com.company.attendancemanagement.dto.department.DepartmentEmployeeDto;
+import com.company.attendancemanagement.dto.department.DepartmentUpdateDto;
 
 
 import java.util.List;
@@ -21,4 +22,6 @@ public interface DepartmentMapper {
     List<DepartmentEmployeeDto> findEmployeesByDept(@Param("company") String company,
                                                     @Param("deptCode") String deptCode);
     DepartmentDto findByDeptCode(String company, String deptCode);
+
+    int updateDepartment(DepartmentUpdateDto dto);
 }

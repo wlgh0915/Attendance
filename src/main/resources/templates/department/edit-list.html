@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/default_layout}">
+<head>
+    <meta charset="UTF-8">
+    <title>부서 수정</title>
+    <link rel="stylesheet" th:href="@{/css/department-list.css}">
+    <link rel="stylesheet" th:href="@{/css/success-banner.css}">
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="content-wrapper">
+        <div th:if="${successMessage}" class="success-banner">
+            <span>✓</span>
+            <span th:text="${successMessage}"></span>
+        </div>
+        <h2>부서 수정</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>회사코드</th>
+                <th>부서코드</th>
+                <th>부서명</th>
+                <th>상위부서</th>
+                <th>부서장</th>
+                <th>사용여부</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="dept : ${departments}"
+                th:data-href="@{/departments/edit(company=${dept.company}, deptCode=${dept.deptCode})}"
+                onclick="location.href=this.dataset.href"
+                class="clickable-row">
+                <td th:text="${dept.company}"></td>
+                <td th:text="${dept.deptCode}"></td>
+                <td th:text="${dept.deptName}"></td>
+                <td th:text="${dept.parentDept}"></td>
+                <td th:text="${dept.deptLeader}"></td>
+                <td th:text="${dept.useYn}"></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

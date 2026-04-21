@@ -6,6 +6,7 @@ import com.company.attendancemanagement.mapper.DepartmentMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import com.company.attendancemanagement.dto.department.DepartmentEmployeeDto;
+import com.company.attendancemanagement.dto.department.DepartmentUpdateDto;
 import java.util.List;
 
 @Service
@@ -35,5 +36,10 @@ public class DepartmentService {
 
     public List<DepartmentEmployeeDto> findEmployeesByDept(String company, String deptCode) {
         return departmentMapper.findEmployeesByDept(company, deptCode);
+    }
+
+    public boolean updateDepartment(DepartmentUpdateDto dto) {
+        int result = departmentMapper.updateDepartment(dto);
+        return result > 0;
     }
 }

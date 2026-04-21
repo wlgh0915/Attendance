@@ -83,4 +83,18 @@
           AND DEPT_CODE = #{deptCode}
     </select>
 
+    <update id="updateDepartment">
+        UPDATE ORGDEPTMASTER01
+        SET DEPT_NAME = #{deptName},
+            PARENT_DEPT = NULLIF(#{parentDept}, ''),
+            OLD_DEPT_LEADER = CASE WHEN DEPT_LEADER != #{deptLeader} THEN DEPT_LEADER ELSE OLD_DEPT_LEADER END,
+            DEPT_LEADER = NULLIF(#{deptLeader}, ''),
+            DEPT_CATEGORY = NULLIF(#{deptCategory}, ''),
+            WORK_PATTERN_CODE = NULLIF(#{workPatternCode}, ''),
+            USE_YN = COALESCE(NULLIF(#{useYn}, ''), 'Y'),
+            UPDATED_AT = GETDATE()
+        WHERE COMPANY = #{company}
+          AND DEPT_CODE = #{deptCode}
+    </update>
+
 </mapper>
