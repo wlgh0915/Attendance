@@ -23,4 +23,7 @@ public class DepartmentCreateDto {
     private String workPatternCode;
 
     private String useYn = "Y";
+
+    private String startDate;
+    private String endDate;
 }

@@ -22,6 +22,8 @@
             DEPT_CATEGORY,
             WORK_PATTERN_CODE,
             USE_YN,
+            START_DATE,
+            END_DATE,
             CREATED_AT,
             UPDATED_AT
         )
@@ -34,6 +36,8 @@
                    NULLIF(#{deptCategory}, ''),
                    NULLIF(#{workPatternCode}, ''),
                    COALESCE(NULLIF(#{useYn}, ''), 'Y'),
+                   NULLIF(#{startDate}, ''),
+                   NULLIF(#{endDate}, ''),
                    GETDATE(),
                    GETDATE()
                )
@@ -50,12 +54,34 @@
             e.EMP_NAME AS deptLeaderName,
             d.DEPT_CATEGORY AS deptCategory,
             d.WORK_PATTERN_CODE AS workPatternCode,
-            d.USE_YN AS useYn
+            d.USE_YN AS useYn,
+            CONVERT(VARCHAR(10), d.START_DATE, 23) AS startDate,
+            CONVERT(VARCHAR(10), d.END_DATE, 23) AS endDate
         FROM ORGDEPTMASTER01 d
         LEFT JOIN ORGDEPTMASTER01 p ON d.COMPANY = p.COMPANY AND d.PARENT_DEPT = p.DEPT_CODE
         LEFT JOIN HRIMASTER01 e ON d.COMPANY = e.COMPANY AND d.DEPT_LEADER = e.EMP_CODE
         WHERE d.COMPANY = #{company}
         ORDER BY d.DEPT_CODE
+    </select>
+
+    <select id="findAllForDropdown" resultType="com.company.attendancemanagement.dto.department.DepartmentDto">
+        SELECT
+            DEPT_CODE AS deptCode,
+            DEPT_NAME AS deptName
+        FROM ORGDEPTMASTER01
+        WHERE COMPANY = #{company}
+          AND USE_YN = 'Y'
+        ORDER BY DEPT_CODE
+    </select>
+
+    <select id="findActiveEmployees" resultType="com.company.attendancemanagement.dto.department.DepartmentEmployeeDto">
+        SELECT
+            EMP_CODE AS empCode,
+            EMP_NAME AS empName
+        FROM HRIMASTER01
+        WHERE COMPANY = #{company}
+          AND RETIRE_DATE IS NULL
+        ORDER BY EMP_CODE
     </select>
 
     <select id="findEmployeesByDept"
@@ -81,7 +107,9 @@
             DEPT_LEADER AS deptLeader,
             DEPT_CATEGORY AS deptCategory,
             WORK_PATTERN_CODE AS workPatternCode,
-            USE_YN AS useYn
+            USE_YN AS useYn,
+            CONVERT(VARCHAR(10), START_DATE, 23) AS startDate,
+            CONVERT(VARCHAR(10), END_DATE, 23) AS endDate
         FROM ORGDEPTMASTER01
         WHERE COMPANY = #{company}
           AND DEPT_CODE = #{deptCode}
@@ -103,6 +131,8 @@
             DEPT_CATEGORY = NULLIF(#{deptCategory}, ''),
             WORK_PATTERN_CODE = NULLIF(#{workPatternCode}, ''),
             USE_YN = COALESCE(NULLIF(#{useYn}, ''), 'Y'),
+            START_DATE = NULLIF(#{startDate}, ''),
+            END_DATE = NULLIF(#{endDate}, ''),
             UPDATED_AT = GETDATE()
         WHERE COMPANY = #{company}
           AND DEPT_CODE = #{deptCode}

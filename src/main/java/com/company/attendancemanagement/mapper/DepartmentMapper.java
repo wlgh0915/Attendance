@@ -19,6 +19,8 @@ public interface DepartmentMapper {
     int insertDepartment(DepartmentCreateDto dto);
 
     List<DepartmentDto> findAll(@Param("company") String company);
+    List<DepartmentDto> findAllForDropdown(@Param("company") String company);
+    List<DepartmentEmployeeDto> findActiveEmployees(@Param("company") String company);
     List<DepartmentEmployeeDto> findEmployeesByDept(@Param("company") String company,
                                                     @Param("deptCode") String deptCode);
     DepartmentDto findByDeptCode(String company, String deptCode);

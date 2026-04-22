@@ -16,4 +16,6 @@ public class DepartmentDto {
     private String deptCategory;
     private String workPatternCode;
     private String useYn;
+    private String startDate;
+    private String endDate;
 }

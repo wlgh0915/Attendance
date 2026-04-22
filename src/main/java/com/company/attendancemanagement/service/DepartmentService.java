@@ -2,11 +2,11 @@ package com.company.attendancemanagement.service;
 
 import com.company.attendancemanagement.dto.department.DepartmentCreateDto;
 import com.company.attendancemanagement.dto.department.DepartmentDto;
+import com.company.attendancemanagement.dto.department.DepartmentEmployeeDto;
+import com.company.attendancemanagement.dto.department.DepartmentUpdateDto;
 import com.company.attendancemanagement.mapper.DepartmentMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import com.company.attendancemanagement.dto.department.DepartmentEmployeeDto;
-import com.company.attendancemanagement.dto.department.DepartmentUpdateDto;
 import java.util.List;
 
 @Service
@@ -28,6 +28,14 @@ public class DepartmentService {
 
     public List<DepartmentDto> findAll(String company) {
         return departmentMapper.findAll(company);
+    }
+
+    public List<DepartmentDto> findAllForDropdown(String company) {
+        return departmentMapper.findAllForDropdown(company);
+    }
+
+    public List<DepartmentEmployeeDto> findActiveEmployees(String company) {
+        return departmentMapper.findActiveEmployees(company);
     }
 
     public DepartmentDto findByDeptCode(String company, String deptCode) {

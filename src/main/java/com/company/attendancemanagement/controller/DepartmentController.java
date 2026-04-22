@@ -46,6 +46,8 @@ public class DepartmentController {
         dto.setCompany(loginUser.getCompany());
 
         model.addAttribute("departmentCreateDto", dto);
+        model.addAttribute("deptOptions", departmentService.findAllForDropdown(loginUser.getCompany()));
+        model.addAttribute("employeeOptions", departmentService.findActiveEmployees(loginUser.getCompany()));
         return "department/create";
     }
 
@@ -53,6 +55,7 @@ public class DepartmentController {
     public String create(@Valid @ModelAttribute("departmentCreateDto") DepartmentCreateDto dto,
                          BindingResult bindingResult,
                          HttpSession session,
+                         Model model,
                          RedirectAttributes redirectAttributes) {
 
         LoginUserDto loginUser = (LoginUserDto) session.getAttribute(LOGIN_USER);
@@ -63,6 +66,8 @@ public class DepartmentController {
         dto.setCompany(loginUser.getCompany());
 
         if (bindingResult.hasErrors()) {
+            model.addAttribute("deptOptions", departmentService.findAllForDropdown(loginUser.getCompany()));
+            model.addAttribute("employeeOptions", departmentService.findActiveEmployees(loginUser.getCompany()));
             return "department/create";
         }
 
@@ -70,6 +75,8 @@ public class DepartmentController {
 
         if (!result) {
             bindingResult.reject("duplicate", "이미 존재하는 부서코드입니다.");
+            model.addAttribute("deptOptions", departmentService.findAllForDropdown(loginUser.getCompany()));
+            model.addAttribute("employeeOptions", departmentService.findActiveEmployees(loginUser.getCompany()));
             return "department/create";
         }
 
@@ -134,8 +141,12 @@ public class DepartmentController {
         dto.setDeptCategory(dept.getDeptCategory());
         dto.setWorkPatternCode(dept.getWorkPatternCode());
         dto.setUseYn(dept.getUseYn());
+        dto.setStartDate(dept.getStartDate());
+        dto.setEndDate(dept.getEndDate());
 
         model.addAttribute("departmentUpdateDto", dto);
+        model.addAttribute("deptOptions", departmentService.findAllForDropdown(loginUser.getCompany()));
+        model.addAttribute("employeeOptions", departmentService.findActiveEmployees(loginUser.getCompany()));
         return "department/edit";
     }
 
@@ -143,6 +154,7 @@ public class DepartmentController {
     public String edit(@Valid @ModelAttribute("departmentUpdateDto") DepartmentUpdateDto dto,
                        BindingResult bindingResult,
                        HttpSession session,
+                       Model model,
                        RedirectAttributes redirectAttributes) {
 
         LoginUserDto loginUser = (LoginUserDto) session.getAttribute(LOGIN_USER);
@@ -151,6 +163,8 @@ public class DepartmentController {
         }
 
         if (bindingResult.hasErrors()) {
+            model.addAttribute("deptOptions", departmentService.findAllForDropdown(loginUser.getCompany()));
+            model.addAttribute("employeeOptions", departmentService.findActiveEmployees(loginUser.getCompany()));
             return "department/edit";
         }
 
@@ -158,6 +172,8 @@ public class DepartmentController {
 
         if (!result) {
             bindingResult.reject("updateFailed", "부서에 소속된 직원이 있으면 사용 여부를 N으로 변경할 수 없습니다.");
+            model.addAttribute("deptOptions", departmentService.findAllForDropdown(loginUser.getCompany()));
+            model.addAttribute("employeeOptions", departmentService.findActiveEmployees(loginUser.getCompany()));
             return "department/edit";
         }
 
