@@ -97,7 +97,7 @@ public class DepartmentController {
 
         DepartmentDto dept = departmentService.findByDeptCode(company, deptCode);
 
-        model.addAttribute("company", company);
+        model.addAttribute("companyName", dept.getCompanyName());
         model.addAttribute("deptCode", deptCode);
         model.addAttribute("deptName", dept.getDeptName());
         model.addAttribute("employees",

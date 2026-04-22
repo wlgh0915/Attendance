@@ -15,7 +15,7 @@
         <table>
             <thead>
             <tr>
-                <th>회사코드</th>
+                <th>회사명</th>
                 <th>부서코드</th>
                 <th>부서명</th>
                 <th>상위부서</th>
@@ -27,7 +27,7 @@
             </thead>
             <tbody>
             <tr th:each="dept : ${departments}">
-                <td th:text="${dept.company}"></td>
+                <td th:text="${dept.companyName}"></td>
                 <td th:text="${dept.deptCode}"></td>
                 <td th:text="${dept.deptName}"></td>
                 <td th:text="${dept.parentDeptName != null ? dept.parentDeptName : ''}"></td>

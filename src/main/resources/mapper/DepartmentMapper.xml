@@ -46,6 +46,7 @@
     <select id="findAll" resultType="com.company.attendancemanagement.dto.department.DepartmentDto">
         SELECT
             d.COMPANY AS company,
+            c.COMPANY_NAME AS companyName,
             d.DEPT_CODE AS deptCode,
             d.DEPT_NAME AS deptName,
             d.PARENT_DEPT AS parentDept,
@@ -58,6 +59,7 @@
             CONVERT(VARCHAR(10), d.START_DATE, 23) AS startDate,
             CONVERT(VARCHAR(10), d.END_DATE, 23) AS endDate
         FROM ORGDEPTMASTER01 d
+        LEFT JOIN ORGCOMPANYMASTER01 c ON d.COMPANY = c.COMPANY
         LEFT JOIN ORGDEPTMASTER01 p ON d.COMPANY = p.COMPANY AND d.PARENT_DEPT = p.DEPT_CODE
         LEFT JOIN HRIMASTER01 e ON d.COMPANY = e.COMPANY AND d.DEPT_LEADER = e.EMP_CODE
         WHERE d.COMPANY = #{company}
@@ -87,32 +89,36 @@
     <select id="findEmployeesByDept"
             resultType="com.company.attendancemanagement.dto.department.DepartmentEmployeeDto">
         SELECT
-            COMPANY AS company,
-            EMP_CODE AS empCode,
-            EMP_NAME AS empName,
-            DEPT_CODE AS deptCode,
-            ROLE_CODE AS roleCode
-        FROM HRIMASTER01
-        WHERE COMPANY = #{company}
-          AND DEPT_CODE = #{deptCode}
-        ORDER BY EMP_CODE
+            h.COMPANY AS company,
+            c.COMPANY_NAME AS companyName,
+            h.EMP_CODE AS empCode,
+            h.EMP_NAME AS empName,
+            h.DEPT_CODE AS deptCode,
+            h.ROLE_CODE AS roleCode
+        FROM HRIMASTER01 h
+        LEFT JOIN ORGCOMPANYMASTER01 c ON h.COMPANY = c.COMPANY
+        WHERE h.COMPANY = #{company}
+          AND h.DEPT_CODE = #{deptCode}
+        ORDER BY h.EMP_CODE
     </select>
 
     <select id="findByDeptCode" resultType="com.company.attendancemanagement.dto.department.DepartmentDto">
         SELECT
-            COMPANY AS company,
-            DEPT_CODE AS deptCode,
-            DEPT_NAME AS deptName,
-            PARENT_DEPT AS parentDept,
-            DEPT_LEADER AS deptLeader,
-            DEPT_CATEGORY AS deptCategory,
-            WORK_PATTERN_CODE AS workPatternCode,
-            USE_YN AS useYn,
-            CONVERT(VARCHAR(10), START_DATE, 23) AS startDate,
-            CONVERT(VARCHAR(10), END_DATE, 23) AS endDate
-        FROM ORGDEPTMASTER01
-        WHERE COMPANY = #{company}
-          AND DEPT_CODE = #{deptCode}
+            d.COMPANY AS company,
+            c.COMPANY_NAME AS companyName,
+            d.DEPT_CODE AS deptCode,
+            d.DEPT_NAME AS deptName,
+            d.PARENT_DEPT AS parentDept,
+            d.DEPT_LEADER AS deptLeader,
+            d.DEPT_CATEGORY AS deptCategory,
+            d.WORK_PATTERN_CODE AS workPatternCode,
+            d.USE_YN AS useYn,
+            CONVERT(VARCHAR(10), d.START_DATE, 23) AS startDate,
+            CONVERT(VARCHAR(10), d.END_DATE, 23) AS endDate
+        FROM ORGDEPTMASTER01 d
+        LEFT JOIN ORGCOMPANYMASTER01 c ON d.COMPANY = c.COMPANY
+        WHERE d.COMPANY = #{company}
+          AND d.DEPT_CODE = #{deptCode}
     </select>
 
     <select id="countEmployeesByDept" resultType="int">

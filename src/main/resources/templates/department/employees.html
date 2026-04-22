@@ -19,8 +19,8 @@
         <div class="dept-info-table">
             <div class="dept-info-row">
                 <div class="dept-info-cell">
-                    <span class="dept-info-label">회사코드</span>
-                    <span class="dept-info-value" th:text="${company}"></span>
+                    <span class="dept-info-label">회사명</span>
+                    <span class="dept-info-value" th:text="${companyName}"></span>
                 </div>
                 <div class="dept-info-cell">
                     <span class="dept-info-label">부서명</span>
@@ -36,7 +36,7 @@
         <table>
             <thead>
             <tr>
-                <th>회사코드</th>
+                <th>회사명</th>
                 <th>사번</th>
                 <th>사원명</th>
                 <th>부서코드</th>
@@ -45,7 +45,7 @@
             </thead>
             <tbody>
             <tr th:each="emp : ${employees}">
-                <td th:text="${emp.company}"></td>
+                <td th:text="${emp.companyName}"></td>
                 <td th:text="${emp.empCode}"></td>
                 <td th:text="${emp.empName}"></td>
                 <td th:text="${emp.deptCode}"></td>

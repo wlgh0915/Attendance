@@ -7,6 +7,7 @@ import lombok.Setter;
 @Setter
 public class DepartmentDto {
     private String company;
+    private String companyName;
     private String deptCode;
     private String deptName;
     private String parentDept;
