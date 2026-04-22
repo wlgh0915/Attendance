@@ -144,6 +144,50 @@ thead th:last-child {
     border-right: none;
 }
 
-tbody td:last-child {
-    font-weight: bold;
+thead th.action-header {
+    width: 150px;
+    border-right: none;
+}
+
+.action-cell {
+    white-space: nowrap;
+    text-align: center;
+    padding: 8px 10px !important;
+    font-weight: normal !important;
+    border-right: none !important;
+}
+
+.btn-action {
+    display: inline-block;
+    padding: 5px 11px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.15s, opacity 0.15s;
+    cursor: pointer;
+    opacity: 1;
+}
+
+tr:hover .btn-action {
+    opacity: 1;
+}
+
+.btn-view {
+    background-color: #2980b9;
+    color: #fff;
+    margin-right: 5px;
+}
+
+.btn-view:hover {
+    background-color: #2471a3;
+}
+
+.btn-edit {
+    background-color: #27ae60;
+    color: #fff;
+}
+
+.btn-edit:hover {
+    background-color: #1e8449;
 }

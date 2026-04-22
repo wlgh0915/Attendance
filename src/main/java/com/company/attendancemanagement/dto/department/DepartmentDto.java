@@ -10,7 +10,9 @@ public class DepartmentDto {
     private String deptCode;
     private String deptName;
     private String parentDept;
+    private String parentDeptName;
     private String deptLeader;
+    private String deptLeaderName;
     private String deptCategory;
     private String workPatternCode;
     private String useYn;

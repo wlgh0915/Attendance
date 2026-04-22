@@ -41,17 +41,21 @@
 
     <select id="findAll" resultType="com.company.attendancemanagement.dto.department.DepartmentDto">
         SELECT
-            COMPANY AS company,
-            DEPT_CODE AS deptCode,
-            DEPT_NAME AS deptName,
-            PARENT_DEPT AS parentDept,
-            DEPT_LEADER AS deptLeader,
-            DEPT_CATEGORY AS deptCategory,
-            WORK_PATTERN_CODE AS workPatternCode,
-            USE_YN AS useYn
-        FROM ORGDEPTMASTER01
-        WHERE COMPANY = #{company}
-        ORDER BY DEPT_CODE
+            d.COMPANY AS company,
+            d.DEPT_CODE AS deptCode,
+            d.DEPT_NAME AS deptName,
+            d.PARENT_DEPT AS parentDept,
+            p.DEPT_NAME AS parentDeptName,
+            d.DEPT_LEADER AS deptLeader,
+            e.EMP_NAME AS deptLeaderName,
+            d.DEPT_CATEGORY AS deptCategory,
+            d.WORK_PATTERN_CODE AS workPatternCode,
+            d.USE_YN AS useYn
+        FROM ORGDEPTMASTER01 d
+        LEFT JOIN ORGDEPTMASTER01 p ON d.COMPANY = p.COMPANY AND d.PARENT_DEPT = p.DEPT_CODE
+        LEFT JOIN HRIMASTER01 e ON d.COMPANY = e.COMPANY AND d.DEPT_LEADER = e.EMP_CODE
+        WHERE d.COMPANY = #{company}
+        ORDER BY d.DEPT_CODE
     </select>
 
     <select id="findEmployeesByDept"

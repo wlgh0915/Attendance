@@ -162,6 +162,6 @@ public class DepartmentController {
         }
 
         redirectAttributes.addFlashAttribute("successMessage", "부서 수정에 성공했습니다.");
-        return "redirect:/departments/edit";
+        return "redirect:/departments";
     }
 }

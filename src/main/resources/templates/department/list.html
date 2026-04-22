@@ -21,19 +21,26 @@
                 <th>상위부서</th>
                 <th>부서장</th>
                 <th>사용여부</th>
+                <th class="action-header">사원 목록</th>
+                <th class="action-header">부서 수정</th>
             </tr>
             </thead>
             <tbody>
-            <tr th:each="dept : ${departments}"
-                th:data-href="@{/departments/employees(company=${dept.company}, deptCode=${dept.deptCode})}"
-                onclick="location.href=this.dataset.href"
-                class="clickable-row">
+            <tr th:each="dept : ${departments}">
                 <td th:text="${dept.company}"></td>
                 <td th:text="${dept.deptCode}"></td>
                 <td th:text="${dept.deptName}"></td>
-                <td th:text="${dept.parentDept}"></td>
-                <td th:text="${dept.deptLeader}"></td>
+                <td th:text="${dept.parentDeptName != null ? dept.parentDeptName : ''}"></td>
+                <td th:text="${dept.deptLeaderName != null ? dept.deptLeaderName : ''}"></td>
                 <td th:text="${dept.useYn}"></td>
+                <td class="action-cell">
+                    <a th:href="@{/departments/employees(company=${dept.company}, deptCode=${dept.deptCode})}"
+                       class="btn-action btn-view">보기</a>
+                </td>
+                <td class="action-cell">
+                    <a th:href="@{/departments/edit(company=${dept.company}, deptCode=${dept.deptCode})}"
+                       class="btn-action btn-edit">수정</a>
+                </td>
             </tr>
             </tbody>
         </table>
