@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>근태패턴 등록</title>
+</head>
+<body>
+<h2>근태패턴 등록/수정</h2>
+
+<div th:if="${errorMessage}" style="color:red;">
+    <p th:text="${errorMessage}"></p>
+</div>
+
+<form th:action="@{/pattern/save}" method="post" th:object="${pattern}">
+    <div>
+        <label>패턴코드</label>
+        <input type="text" th:field="*{master.workPatternCode}">
+    </div>
+
+    <div>
+        <label>패턴명</label>
+        <input type="text" th:field="*{master.workPatternName}">
+    </div>
+
+    <div>
+        <label>사용여부</label>
+        <select th:field="*{master.useYn}">
+            <option value="Y">사용</option>
+            <option value="N">미사용</option>
+        </select>
+    </div>
+
+    <div>
+        <label>시작일</label>
+        <input type="date" th:field="*{master.startDate}">
+    </div>
+
+    <br>
+
+    <table border="1">
+        <thead>
+        <tr>
+            <th>일차</th>
+            <th>근태코드</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="detail, stat : *{details}">
+            <td>
+                <span th:text="${detail.seq}"></span>
+                <input type="hidden" th:field="*{details[__${stat.index}__].seq}">
+            </td>
+            <td>
+                <select th:field="*{details[__${stat.index}__].shiftCode}">
+                    <option value="">선택</option>
+                    <option th:each="shift : ${shiftCodes}"
+                            th:value="${shift.shiftCode}"
+                            th:text="${shift.shiftCode + ' - ' + shift.shiftName}">
+                    </option>
+                </select>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <br>
+    <button type="submit">저장</button>
+    <a th:href="@{/pattern/list}">목록</a>
+</form>
+</body>
+</html>

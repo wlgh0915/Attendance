@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.company.attendancemanagement.mapper.pattern.WorkPatternMapper">
+
+    <select id="findPatternList" resultType="com.company.attendancemanagement.dto.pattern.WorkPatternMasterDto">
+        SELECT COMPANY,
+               WORK_PATTERN_CODE AS workPatternCode,
+               WORK_PATTERN_NAME AS workPatternName,
+               PATTERN_TYPE AS patternType,
+               CYCLE_UNIT AS cycleUnit,
+               CYCLE_COUNT AS cycleCount,
+               START_DATE AS startDate,
+               END_DATE AS endDate,
+               USE_YN AS useYn
+        FROM HRTWORKPATTERNMASTER01
+        WHERE COMPANY = #{company}
+        ORDER BY WORK_PATTERN_CODE
+    </select>
+
+    <select id="findPatternMaster" resultType="com.company.attendancemanagement.dto.pattern.WorkPatternMasterDto">
+        SELECT COMPANY,
+               WORK_PATTERN_CODE AS workPatternCode,
+               WORK_PATTERN_NAME AS workPatternName,
+               PATTERN_TYPE AS patternType,
+               CYCLE_UNIT AS cycleUnit,
+               CYCLE_COUNT AS cycleCount,
+               START_DATE AS startDate,
+               END_DATE AS endDate,
+               USE_YN AS useYn
+        FROM HRTWORKPATTERNMASTER01
+        WHERE COMPANY = #{company}
+          AND WORK_PATTERN_CODE = #{workPatternCode}
+    </select>
+
+    <select id="findPatternDetails" resultType="com.company.attendancemanagement.dto.pattern.WorkPatternDetailDto">
+        SELECT D.COMPANY,
+               D.WORK_PATTERN_CODE AS workPatternCode,
+               D.SEQ,
+               D.DAY_TYPE AS dayType,
+               D.SHIFT_CODE AS shiftCode,
+               D.WORK_TYPE_CODE AS workTypeCode,
+               D.WORK_DAY_TYPE AS workDayType,
+               S.SHIFT_NAME AS shiftName
+        FROM HRTWORKPATTERNDETAIL01 D
+                 LEFT JOIN HRTSHIFTMASTER01 S
+                           ON D.COMPANY = S.COMPANY
+                               AND D.SHIFT_CODE = S.SHIFT_CODE
+        WHERE D.COMPANY = #{company}
+          AND D.WORK_PATTERN_CODE = #{workPatternCode}
+        ORDER BY D.SEQ
+    </select>
+
+    <select id="findShiftCodes" resultType="com.company.attendancemanagement.dto.pattern.ShiftCodeDto">
+        SELECT COMPANY,
+               SHIFT_CODE AS shiftCode,
+               SHIFT_NAME AS shiftName,
+               WORK_TYPE_CODE AS workTypeCode,
+               WORK_DAY_TYPE AS workDayType,
+               WORK_ON_DAY_TYPE AS workOnDayType,
+               WORK_OFF_DAY_TYPE AS workOffDayType,
+               CONVERT(VARCHAR(5), WORK_ON_HHMM, 108) AS workOnHhmm,
+               CONVERT(VARCHAR(5), WORK_OFF_HHMM, 108) AS workOffHhmm,
+               USE_YN AS useYn,
+               CASE
+                   WHEN WORK_ON_HHMM IS NOT NULL AND WORK_OFF_HHMM IS NOT NULL
+                       THEN DATEDIFF(MINUTE, WORK_ON_HHMM, WORK_OFF_HHMM)
+                   ELSE 0
+                   END AS workMinutes
+        FROM HRTSHIFTMASTER01
+        WHERE COMPANY = #{company}
+          AND USE_YN = 'Y'
+        ORDER BY SORT_SEQ, SHIFT_CODE
+    </select>
+
+    <select id="existsPatternCode" resultType="int">
+        SELECT COUNT(*)
+        FROM HRTWORKPATTERNMASTER01
+        WHERE COMPANY = #{company}
+          AND WORK_PATTERN_CODE = #{workPatternCode}
+    </select>
+
+    <insert id="insertPatternMaster">
+        INSERT INTO HRTWORKPATTERNMASTER01 (
+            COMPANY, WORK_PATTERN_CODE, WORK_PATTERN_NAME, PATTERN_TYPE,
+            CYCLE_UNIT, CYCLE_COUNT, START_DATE, END_DATE, USE_YN, CREATED_AT, UPDATED_AT
+        )
+        VALUES (
+                   #{company}, #{workPatternCode}, #{workPatternName}, #{patternType},
+                   #{cycleUnit}, #{cycleCount}, #{startDate}, #{endDate}, #{useYn}, GETDATE(), GETDATE()
+               )
+    </insert>
+
+    <update id="updatePatternMaster">
+        UPDATE HRTWORKPATTERNMASTER01
+        SET WORK_PATTERN_NAME = #{workPatternName},
+            PATTERN_TYPE = #{patternType},
+            CYCLE_UNIT = #{cycleUnit},
+            CYCLE_COUNT = #{cycleCount},
+            START_DATE = #{startDate},
+            END_DATE = #{endDate},
+            USE_YN = #{useYn},
+            UPDATED_AT = GETDATE()
+        WHERE COMPANY = #{company}
+          AND WORK_PATTERN_CODE = #{workPatternCode}
+    </update>
+
+    <delete id="deletePatternDetails">
+        DELETE FROM HRTWORKPATTERNDETAIL01
+        WHERE COMPANY = #{company}
+          AND WORK_PATTERN_CODE = #{workPatternCode}
+    </delete>
+
+    <insert id="insertPatternDetail">
+        INSERT INTO HRTWORKPATTERNDETAIL01 (
+            COMPANY, WORK_PATTERN_CODE, SEQ, DAY_TYPE, SHIFT_CODE,
+            WORK_TYPE_CODE, WORK_DAY_TYPE, CREATED_AT, UPDATED_AT
+        )
+        VALUES (
+                   #{company}, #{workPatternCode}, #{seq}, #{dayType}, #{shiftCode},
+                   #{workTypeCode}, #{workDayType}, GETDATE(), GETDATE()
+               )
+    </insert>
+
+</mapper>
