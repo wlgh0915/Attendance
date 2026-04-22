@@ -191,3 +191,21 @@ tr:hover .btn-action {
 .btn-edit:hover {
     background-color: #1e8449;
 }
+
+/* ===== 운영 상태 표시 ===== */
+.status-dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    vertical-align: middle;
+}
+
+.status-dot.active {
+    background-color: #27ae60;
+    box-shadow: 0 0 5px rgba(39, 174, 96, 0.7);
+}
+
+.status-dot.inactive {
+    background-color: #95a5a6;
+}

@@ -21,6 +21,7 @@
                 <th>상위부서</th>
                 <th>부서장</th>
                 <th>사용여부</th>
+                <th>운영 상태</th>
                 <th class="action-header">사원 목록</th>
                 <th class="action-header">부서 수정</th>
             </tr>
@@ -33,6 +34,14 @@
                 <td th:text="${dept.parentDeptName != null ? dept.parentDeptName : ''}"></td>
                 <td th:text="${dept.deptLeaderName != null ? dept.deptLeaderName : ''}"></td>
                 <td th:text="${dept.useYn}"></td>
+                <td>
+                    <span th:if="${dept.dateStatus == 'ACTIVE'}"
+                          class="status-dot active"
+                          th:title="'운영 중 (' + ${dept.startDate} + ' ~ ' + ${dept.endDate} + ')'"></span>
+                    <span th:if="${dept.dateStatus == 'INACTIVE'}"
+                          class="status-dot inactive"
+                          th:title="'운영 종료 (' + ${dept.endDate} + ')'"></span>
+                </td>
                 <td class="action-cell">
                     <a th:href="@{/departments/employees(company=${dept.company}, deptCode=${dept.deptCode})}"
                        class="btn-action btn-view">보기</a>

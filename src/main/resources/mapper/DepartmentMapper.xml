@@ -57,7 +57,13 @@
             d.WORK_PATTERN_CODE AS workPatternCode,
             d.USE_YN AS useYn,
             CONVERT(VARCHAR(10), d.START_DATE, 23) AS startDate,
-            CONVERT(VARCHAR(10), d.END_DATE, 23) AS endDate
+            CONVERT(VARCHAR(10), d.END_DATE, 23) AS endDate,
+            CASE
+                WHEN d.END_DATE IS NOT NULL AND CAST(GETDATE() AS DATE) > d.END_DATE THEN 'INACTIVE'
+                WHEN d.START_DATE IS NOT NULL AND d.END_DATE IS NOT NULL
+                     AND CAST(GETDATE() AS DATE) BETWEEN d.START_DATE AND d.END_DATE THEN 'ACTIVE'
+                ELSE NULL
+            END AS dateStatus
         FROM ORGDEPTMASTER01 d
         LEFT JOIN ORGCOMPANYMASTER01 c ON d.COMPANY = c.COMPANY
         LEFT JOIN ORGDEPTMASTER01 p ON d.COMPANY = p.COMPANY AND d.PARENT_DEPT = p.DEPT_CODE
