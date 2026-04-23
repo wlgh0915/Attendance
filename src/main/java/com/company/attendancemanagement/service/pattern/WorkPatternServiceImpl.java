@@ -182,4 +182,20 @@ public class WorkPatternServiceImpl implements WorkPatternService {
         String shiftName = shift.getShiftName() == null ? "" : shift.getShiftName();
         return shiftName.contains("휴일");
     }
+
+    @Override
+    @Transactional
+    public void deletePattern(String company, String workPatternCode) {
+        int inUse = workPatternMapper.countPatternInUse(company, workPatternCode);
+        if (inUse > 0) {
+            throw new IllegalArgumentException("부서에서 사용 중인 패턴은 삭제할 수 없습니다.");
+        }
+        workPatternMapper.deletePatternDetails(company, workPatternCode);
+        workPatternMapper.deletePatternMaster(company, workPatternCode);
+    }
+
+    @Override
+    public boolean existsPattern(String company, String workPatternCode) {
+        return workPatternMapper.existsPatternCode(company, workPatternCode) > 0;
+    }
 }

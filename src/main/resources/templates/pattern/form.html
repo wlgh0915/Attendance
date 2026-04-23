@@ -1,71 +1,251 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/default_layout}">
 <head>
     <meta charset="UTF-8">
-    <title>근태패턴 등록</title>
+    <title>근태 패턴 등록</title>
+    <link rel="stylesheet" th:href="@{/css/form-common.css}">
+    <style>
+        .form-container { max-width: 860px; }
+
+        .detail-section-header {
+            font-size: 14px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin: 32px 0 12px;
+            padding: 8px 14px;
+            border-left: 4px solid #2c3e50;
+            background: #f8f9fa;
+        }
+
+        .detail-hint {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin: -6px 0 14px;
+        }
+
+        .detail-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.07);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .detail-table thead th {
+            background: #2c3e50;
+            color: #fff;
+            padding: 10px 14px;
+            text-align: center;
+            border-right: 1px solid #3d5166;
+        }
+        .detail-table thead th:last-child { border-right: none; }
+
+        .detail-table tr.week-header-row td {
+            background: #ecf0f1;
+            font-weight: 700;
+            font-size: 12px;
+            color: #2c3e50;
+            padding: 5px 14px;
+            border-top: 2px solid #bdc3c7;
+        }
+
+        .detail-table tr.day-row td {
+            padding: 5px 10px;
+            border-bottom: 1px solid #e8eaed;
+            border-right: 1px solid #e8eaed;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .detail-table tr.day-row td:last-child { border-right: none; }
+
+        .detail-table tr.row-saturday td { background: #ebf5fb; }
+        .detail-table tr.row-sunday   td { background: #fdf2f2; }
+
+        .day-text { font-weight: 600; }
+        .day-sat  { color: #2980b9; }
+        .day-sun  { color: #e74c3c; }
+
+        .detail-table select {
+            width: 100%;
+            padding: 5px 8px;
+            border: 1px solid #ced4da;
+            border-radius: 3px;
+            font-size: 13px;
+            font-family: 'Malgun Gothic', sans-serif;
+            background: #fff;
+        }
+        .detail-table select:focus { border-color: #2c3e50; outline: none; }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 28px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            align-items: center;
+        }
+    </style>
 </head>
 <body>
-<h2>근태패턴 등록/수정</h2>
+<div layout:fragment="content">
+    <div class="content-wrapper">
+        <div class="form-container">
 
-<div th:if="${errorMessage}" style="color:red;">
-    <p th:text="${errorMessage}"></p>
+            <div class="form-header">
+                <h2 th:text="${isEdit} ? '근태 패턴 수정' : '근태 패턴 등록'">근태 패턴 등록</h2>
+            </div>
+
+            <div th:if="${errorMessage}" class="global-error" th:text="${errorMessage}"></div>
+
+            <form th:action="@{/pattern/save}" method="post" th:object="${pattern}" class="dept-form">
+
+                <div class="form-group">
+                    <label class="required">패턴코드</label>
+                    <input type="text" th:field="*{master.workPatternCode}"
+                           th:readonly="${isEdit}"
+                           placeholder="예: WD, 3S2">
+                </div>
+
+                <div class="form-group">
+                    <label class="required">패턴명</label>
+                    <input type="text" th:field="*{master.workPatternName}"
+                           placeholder="예: 주간조, 3조2교대">
+                </div>
+
+                <div class="form-group">
+                    <label>패턴유형</label>
+                    <select th:field="*{master.patternType}">
+                        <option value="">선택하세요</option>
+                        <option value="FIXED">고정형</option>
+                        <option value="ROTATE">교대형</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>주기단위</label>
+                    <select th:field="*{master.cycleUnit}">
+                        <option value="">선택하세요</option>
+                        <option value="W">주(W)</option>
+                        <option value="D">일(D)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>주기횟수</label>
+                    <input type="number" th:field="*{master.cycleCount}" min="1" max="31" placeholder="예: 1">
+                </div>
+
+                <div class="form-group">
+                    <label class="required">시작일</label>
+                    <input type="date" th:field="*{master.startDate}" data-role="startDate">
+                </div>
+
+                <div class="form-group">
+                    <label>종료일</label>
+                    <input type="date" th:field="*{master.endDate}">
+                </div>
+
+                <div class="form-group">
+                    <label>사용여부</label>
+                    <select th:field="*{master.useYn}">
+                        <option value="Y">Y - 사용</option>
+                        <option value="N">N - 미사용</option>
+                    </select>
+                </div>
+
+                <div class="detail-section-header">일별 근태코드 설정</div>
+                <p class="detail-hint">시작일 입력 시 요일이 자동 표시됩니다. 주 52시간 규칙에 맞게 설정하세요.</p>
+
+                <table id="detailTable" class="detail-table">
+                    <thead>
+                    <tr>
+                        <th style="width:55px;">일차</th>
+                        <th style="width:50px;">요일</th>
+                        <th>근태코드</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="detail, stat : *{details}" class="day-row">
+                        <td>
+                            <span th:text="${detail.seq}"></span>
+                            <input type="hidden" th:field="*{details[__${stat.index}__].seq}">
+                        </td>
+                        <td><span class="day-text">-</span></td>
+                        <td>
+                            <select th:field="*{details[__${stat.index}__].shiftCode}">
+                                <option value="">-- 선택 --</option>
+                                <option th:each="shift : ${shiftCodes}"
+                                        th:value="${shift.shiftCode}"
+                                        th:text="${shift.shiftCode + ' - ' + shift.shiftName + (shift.workOnHhmm != null ? ' (' + shift.workOnHhmm + '~' + shift.workOffHhmm + ')' : '')}">
+                                </option>
+                            </select>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-submit">저장</button>
+                    <a th:href="@{/pattern/list}" class="btn-cancel">목록으로</a>
+                </div>
+
+            </form>
+        </div>
+    </div>
 </div>
 
-<form th:action="@{/pattern/save}" method="post" th:object="${pattern}">
-    <div>
-        <label>패턴코드</label>
-        <input type="text" th:field="*{master.workPatternCode}">
-    </div>
+<script>
+    const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
 
-    <div>
-        <label>패턴명</label>
-        <input type="text" th:field="*{master.workPatternName}">
-    </div>
+    function updateDayLabels() {
+        const startDateInput = document.querySelector('[data-role="startDate"]');
+        if (!startDateInput || !startDateInput.value) return;
 
-    <div>
-        <label>사용여부</label>
-        <select th:field="*{master.useYn}">
-            <option value="Y">사용</option>
-            <option value="N">미사용</option>
-        </select>
-    </div>
+        const startDate = new Date(startDateInput.value + 'T00:00:00');
+        const rows = document.querySelectorAll('#detailTable tbody tr.day-row');
 
-    <div>
-        <label>시작일</label>
-        <input type="date" th:field="*{master.startDate}">
-    </div>
+        rows.forEach(function(row, index) {
+            const d = new Date(startDate);
+            d.setDate(d.getDate() + index);
+            const dow = d.getDay();
 
-    <br>
+            const label = row.querySelector('.day-text');
+            if (label) {
+                label.textContent = DAY_NAMES[dow];
+                label.className = 'day-text' + (dow === 6 ? ' day-sat' : dow === 0 ? ' day-sun' : '');
+            }
 
-    <table border="1">
-        <thead>
-        <tr>
-            <th>일차</th>
-            <th>근태코드</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr th:each="detail, stat : *{details}">
-            <td>
-                <span th:text="${detail.seq}"></span>
-                <input type="hidden" th:field="*{details[__${stat.index}__].seq}">
-            </td>
-            <td>
-                <select th:field="*{details[__${stat.index}__].shiftCode}">
-                    <option value="">선택</option>
-                    <option th:each="shift : ${shiftCodes}"
-                            th:value="${shift.shiftCode}"
-                            th:text="${shift.shiftCode + ' - ' + shift.shiftName}">
-                    </option>
-                </select>
-            </td>
-        </tr>
-        </tbody>
-    </table>
+            row.classList.remove('row-saturday', 'row-sunday');
+            if (dow === 6) row.classList.add('row-saturday');
+            if (dow === 0) row.classList.add('row-sunday');
+        });
+    }
 
-    <br>
-    <button type="submit">저장</button>
-    <a th:href="@{/pattern/list}">목록</a>
-</form>
+    function insertWeekHeaders() {
+        const tbody = document.querySelector('#detailTable tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr.day-row'));
+        rows.forEach(function(row, index) {
+            if (index % 7 === 0) {
+                const weekNum = Math.floor(index / 7) + 1;
+                const headerRow = document.createElement('tr');
+                headerRow.className = 'week-header-row';
+                headerRow.innerHTML = '<td colspan="3">▶ ' + weekNum + '주</td>';
+                row.parentNode.insertBefore(headerRow, row);
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        insertWeekHeaders();
+        updateDayLabels();
+        const startDateInput = document.querySelector('[data-role="startDate"]');
+        if (startDateInput) {
+            startDateInput.addEventListener('change', updateDayLabels);
+        }
+    });
+</script>
 </body>
 </html>

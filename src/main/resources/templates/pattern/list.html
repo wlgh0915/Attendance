@@ -1,37 +1,69 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/default_layout}">
 <head>
     <meta charset="UTF-8">
-    <title>근태패턴 목록</title>
+    <title>근태 패턴 목록</title>
+    <link rel="stylesheet" th:href="@{/css/department-list.css}">
 </head>
 <body>
-<h2>근태패턴 목록</h2>
+<div layout:fragment="content">
+    <div class="content-wrapper">
+        <div th:if="${successMessage}" class="toast-data" data-type="success"
+             th:data-message="${successMessage}" style="display:none"></div>
+        <div th:if="${errorMessage}" class="toast-data" data-type="error"
+             th:data-message="${errorMessage}" style="display:none"></div>
 
-<div>
-    <a th:href="@{/pattern/new}">신규 등록</a>
+        <h2>근태 패턴 목록</h2>
+        <a th:href="@{/pattern/new}" class="btn-back" style="margin-bottom:16px; display:inline-block;">+ 신규 등록</a>
+
+        <table>
+            <thead>
+            <tr>
+                <th>패턴코드</th>
+                <th>패턴명</th>
+                <th>패턴유형</th>
+                <th>주기</th>
+                <th>시작일</th>
+                <th>종료일</th>
+                <th>사용여부</th>
+                <th class="action-header">수정</th>
+                <th class="action-header">삭제</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="item : ${patterns}">
+                <td th:text="${item.workPatternCode}"></td>
+                <td th:text="${item.workPatternName}"></td>
+                <td th:text="${item.patternType == 'FIXED' ? '고정형' : item.patternType == 'ROTATE' ? '교대형' : (item.patternType != null ? item.patternType : '-')}"></td>
+                <td th:text="${item.cycleCount != null ? item.cycleCount + (item.cycleUnit == 'W' ? '주' : '일') : '-'}"></td>
+                <td th:text="${item.startDate != null ? item.startDate : '-'}"></td>
+                <td th:text="${item.endDate != null ? item.endDate : '-'}"></td>
+                <td th:text="${item.useYn}"></td>
+                <td class="action-cell">
+                    <a th:href="@{'/pattern/edit/' + ${item.workPatternCode}}"
+                       class="btn-action btn-edit">수정</a>
+                </td>
+                <td class="action-cell">
+                    <form th:action="@{/pattern/delete}" method="post" style="display:inline;"
+                          th:onsubmit="|return confirm('패턴 [${item.workPatternCode}]을 삭제하시겠습니까?')|">
+                        <input type="hidden" name="workPatternCode" th:value="${item.workPatternCode}">
+                        <button type="submit" class="btn-action"
+                                style="background:#e74c3c;color:#fff;border:none;cursor:pointer;font-family:'Malgun Gothic',sans-serif;">
+                            삭제
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(patterns)}">
+                <td colspan="9" style="padding:28px;color:#95a5a6;text-align:center;">
+                    등록된 근태 패턴이 없습니다.
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
 </div>
-
-<table border="1">
-    <thead>
-    <tr>
-        <th>패턴코드</th>
-        <th>패턴명</th>
-        <th>사용여부</th>
-        <th>시작일</th>
-        <th>수정</th>
-    </tr>
-    </thead>
-    <tbody>
-    <tr th:each="item : ${patterns}">
-        <td th:text="${item.workPatternCode}"></td>
-        <td th:text="${item.workPatternName}"></td>
-        <td th:text="${item.useYn}"></td>
-        <td th:text="${item.startDate}"></td>
-        <td>
-            <a th:href="@{'/pattern/edit/' + ${item.workPatternCode}}">수정</a>
-        </td>
-    </tr>
-    </tbody>
-</table>
 </body>
 </html>
