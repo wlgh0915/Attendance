@@ -47,7 +47,8 @@
                 </td>
                 <td class="action-cell">
                     <form th:action="@{/pattern/delete}" method="post" style="display:inline;"
-                          th:onsubmit="|return confirm('패턴 [${item.workPatternCode}]을 삭제하시겠습니까?')|">
+                          th:attr="data-code=${item.workPatternCode}"
+                          onsubmit="return confirmDelete(this)">
                         <input type="hidden" name="workPatternCode" th:value="${item.workPatternCode}">
                         <button type="submit" class="btn-action"
                                 style="background:#e74c3c;color:#fff;border:none;cursor:pointer;font-family:'Malgun Gothic',sans-serif;">
@@ -65,5 +66,11 @@
         </table>
     </div>
 </div>
+<script>
+    function confirmDelete(form) {
+        var code = form.getAttribute('data-code');
+        return confirm('패턴 [' + code + ']을 삭제하시겠습니까?');
+    }
+</script>
 </body>
 </html>
