@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/default_layout}">
+<head>
+    <meta charset="UTF-8">
+    <title>미배정 사원 목록</title>
+    <link rel="stylesheet" th:href="@{/css/department-list.css}">
+    <link rel="stylesheet" th:href="@{/css/success-banner.css}">
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="content-wrapper">
+
+        <a th:href="@{/departments/employees(company=${company}, deptCode=${deptCode})}" class="btn-back">← 부서 사원 목록으로</a>
+
+        <h2>미배정 사원 목록</h2>
+
+        <div class="dept-info-table">
+            <div class="dept-info-row">
+                <div class="dept-info-cell">
+                    <span class="dept-info-label">추가 대상 부서</span>
+                    <span class="dept-info-value" th:text="${deptName}"></span>
+                </div>
+                <div class="dept-info-cell">
+                    <span class="dept-info-label">부서코드</span>
+                    <span class="dept-info-value" th:text="${deptCode}"></span>
+                </div>
+            </div>
+        </div>
+
+        <div th:if="${errorMessage}" class="toast-data" data-type="error" th:data-message="${errorMessage}" style="display:none"></div>
+
+        <form th:action="@{/departments/employees/add}" method="post">
+            <input type="hidden" name="company" th:value="${company}">
+            <input type="hidden" name="deptCode" th:value="${deptCode}">
+
+            <div class="emp-toolbar">
+                <button type="submit" class="btn-toolbar btn-change">선택 사원 추가</button>
+            </div>
+
+            <table>
+                <thead>
+                <tr>
+                    <th><input type="checkbox" id="selectAll" title="전체 선택"></th>
+                    <th>회사명</th>
+                    <th>사번</th>
+                    <th>사원명</th>
+                    <th>권한코드</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="emp : ${employees}">
+                    <td><input type="checkbox" name="empCodes" th:value="${emp.empCode}"></td>
+                    <td th:text="${emp.companyName}"></td>
+                    <td th:text="${emp.empCode}"></td>
+                    <td th:text="${emp.empName}"></td>
+                    <td th:text="${emp.roleCode}"></td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(employees)}">
+                    <td colspan="5">부서가 지정되지 않은 사원이 없습니다.</td>
+                </tr>
+                </tbody>
+            </table>
+        </form>
+    </div>
+</div>
+<script th:inline="none">
+    document.addEventListener('DOMContentLoaded', function () {
+        document.getElementById('selectAll').addEventListener('change', function () {
+            document.querySelectorAll('input[name="empCodes"]').forEach(function (cb) {
+                cb.checked = this.checked;
+            }, this);
+        });
+    });
+</script>
+</body>
+</html>
