@@ -191,3 +191,25 @@ tr:hover .btn-action {
 .btn-edit:hover {
     background-color: #1e8449;
 }
+
+/* ===== 운영 상태 표시 ===== */
+.status-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+.status-badge.active {
+    background-color: #e8f8f0;
+    color: #1e8449;
+    border: 1px solid #a9dfbf;
+}
+
+.status-badge.inactive {
+    background-color: #f0f0f0;
+    color: #7f8c8d;
+    border: 1px solid #d5d8dc;
+}

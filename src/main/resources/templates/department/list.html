@@ -15,24 +15,33 @@
         <table>
             <thead>
             <tr>
-                <th>회사코드</th>
+                <th>회사명</th>
                 <th>부서코드</th>
                 <th>부서명</th>
                 <th>상위부서</th>
                 <th>부서장</th>
                 <th>사용여부</th>
+                <th>운영 상태</th>
                 <th class="action-header">사원 목록</th>
                 <th class="action-header">부서 수정</th>
             </tr>
             </thead>
             <tbody>
             <tr th:each="dept : ${departments}">
-                <td th:text="${dept.company}"></td>
+                <td th:text="${dept.companyName}"></td>
                 <td th:text="${dept.deptCode}"></td>
                 <td th:text="${dept.deptName}"></td>
                 <td th:text="${dept.parentDeptName != null ? dept.parentDeptName : ''}"></td>
                 <td th:text="${dept.deptLeaderName != null ? dept.deptLeaderName : ''}"></td>
                 <td th:text="${dept.useYn}"></td>
+                <td>
+                    <span th:if="${dept.dateStatus == 'ACTIVE'}"
+                          class="status-badge active"
+                          th:title="'운영 중 (' + ${dept.startDate} + ' ~ ' + ${dept.endDate} + ')'">운영중</span>
+                    <span th:if="${dept.dateStatus == 'INACTIVE'}"
+                          class="status-badge inactive"
+                          th:title="'운영 종료 (' + ${dept.endDate} + ')'">운영종료</span>
+                </td>
                 <td class="action-cell">
                     <a th:href="@{/departments/employees(company=${dept.company}, deptCode=${dept.deptCode})}"
                        class="btn-action btn-view">보기</a>
