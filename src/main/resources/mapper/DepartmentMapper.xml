@@ -59,10 +59,9 @@
             CONVERT(VARCHAR(10), d.START_DATE, 23) AS startDate,
             CONVERT(VARCHAR(10), d.END_DATE, 23) AS endDate,
             CASE
-                WHEN d.END_DATE IS NOT NULL AND CAST(GETDATE() AS DATE) > d.END_DATE THEN 'INACTIVE'
-                WHEN d.START_DATE IS NOT NULL AND d.END_DATE IS NOT NULL
-                     AND CAST(GETDATE() AS DATE) BETWEEN d.START_DATE AND d.END_DATE THEN 'ACTIVE'
-                ELSE NULL
+                WHEN d.END_DATE IS NULL THEN 'ACTIVE'
+                WHEN CAST(GETDATE() AS DATE) > d.END_DATE THEN 'INACTIVE'
+                ELSE 'ACTIVE'
             END AS dateStatus
         FROM ORGDEPTMASTER01 d
         LEFT JOIN ORGCOMPANYMASTER01 c ON d.COMPANY = c.COMPANY
