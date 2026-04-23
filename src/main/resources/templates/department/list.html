@@ -36,11 +36,11 @@
                 <td th:text="${dept.useYn}"></td>
                 <td>
                     <span th:if="${dept.dateStatus == 'ACTIVE'}"
-                          class="status-dot active"
-                          th:title="'운영 중 (' + ${dept.startDate} + ' ~ ' + ${dept.endDate} + ')'"></span>
+                          class="status-badge active"
+                          th:title="'운영 중 (' + ${dept.startDate} + ' ~ ' + ${dept.endDate} + ')'">운영중</span>
                     <span th:if="${dept.dateStatus == 'INACTIVE'}"
-                          class="status-dot inactive"
-                          th:title="'운영 종료 (' + ${dept.endDate} + ')'"></span>
+                          class="status-badge inactive"
+                          th:title="'운영 종료 (' + ${dept.endDate} + ')'">운영종료</span>
                 </td>
                 <td class="action-cell">
                     <a th:href="@{/departments/employees(company=${dept.company}, deptCode=${dept.deptCode})}"
