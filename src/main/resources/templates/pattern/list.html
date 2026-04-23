@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>근태패턴 목록</title>
+</head>
+<body>
+<h2>근태패턴 목록</h2>
+
+<div>
+    <a th:href="@{/pattern/new}">신규 등록</a>
+</div>
+
+<table border="1">
+    <thead>
+    <tr>
+        <th>패턴코드</th>
+        <th>패턴명</th>
+        <th>사용여부</th>
+        <th>시작일</th>
+        <th>수정</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="item : ${patterns}">
+        <td th:text="${item.workPatternCode}"></td>
+        <td th:text="${item.workPatternName}"></td>
+        <td th:text="${item.useYn}"></td>
+        <td th:text="${item.startDate}"></td>
+        <td>
+            <a th:href="@{'/pattern/edit/' + ${item.workPatternCode}}">수정</a>
+        </td>
+    </tr>
+    </tbody>
+</table>
+</body>
+</html>
