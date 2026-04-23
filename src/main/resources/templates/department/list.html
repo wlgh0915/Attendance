@@ -20,6 +20,7 @@
                 <th>부서명</th>
                 <th>상위부서</th>
                 <th>부서장</th>
+                <th>부서분류</th>
                 <th>사용여부</th>
                 <th>운영 상태</th>
                 <th class="action-header">사원 목록</th>
@@ -33,14 +34,28 @@
                 <td th:text="${dept.deptName}"></td>
                 <td th:text="${dept.parentDeptName != null ? dept.parentDeptName : ''}"></td>
                 <td th:text="${dept.deptLeaderName != null ? dept.deptLeaderName : ''}"></td>
+                <td>
+                    <span th:switch="${dept.deptCategory}">
+                        <span th:case="'10'">10 - CEO</span>
+                        <span th:case="'20'">20 - COO</span>
+                        <span th:case="'21'">21 - 위원회</span>
+                        <span th:case="'30'">30 - 본부</span>
+                        <span th:case="'40'">40 - 팀</span>
+                        <span th:case="'41'">41 - 부</span>
+                        <span th:case="'50'">50 - 과</span>
+                        <span th:case="'60'">60 - 그룹</span>
+                        <span th:case="'70'">70 - 파트</span>
+                        <span th:case="*"></span>
+                    </span>
+                </td>
                 <td th:text="${dept.useYn}"></td>
                 <td>
                     <span th:if="${dept.dateStatus == 'ACTIVE'}"
                           class="status-badge active"
-                          th:title="'운영 중 (' + ${dept.startDate} + ' ~ ' + ${dept.endDate} + ')'">운영중</span>
+                          th:title="${dept.endDate != null ? '운영 중 (' + dept.startDate + ' ~ ' + dept.endDate + ')' : '운영 중 (' + dept.startDate + ' ~ )'}">운영중</span>
                     <span th:if="${dept.dateStatus == 'INACTIVE'}"
                           class="status-badge inactive"
-                          th:title="'운영 종료 (' + ${dept.endDate} + ')'">운영종료</span>
+                          th:title="'운영 종료 (' + ${dept.startDate} + ' ~ ' + ${dept.endDate} + ')'">운영종료</span>
                 </td>
                 <td class="action-cell">
                     <a th:href="@{/departments/employees(company=${dept.company}, deptCode=${dept.deptCode})}"
