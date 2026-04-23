@@ -8,6 +8,7 @@ import com.company.attendancemanagement.mapper.DepartmentMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.util.List;
+import java.util.ArrayList;
 
 @Service
 @RequiredArgsConstructor
@@ -44,6 +45,16 @@ public class DepartmentService {
 
     public List<DepartmentEmployeeDto> findEmployeesByDept(String company, String deptCode) {
         return departmentMapper.findEmployeesByDept(company, deptCode);
+    }
+
+    public List<DepartmentEmployeeDto> findUnassignedEmployees(String company) {
+        return departmentMapper.findUnassignedEmployees(company);
+    }
+
+    public void moveEmployeesToDept(String company, List<String> empCodes, String deptCode) {
+        if (empCodes != null && !empCodes.isEmpty()) {
+            departmentMapper.updateEmployeesDept(company, empCodes, deptCode);
+        }
     }
 
     public boolean updateDepartment(DepartmentUpdateDto dto) {

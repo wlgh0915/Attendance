@@ -192,6 +192,61 @@ tr:hover .btn-action {
     background-color: #1e8449;
 }
 
+/* ===== 사원 목록 툴바 ===== */
+.emp-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.dept-select {
+    padding: 7px 12px;
+    border: 1px solid #ccd0d5;
+    border-radius: 5px;
+    font-size: 13px;
+    color: #2c3e50;
+    background: #fff;
+    min-width: 200px;
+    cursor: pointer;
+}
+
+.dept-select:focus {
+    outline: none;
+    border-color: #2980b9;
+    box-shadow: 0 0 0 2px rgba(41, 128, 185, 0.15);
+}
+
+.btn-toolbar {
+    display: inline-block;
+    padding: 7px 16px;
+    border: none;
+    border-radius: 5px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s;
+}
+
+.btn-change {
+    background-color: #2980b9;
+    color: #fff;
+}
+
+.btn-change:hover {
+    background-color: #2471a3;
+}
+
+.btn-add-emp {
+    background-color: #27ae60;
+    color: #fff;
+}
+
+.btn-add-emp:hover {
+    background-color: #1e8449;
+}
+
 /* ===== 운영 상태 표시 ===== */
 .status-badge {
     display: inline-block;

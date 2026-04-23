@@ -14,7 +14,10 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.List;
 
 import static com.company.attendancemanagement.common.SessionConst.LOGIN_USER;
 
@@ -85,8 +88,8 @@ public class DepartmentController {
     }
 
     @GetMapping("/departments/employees")
-    public String employees(String company,
-                            String deptCode,
+    public String employees(@RequestParam String company,
+                            @RequestParam String deptCode,
                             HttpSession session,
                             Model model) {
 
@@ -97,13 +100,80 @@ public class DepartmentController {
 
         DepartmentDto dept = departmentService.findByDeptCode(company, deptCode);
 
+        model.addAttribute("company", company);
         model.addAttribute("companyName", dept.getCompanyName());
         model.addAttribute("deptCode", deptCode);
         model.addAttribute("deptName", dept.getDeptName());
-        model.addAttribute("employees",
-                departmentService.findEmployeesByDept(company, deptCode));
+        model.addAttribute("employees", departmentService.findEmployeesByDept(company, deptCode));
+        model.addAttribute("allDepartments", departmentService.findAllForDropdown(company));
 
         return "department/employees";
+    }
+
+    @PostMapping("/departments/employees/move")
+    public String moveEmployees(@RequestParam("company") String company,
+                                @RequestParam("currentDeptCode") String currentDeptCode,
+                                @RequestParam(value = "empCodes", required = false) List<String> empCodes,
+                                @RequestParam("targetDeptCode") String targetDeptCode,
+                                HttpSession session,
+                                RedirectAttributes redirectAttributes) {
+
+        LoginUserDto loginUser = (LoginUserDto) session.getAttribute(LOGIN_USER);
+        if (loginUser == null) {
+            return "redirect:/login";
+        }
+
+        if (empCodes == null || empCodes.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "사원을 선택해주세요.");
+        } else {
+            departmentService.moveEmployeesToDept(company, empCodes, targetDeptCode);
+            redirectAttributes.addFlashAttribute("successMessage", "부서 변경에 성공했습니다.");
+        }
+
+        return "redirect:/departments/employees?company=" + company + "&deptCode=" + currentDeptCode;
+    }
+
+    @GetMapping("/departments/employees/unassigned")
+    public String unassignedEmployees(@RequestParam("company") String company,
+                                      @RequestParam("deptCode") String deptCode,
+                                      HttpSession session,
+                                      Model model) {
+
+        LoginUserDto loginUser = (LoginUserDto) session.getAttribute(LOGIN_USER);
+        if (loginUser == null) {
+            return "redirect:/login";
+        }
+
+        DepartmentDto dept = departmentService.findByDeptCode(company, deptCode);
+
+        model.addAttribute("company", company);
+        model.addAttribute("deptCode", deptCode);
+        model.addAttribute("deptName", dept.getDeptName());
+        model.addAttribute("employees", departmentService.findUnassignedEmployees(company));
+
+        return "department/unassigned-employees";
+    }
+
+    @PostMapping("/departments/employees/add")
+    public String addEmployees(@RequestParam("company") String company,
+                               @RequestParam("deptCode") String deptCode,
+                               @RequestParam(value = "empCodes", required = false) List<String> empCodes,
+                               HttpSession session,
+                               RedirectAttributes redirectAttributes) {
+
+        LoginUserDto loginUser = (LoginUserDto) session.getAttribute(LOGIN_USER);
+        if (loginUser == null) {
+            return "redirect:/login";
+        }
+
+        if (empCodes == null || empCodes.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "사원을 선택해주세요.");
+            return "redirect:/departments/employees/unassigned?company=" + company + "&deptCode=" + deptCode;
+        }
+
+        departmentService.moveEmployeesToDept(company, empCodes, deptCode);
+        redirectAttributes.addFlashAttribute("successMessage", "사원 추가에 성공했습니다.");
+        return "redirect:/departments/employees?company=" + company + "&deptCode=" + deptCode;
     }
 
     @GetMapping("/departments/edit")

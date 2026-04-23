@@ -33,30 +33,61 @@
             </div>
         </div>
 
-        <table>
-            <thead>
-            <tr>
-                <th>회사명</th>
-                <th>사번</th>
-                <th>사원명</th>
-                <th>부서코드</th>
-                <th>권한코드</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr th:each="emp : ${employees}">
-                <td th:text="${emp.companyName}"></td>
-                <td th:text="${emp.empCode}"></td>
-                <td th:text="${emp.empName}"></td>
-                <td th:text="${emp.deptCode}"></td>
-                <td th:text="${emp.roleCode}"></td>
-            </tr>
-            <tr th:if="${#lists.isEmpty(employees)}">
-                <td colspan="5">해당 부서에 등록된 사원이 없습니다.</td>
-            </tr>
-            </tbody>
-        </table>
+        <div th:if="${successMessage}" class="toast-data" data-type="success" th:data-message="${successMessage}" style="display:none"></div>
+        <div th:if="${errorMessage}" class="toast-data" data-type="error" th:data-message="${errorMessage}" style="display:none"></div>
+
+        <form th:action="@{/departments/employees/move}" method="post">
+            <input type="hidden" name="company" th:value="${company}">
+            <input type="hidden" name="currentDeptCode" th:value="${deptCode}">
+
+            <div class="emp-toolbar">
+                <select name="targetDeptCode" class="dept-select">
+                    <option value="">부서 지정 안함</option>
+                    <option th:each="dept : ${allDepartments}"
+                            th:value="${dept.deptCode}"
+                            th:text="${dept.deptName + ' (' + dept.deptCode + ')'}"></option>
+                </select>
+                <button type="submit" class="btn-toolbar btn-change">부서 변경</button>
+                <a th:href="@{/departments/employees/unassigned(company=${company}, deptCode=${deptCode})}"
+                   class="btn-toolbar btn-add-emp">사원 추가</a>
+            </div>
+
+            <table>
+                <thead>
+                <tr>
+                    <th><input type="checkbox" id="selectAll" title="전체 선택"></th>
+                    <th>회사명</th>
+                    <th>사번</th>
+                    <th>사원명</th>
+                    <th>부서코드</th>
+                    <th>권한코드</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="emp : ${employees}">
+                    <td><input type="checkbox" name="empCodes" th:value="${emp.empCode}"></td>
+                    <td th:text="${emp.companyName}"></td>
+                    <td th:text="${emp.empCode}"></td>
+                    <td th:text="${emp.empName}"></td>
+                    <td th:text="${emp.deptCode}"></td>
+                    <td th:text="${emp.roleCode}"></td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(employees)}">
+                    <td colspan="6">해당 부서에 등록된 사원이 없습니다.</td>
+                </tr>
+                </tbody>
+            </table>
+        </form>
     </div>
 </div>
+<script th:inline="none">
+    document.addEventListener('DOMContentLoaded', function () {
+        document.getElementById('selectAll').addEventListener('change', function () {
+            document.querySelectorAll('input[name="empCodes"]').forEach(function (cb) {
+                cb.checked = this.checked;
+            }, this);
+        });
+    });
+</script>
 </body>
 </html>

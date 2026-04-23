@@ -126,12 +126,40 @@
           AND d.DEPT_CODE = #{deptCode}
     </select>
 
+    <select id="findUnassignedEmployees"
+            resultType="com.company.attendancemanagement.dto.department.DepartmentEmployeeDto">
+        SELECT
+            h.COMPANY AS company,
+            c.COMPANY_NAME AS companyName,
+            h.EMP_CODE AS empCode,
+            h.EMP_NAME AS empName,
+            h.DEPT_CODE AS deptCode,
+            h.ROLE_CODE AS roleCode
+        FROM HRIMASTER01 h
+        LEFT JOIN ORGCOMPANYMASTER01 c ON h.COMPANY = c.COMPANY
+        WHERE h.COMPANY = #{company}
+          AND h.DEPT_CODE IS NULL
+          AND h.RETIRE_DATE IS NULL
+        ORDER BY h.EMP_CODE
+    </select>
+
     <select id="countEmployeesByDept" resultType="int">
         SELECT COUNT(*)
         FROM HRIMASTER01
         WHERE COMPANY = #{company}
           AND DEPT_CODE = #{deptCode}
     </select>
+
+    <update id="updateEmployeesDept">
+        UPDATE HRIMASTER01
+        SET DEPT_CODE = NULLIF(#{deptCode}, ''),
+            UPDATED_AT = GETDATE()
+        WHERE COMPANY = #{company}
+          AND EMP_CODE IN
+        <foreach collection="empCodes" item="code" open="(" separator="," close=")">
+            #{code}
+        </foreach>
+    </update>
 
     <update id="updateDepartment">
         UPDATE ORGDEPTMASTER01

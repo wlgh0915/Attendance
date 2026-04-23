@@ -23,10 +23,14 @@ public interface DepartmentMapper {
     List<DepartmentEmployeeDto> findActiveEmployees(@Param("company") String company);
     List<DepartmentEmployeeDto> findEmployeesByDept(@Param("company") String company,
                                                     @Param("deptCode") String deptCode);
+    List<DepartmentEmployeeDto> findUnassignedEmployees(@Param("company") String company);
     DepartmentDto findByDeptCode(String company, String deptCode);
 
     int countEmployeesByDept(@Param("company") String company,
                              @Param("deptCode") String deptCode);
 
     int updateDepartment(DepartmentUpdateDto dto);
+    int updateEmployeesDept(@Param("company") String company,
+                            @Param("empCodes") List<String> empCodes,
+                            @Param("deptCode") String deptCode);
 }
