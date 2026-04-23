@@ -5,6 +5,7 @@ import com.company.attendancemanagement.dto.department.DepartmentDto;
 import com.company.attendancemanagement.dto.department.DepartmentUpdateDto;
 import com.company.attendancemanagement.dto.login.LoginUserDto;
 import com.company.attendancemanagement.service.DepartmentService;
+import com.company.attendancemanagement.service.pattern.WorkPatternService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ import static com.company.attendancemanagement.common.SessionConst.LOGIN_USER;
 public class DepartmentController {
 
     private final DepartmentService departmentService;
+    private final WorkPatternService workPatternService;
 
     @GetMapping("/departments")
     public String list(HttpSession session, Model model) {
@@ -52,6 +54,7 @@ public class DepartmentController {
         model.addAttribute("departmentCreateDto", dto);
         model.addAttribute("deptOptions", departmentService.findAllForDropdown(loginUser.getCompany()));
         model.addAttribute("employeeOptions", departmentService.findActiveEmployees(loginUser.getCompany()));
+        model.addAttribute("workPatternOptions", workPatternService.getPatternList(loginUser.getCompany()));
         return "department/create";
     }
 
@@ -72,6 +75,7 @@ public class DepartmentController {
         if (bindingResult.hasErrors()) {
             model.addAttribute("deptOptions", departmentService.findAllForDropdown(loginUser.getCompany()));
             model.addAttribute("employeeOptions", departmentService.findActiveEmployees(loginUser.getCompany()));
+            model.addAttribute("workPatternOptions", workPatternService.getPatternList(loginUser.getCompany()));
             return "department/create";
         }
 
@@ -81,6 +85,7 @@ public class DepartmentController {
             bindingResult.reject("duplicate", "이미 존재하는 부서코드입니다.");
             model.addAttribute("deptOptions", departmentService.findAllForDropdown(loginUser.getCompany()));
             model.addAttribute("employeeOptions", departmentService.findActiveEmployees(loginUser.getCompany()));
+            model.addAttribute("workPatternOptions", workPatternService.getPatternList(loginUser.getCompany()));
             return "department/create";
         }
 
@@ -241,6 +246,7 @@ public class DepartmentController {
         model.addAttribute("departmentUpdateDto", dto);
         model.addAttribute("deptOptions", departmentService.findAllForDropdown(loginUser.getCompany()));
         model.addAttribute("employeeOptions", departmentService.findActiveEmployees(loginUser.getCompany()));
+        model.addAttribute("workPatternOptions", workPatternService.getPatternList(loginUser.getCompany()));
         return "department/edit";
     }
 
@@ -259,6 +265,7 @@ public class DepartmentController {
         if (bindingResult.hasErrors()) {
             model.addAttribute("deptOptions", departmentService.findAllForDropdown(loginUser.getCompany()));
             model.addAttribute("employeeOptions", departmentService.findActiveEmployees(loginUser.getCompany()));
+            model.addAttribute("workPatternOptions", workPatternService.getPatternList(loginUser.getCompany()));
             return "department/edit";
         }
 
@@ -268,6 +275,7 @@ public class DepartmentController {
             bindingResult.reject("updateFailed", "부서에 소속된 직원이 있으면 사용 여부를 N으로 변경할 수 없습니다.");
             model.addAttribute("deptOptions", departmentService.findAllForDropdown(loginUser.getCompany()));
             model.addAttribute("employeeOptions", departmentService.findActiveEmployees(loginUser.getCompany()));
+            model.addAttribute("workPatternOptions", workPatternService.getPatternList(loginUser.getCompany()));
             return "department/edit";
         }
 
