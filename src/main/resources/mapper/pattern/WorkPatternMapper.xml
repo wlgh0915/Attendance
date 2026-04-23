@@ -67,6 +67,8 @@
                CASE
                    WHEN WORK_ON_HHMM IS NOT NULL AND WORK_OFF_HHMM IS NOT NULL
                        THEN DATEDIFF(MINUTE, WORK_ON_HHMM, WORK_OFF_HHMM)
+                            - ISNULL(DATEDIFF(MINUTE, BREAK1_START_HHMM, BREAK1_END_HHMM), 0)
+                            - ISNULL(DATEDIFF(MINUTE, BREAK2_START_HHMM, BREAK2_END_HHMM), 0)
                    ELSE 0
                    END AS workMinutes
         FROM HRTSHIFTMASTER01
