@@ -15,4 +15,8 @@ public interface WorkPatternService {
     List<ShiftCodeDto> getShiftCodes(String company);
 
     void savePattern(WorkPatternSaveRequest request);
+
+    void deletePattern(String company, String workPatternCode);
+
+    boolean existsPattern(String company, String workPatternCode);
 }

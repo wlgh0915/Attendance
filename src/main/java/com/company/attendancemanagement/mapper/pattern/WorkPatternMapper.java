@@ -32,4 +32,10 @@ public interface WorkPatternMapper {
                              @Param("workPatternCode") String workPatternCode);
 
     int insertPatternDetail(WorkPatternDetailDto dto);
+
+    int countPatternInUse(@Param("company") String company,
+                          @Param("workPatternCode") String workPatternCode);
+
+    int deletePatternMaster(@Param("company") String company,
+                            @Param("workPatternCode") String workPatternCode);
 }

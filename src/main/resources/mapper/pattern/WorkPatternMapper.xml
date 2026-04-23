@@ -124,4 +124,17 @@
                )
     </insert>
 
+    <select id="countPatternInUse" resultType="int">
+        SELECT COUNT(*)
+        FROM ORGDEPTMASTER01
+        WHERE COMPANY = #{company}
+          AND WORK_PATTERN_CODE = #{workPatternCode}
+    </select>
+
+    <delete id="deletePatternMaster">
+        DELETE FROM HRTWORKPATTERNMASTER01
+        WHERE COMPANY = #{company}
+          AND WORK_PATTERN_CODE = #{workPatternCode}
+    </delete>
+
 </mapper>
