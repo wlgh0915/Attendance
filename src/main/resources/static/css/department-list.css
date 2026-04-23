@@ -192,6 +192,12 @@ tr:hover .btn-action {
     background-color: #1e8449;
 }
 
+/* ===== 체크박스 헤더 ===== */
+th.th-checkbox {
+    cursor: pointer;
+    width: 40px;
+}
+
 /* ===== 사원 목록 툴바 ===== */
 .emp-toolbar {
     display: flex;

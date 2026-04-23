@@ -34,6 +34,7 @@ public class DepartmentController {
             return "redirect:/login";
         }
 
+        model.addAttribute("company", loginUser.getCompany());
         model.addAttribute("departments", departmentService.findAll(loginUser.getCompany()));
         return "department/list";
     }
@@ -130,7 +131,30 @@ public class DepartmentController {
             redirectAttributes.addFlashAttribute("successMessage", "부서 변경에 성공했습니다.");
         }
 
+        if (currentDeptCode == null || currentDeptCode.isEmpty()) {
+            return "redirect:/departments/employees/unassigned-manage?company=" + company;
+        }
         return "redirect:/departments/employees?company=" + company + "&deptCode=" + currentDeptCode;
+    }
+
+    @GetMapping("/departments/employees/unassigned-manage")
+    public String unassignedManage(@RequestParam("company") String company,
+                                   HttpSession session,
+                                   Model model) {
+
+        LoginUserDto loginUser = (LoginUserDto) session.getAttribute(LOGIN_USER);
+        if (loginUser == null) {
+            return "redirect:/login";
+        }
+
+        model.addAttribute("company", company);
+        model.addAttribute("companyName", departmentService.findCompanyName(company));
+        model.addAttribute("deptCode", "");
+        model.addAttribute("deptName", "부서 미지정");
+        model.addAttribute("employees", departmentService.findUnassignedEmployees(company));
+        model.addAttribute("allDepartments", departmentService.findAllForDropdown(company));
+
+        return "department/employees";
     }
 
     @GetMapping("/departments/employees/unassigned")

@@ -44,18 +44,20 @@
                 <select name="targetDeptCode" class="dept-select">
                     <option value="">부서 지정 안함</option>
                     <option th:each="dept : ${allDepartments}"
+                            th:if="${dept.deptCode != deptCode}"
                             th:value="${dept.deptCode}"
                             th:text="${dept.deptName + ' (' + dept.deptCode + ')'}"></option>
                 </select>
                 <button type="submit" class="btn-toolbar btn-change">부서 변경</button>
-                <a th:href="@{/departments/employees/unassigned(company=${company}, deptCode=${deptCode})}"
+                <a th:if="${!#strings.isEmpty(deptCode)}"
+                   th:href="@{/departments/employees/unassigned(company=${company}, deptCode=${deptCode})}"
                    class="btn-toolbar btn-add-emp">사원 추가</a>
             </div>
 
             <table>
                 <thead>
                 <tr>
-                    <th><input type="checkbox" id="selectAll" title="전체 선택"></th>
+                    <th class="th-checkbox" title="전체 선택"><input type="checkbox" id="selectAll"></th>
                     <th>회사명</th>
                     <th>사번</th>
                     <th>사원명</th>
@@ -81,10 +83,28 @@
     </div>
     <script th:inline="none">
         document.addEventListener('DOMContentLoaded', function () {
-            document.getElementById('selectAll').addEventListener('change', function () {
+            var selectAll = document.getElementById('selectAll');
+
+            selectAll.addEventListener('change', function () {
                 document.querySelectorAll('input[name="empCodes"]').forEach(function (cb) {
-                    cb.checked = this.checked;
-                }, this);
+                    cb.checked = selectAll.checked;
+                });
+            });
+
+            // 전체선택 헤더 셀 여백 클릭
+            document.querySelector('thead th.th-checkbox').addEventListener('click', function (e) {
+                if (e.target === selectAll) return;
+                selectAll.checked = !selectAll.checked;
+                selectAll.dispatchEvent(new Event('change'));
+            });
+
+            // 사원 행 여백 클릭
+            document.querySelectorAll('tbody tr').forEach(function (row) {
+                row.addEventListener('click', function (e) {
+                    if (e.target.type === 'checkbox') return;
+                    var cb = row.querySelector('input[name="empCodes"]');
+                    if (cb) cb.checked = !cb.checked;
+                });
             });
         });
     </script>

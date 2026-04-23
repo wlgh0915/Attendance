@@ -24,6 +24,7 @@ public interface DepartmentMapper {
     List<DepartmentEmployeeDto> findEmployeesByDept(@Param("company") String company,
                                                     @Param("deptCode") String deptCode);
     List<DepartmentEmployeeDto> findUnassignedEmployees(@Param("company") String company);
+    String findCompanyName(@Param("company") String company);
     DepartmentDto findByDeptCode(String company, String deptCode);
 
     int countEmployeesByDept(@Param("company") String company,

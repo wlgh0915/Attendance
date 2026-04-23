@@ -42,7 +42,7 @@
             <table>
                 <thead>
                 <tr>
-                    <th><input type="checkbox" id="selectAll" title="전체 선택"></th>
+                    <th class="th-checkbox" title="전체 선택"><input type="checkbox" id="selectAll"></th>
                     <th>회사명</th>
                     <th>사번</th>
                     <th>사원명</th>
@@ -66,10 +66,26 @@
     </div>
     <script th:inline="none">
         document.addEventListener('DOMContentLoaded', function () {
-            document.getElementById('selectAll').addEventListener('change', function () {
+            var selectAll = document.getElementById('selectAll');
+
+            selectAll.addEventListener('change', function () {
                 document.querySelectorAll('input[name="empCodes"]').forEach(function (cb) {
-                    cb.checked = this.checked;
-                }, this);
+                    cb.checked = selectAll.checked;
+                });
+            });
+
+            document.querySelector('thead th.th-checkbox').addEventListener('click', function (e) {
+                if (e.target === selectAll) return;
+                selectAll.checked = !selectAll.checked;
+                selectAll.dispatchEvent(new Event('change'));
+            });
+
+            document.querySelectorAll('tbody tr').forEach(function (row) {
+                row.addEventListener('click', function (e) {
+                    if (e.target.type === 'checkbox') return;
+                    var cb = row.querySelector('input[name="empCodes"]');
+                    if (cb) cb.checked = !cb.checked;
+                });
             });
         });
     </script>

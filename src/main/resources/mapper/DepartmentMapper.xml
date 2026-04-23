@@ -126,6 +126,12 @@
           AND d.DEPT_CODE = #{deptCode}
     </select>
 
+    <select id="findCompanyName" resultType="String">
+        SELECT COMPANY_NAME
+        FROM ORGCOMPANYMASTER01
+        WHERE COMPANY = #{company}
+    </select>
+
     <select id="findUnassignedEmployees"
             resultType="com.company.attendancemanagement.dto.department.DepartmentEmployeeDto">
         SELECT

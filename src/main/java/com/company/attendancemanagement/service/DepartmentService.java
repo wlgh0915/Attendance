@@ -51,6 +51,10 @@ public class DepartmentService {
         return departmentMapper.findUnassignedEmployees(company);
     }
 
+    public String findCompanyName(String company) {
+        return departmentMapper.findCompanyName(company);
+    }
+
     public void moveEmployeesToDept(String company, List<String> empCodes, String deptCode) {
         if (empCodes != null && !empCodes.isEmpty()) {
             departmentMapper.updateEmployeesDept(company, empCodes, deptCode);
