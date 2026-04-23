@@ -66,6 +66,21 @@
                        class="btn-action btn-edit">수정</a>
                 </td>
             </tr>
+            <tr class="unassigned-dept-row">
+                <td>-</td>
+                <td>-</td>
+                <td><strong>부서 미지정</strong></td>
+                <td>-</td>
+                <td>-</td>
+                <td>-</td>
+                <td>-</td>
+                <td>-</td>
+                <td class="action-cell">
+                    <a th:href="@{/departments/employees/unassigned-manage(company=${company})}"
+                       class="btn-action btn-view">보기</a>
+                </td>
+                <td class="action-cell">-</td>
+            </tr>
             </tbody>
         </table>
     </div>

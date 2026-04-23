@@ -4,7 +4,7 @@
       layout:decorate="~{layouts/default_layout}">
 <head>
     <meta charset="UTF-8">
-    <title>부서 사원 list</title>
+    <title>미배정 사원 목록</title>
     <link rel="stylesheet" th:href="@{/css/department-list.css}">
     <link rel="stylesheet" th:href="@{/css/success-banner.css}">
 </head>
@@ -12,18 +12,14 @@
 <div layout:fragment="content">
     <div class="content-wrapper">
 
-        <a th:href="@{/departments}" class="btn-back">← 부서 목록으로</a>
+        <a th:href="@{/departments/employees(company=${company}, deptCode=${deptCode})}" class="btn-back">← 부서 사원 목록으로</a>
 
-        <h2>부서 사원 목록</h2>
+        <h2>미배정 사원 목록</h2>
 
         <div class="dept-info-table">
             <div class="dept-info-row">
                 <div class="dept-info-cell">
-                    <span class="dept-info-label">회사명</span>
-                    <span class="dept-info-value" th:text="${companyName}"></span>
-                </div>
-                <div class="dept-info-cell">
-                    <span class="dept-info-label">부서명</span>
+                    <span class="dept-info-label">추가 대상 부서</span>
                     <span class="dept-info-value" th:text="${deptName}"></span>
                 </div>
                 <div class="dept-info-cell">
@@ -33,25 +29,14 @@
             </div>
         </div>
 
-        <div th:if="${successMessage}" class="toast-data" data-type="success" th:data-message="${successMessage}" style="display:none"></div>
         <div th:if="${errorMessage}" class="toast-data" data-type="error" th:data-message="${errorMessage}" style="display:none"></div>
 
-        <form th:action="@{/departments/employees/move}" method="post">
+        <form th:action="@{/departments/employees/add}" method="post">
             <input type="hidden" name="company" th:value="${company}">
-            <input type="hidden" name="currentDeptCode" th:value="${deptCode}">
+            <input type="hidden" name="deptCode" th:value="${deptCode}">
 
             <div class="emp-toolbar">
-                <select name="targetDeptCode" class="dept-select">
-                    <option value="">부서 지정 안함</option>
-                    <option th:each="dept : ${allDepartments}"
-                            th:if="${dept.deptCode != deptCode}"
-                            th:value="${dept.deptCode}"
-                            th:text="${dept.deptName + ' (' + dept.deptCode + ')'}"></option>
-                </select>
-                <button type="submit" class="btn-toolbar btn-change">부서 변경</button>
-                <a th:if="${!#strings.isEmpty(deptCode)}"
-                   th:href="@{/departments/employees/unassigned(company=${company}, deptCode=${deptCode})}"
-                   class="btn-toolbar btn-add-emp">사원 추가</a>
+                <button type="submit" class="btn-toolbar btn-change">선택 사원 추가</button>
             </div>
 
             <table>
@@ -61,7 +46,6 @@
                     <th>회사명</th>
                     <th>사번</th>
                     <th>사원명</th>
-                    <th>부서코드</th>
                     <th>권한코드</th>
                 </tr>
                 </thead>
@@ -71,11 +55,10 @@
                     <td th:text="${emp.companyName}"></td>
                     <td th:text="${emp.empCode}"></td>
                     <td th:text="${emp.empName}"></td>
-                    <td th:text="${emp.deptCode}"></td>
                     <td th:text="${emp.roleCode}"></td>
                 </tr>
                 <tr th:if="${#lists.isEmpty(employees)}">
-                    <td colspan="6">해당 부서에 등록된 사원이 없습니다.</td>
+                    <td colspan="5">부서가 지정되지 않은 사원이 없습니다.</td>
                 </tr>
                 </tbody>
             </table>
@@ -91,14 +74,12 @@
                 });
             });
 
-            // 전체선택 헤더 셀 여백 클릭
             document.querySelector('thead th.th-checkbox').addEventListener('click', function (e) {
                 if (e.target === selectAll) return;
                 selectAll.checked = !selectAll.checked;
                 selectAll.dispatchEvent(new Event('change'));
             });
 
-            // 사원 행 여백 클릭
             document.querySelectorAll('tbody tr').forEach(function (row) {
                 row.addEventListener('click', function (e) {
                     if (e.target.type === 'checkbox') return;
