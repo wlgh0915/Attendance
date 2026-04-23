@@ -79,15 +79,15 @@
             </table>
         </form>
     </div>
-</div>
-<script th:inline="none">
-    document.addEventListener('DOMContentLoaded', function () {
-        document.getElementById('selectAll').addEventListener('change', function () {
-            document.querySelectorAll('input[name="empCodes"]').forEach(function (cb) {
-                cb.checked = this.checked;
-            }, this);
+    <script th:inline="none">
+        document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById('selectAll').addEventListener('change', function () {
+                document.querySelectorAll('input[name="empCodes"]').forEach(function (cb) {
+                    cb.checked = this.checked;
+                }, this);
+            });
         });
-    });
-</script>
+    </script>
+</div>
 </body>
 </html>
