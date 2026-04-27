@@ -28,10 +28,14 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         List<ShiftCodeDto> shiftCodes = requestMapper.findShiftCodes(loginUser.getCompany());
         String deptLeader = requestMapper.findDeptLeader(loginUser.getCompany(), loginUser.getDeptCode());
         boolean isDeptLeader = loginUser.getEmpCode().equals(deptLeader);
+        boolean isAdmin      = "ADMIN".equals(loginUser.getRoleCode());
+        boolean canViewAll   = isAdmin || isDeptLeader;
 
         data.put("depts", depts);
         data.put("shiftCodes", shiftCodes);
         data.put("isDeptLeader", isDeptLeader);
+        data.put("isAdmin", isAdmin);
+        data.put("canViewAll", canViewAll);
         data.put("myDeptCode", loginUser.getDeptCode());
         return data;
     }
@@ -40,13 +44,14 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
     public List<AttendanceEmpRowDto> searchEmployees(AttendanceRequestSearchDto search, LoginUserDto loginUser) {
         String deptLeader = requestMapper.findDeptLeader(loginUser.getCompany(), loginUser.getDeptCode());
         boolean isDeptLeader = loginUser.getEmpCode().equals(deptLeader);
+        boolean isAdmin      = "ADMIN".equals(loginUser.getRoleCode());
+        boolean canViewAll   = isAdmin || isDeptLeader;
 
         search.setCompany(loginUser.getCompany());
-        search.setDeptLeader(isDeptLeader);
+        search.setDeptLeader(canViewAll);
         search.setLoginEmpCode(loginUser.getEmpCode());
 
-        // 부서장이 아니면 본인 부서만 조회
-        if (!isDeptLeader) {
+        if (!canViewAll) {
             search.setDeptCode(loginUser.getDeptCode());
         }
 

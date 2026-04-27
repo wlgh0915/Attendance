@@ -88,7 +88,7 @@
         </div>
         <div class="search-group">
             <label>부서</label>
-            <select id="deptCode" th:disabled="${!isDeptLeader}">
+            <select id="deptCode" th:disabled="${!canViewAll}">
                 <option th:each="dept : ${depts}"
                         th:value="${dept.deptCode}"
                         th:text="${dept.deptName}"
@@ -96,7 +96,7 @@
                 </option>
             </select>
         </div>
-        <div class="search-group" th:if="${isDeptLeader}">
+        <div class="search-group" th:if="${canViewAll}">
             <label>사번</label>
             <input type="text" id="empCodeFilter" placeholder="전체">
         </div>
@@ -136,7 +136,6 @@
     </div>
 </div>
 <div id="toast"></div>
-</div>
 
 <script>
     const WORK_CODES = {
@@ -340,5 +339,6 @@
 
     document.addEventListener('DOMContentLoaded', doSearch);
 </script>
+</div><!-- /layout:fragment="content" -->
 </body>
 </html>

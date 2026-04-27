@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/default_layout}">
+<head>
+    <meta charset="UTF-8">
+    <title>근태 캘린더</title>
+    <style>
+        .cal-page { max-width: 1100px; padding: 20px 24px; }
+        .cal-top  { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-bottom: 16px; }
+
+        .cal-nav  { display: flex; align-items: center; gap: 8px; }
+        .cal-nav a {
+            padding: 5px 14px; border: 1px solid #2c3e50; border-radius: 4px;
+            color: #2c3e50; text-decoration: none; font-size: 13px; font-weight: 600;
+        }
+        .cal-nav a:hover { background: #2c3e50; color: #fff; }
+        .ym-label { font-size: 16px; font-weight: 700; color: #2c3e50; min-width: 120px; text-align: center; }
+
+        .filter-group { display: flex; flex-direction: column; gap: 3px; }
+        .filter-group label { font-size: 11px; color: #666; font-weight: 600; }
+        .filter-group select {
+            padding: 5px 10px; border: 1px solid #ced4da; border-radius: 4px;
+            font-size: 13px; font-family: 'Malgun Gothic', sans-serif; min-width: 160px;
+        }
+
+        .emp-badge {
+            margin-left: auto; align-self: center;
+            font-size: 13px; color: #2c3e50; font-weight: 600;
+            background: #f0f4f8; padding: 6px 14px; border-radius: 20px;
+        }
+
+        /* 캘린더 그리드 */
+        .cal-grid { width: 100%; border-collapse: collapse; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-radius: 6px; overflow: hidden; }
+        .cal-grid th { background: #2c3e50; color: #fff; text-align: center; padding: 10px 0; font-size: 13px; font-weight: 600; }
+        .cal-grid th.th-sun { color: #ff8a80; }
+        .cal-grid th.th-sat { color: #80d8ff; }
+        .cal-grid td { width: 14.28%; min-height: 110px; height: 110px; border: 1px solid #e8eaed; vertical-align: top; padding: 6px; cursor: pointer; transition: background 0.15s; }
+        .cal-grid td:hover { background: #f0f4f8 !important; }
+        .cal-grid td.empty { background: #fafafa; cursor: default; }
+        .cal-grid td.empty:hover { background: #fafafa !important; }
+        .cal-grid td.today { background: #fffde7 !important; }
+        .cal-grid td.col-sun .date-num { color: #e74c3c; }
+        .cal-grid td.col-sat .date-num { color: #2980b9; }
+
+        .date-num { font-size: 13px; font-weight: 700; color: #2c3e50; margin-bottom: 4px; }
+        .badge { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 10px; font-weight: 600; margin: 1px 0; white-space: nowrap; }
+        .b-work    { background: #d5e8fd; color: #1a5276; }
+        .b-off     { background: #e8e8e8; color: #666; }
+        .b-holiday { background: #fde8e8; color: #922b21; }
+        .b-draft    { background: #e0e0e0; color: #555; }
+        .b-submit   { background: #d5f5e3; color: #1e5f3a; }
+        .b-approved { background: #27ae60; color: #fff; }
+        .b-rejected { background: #e74c3c; color: #fff; }
+        .shift-badge { display: block; margin-bottom: 2px; }
+        .shift-time  { font-size: 9px; color: #888; }
+        .req-badge   { display: block; margin-top: 1px; }
+
+        /* 모달 */
+        .modal-bg {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.45); z-index: 1000; align-items: center; justify-content: center;
+        }
+        .modal-bg.open { display: flex; }
+        .modal {
+            background: #fff; border-radius: 8px; padding: 28px 32px;
+            width: 420px; max-width: 95vw; box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+        }
+        .modal h3 { font-size: 16px; font-weight: 700; color: #2c3e50; margin: 0 0 20px; }
+        .modal-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+        .modal-row label { font-size: 12px; color: #555; font-weight: 600; }
+        .modal-row input,
+        .modal-row select,
+        .modal-row textarea {
+            padding: 7px 10px; border: 1px solid #ced4da; border-radius: 4px;
+            font-size: 13px; font-family: 'Malgun Gothic', sans-serif; width: 100%; box-sizing: border-box;
+        }
+        .modal-row textarea { resize: vertical; height: 70px; }
+        .modal-row .row-2 { display: flex; gap: 10px; }
+        .modal-row .row-2 select { flex: 1; }
+        .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+        .btn-modal-save   { padding: 8px 22px; background: #27ae60; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; font-family: 'Malgun Gothic', sans-serif; }
+        .btn-modal-cancel { padding: 8px 22px; background: #95a5a6; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-family: 'Malgun Gothic', sans-serif; }
+        .btn-modal-save:hover   { background: #1e8449; }
+        .btn-modal-cancel:hover { background: #7f8c8d; }
+
+        #toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: 6px; color: #fff; font-size: 13px; display: none; z-index: 9999; }
+        #toast.success { background: #27ae60; }
+        #toast.error   { background: #e74c3c; }
+    </style>
+</head>
+<body>
+<div layout:fragment="content">
+<div class="cal-page">
+
+    <!-- 상단 컨트롤 -->
+    <div class="cal-top">
+        <div class="cal-nav">
+            <a th:href="@{/attendance/calendar(ym=${prevYm}, empCode=${targetEmp}, deptCode=${selectedDept})}">◀</a>
+            <span class="ym-label" th:text="${ymDisplay}"></span>
+            <a th:href="@{/attendance/calendar(ym=${nextYm}, empCode=${targetEmp}, deptCode=${selectedDept})}">▶</a>
+        </div>
+
+        <!-- 관리자: 부서 선택 -->
+        <div class="filter-group" th:if="${isAdmin}">
+            <label>부서</label>
+            <select id="deptSelect" onchange="onDeptChange(this.value)">
+                <option th:each="d : ${depts}"
+                        th:value="${d.deptCode}"
+                        th:text="${d.deptName}"
+                        th:selected="${d.deptCode == selectedDept}">
+                </option>
+            </select>
+        </div>
+
+        <!-- 관리자 or 부서장: 사원 선택 -->
+        <div class="filter-group" th:if="${canViewAll}">
+            <label>사원</label>
+            <select id="empSelect" onchange="onEmpChange(this.value)">
+                <option value="">-- 선택 --</option>
+                <option th:each="e : ${emps}"
+                        th:value="${e.empCode}"
+                        th:text="${e.empName + ' (' + e.empCode + ')'}"
+                        th:selected="${e.empCode == targetEmp}">
+                </option>
+            </select>
+        </div>
+
+        <div class="emp-badge" th:if="${empInfo != null}"
+             th:text="${(empInfo['deptName'] ?: '') + ' | ' + (empInfo['empName'] ?: '') + ' (' + targetEmp + ')'}">
+        </div>
+    </div>
+
+    <!-- 캘린더 -->
+    <table class="cal-grid">
+        <thead>
+        <tr>
+            <th class="th-sun">일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th class="th-sat">토</th>
+        </tr>
+        </thead>
+        <tbody id="calBody"></tbody>
+    </table>
+</div><!-- /cal-page -->
+
+<!-- 근태 등록 모달 -->
+<div class="modal-bg" id="modalBg" onclick="closeModal(event)">
+    <div class="modal">
+        <h3>근태 등록</h3>
+        <div class="modal-row">
+            <label>날짜</label>
+            <input type="text" id="mDate" readonly>
+        </div>
+        <div class="modal-row">
+            <label>근태 유형</label>
+            <select id="mCategory" onchange="onCategoryChange()">
+                <option value="OVERTIME">연장근로</option>
+                <option value="HOLIDAY">휴일근로</option>
+                <option value="LEAVE">조퇴/외출/반차</option>
+                <option value="OTHER">기타(근무변경)</option>
+            </select>
+        </div>
+        <div class="modal-row">
+            <label>신청근무</label>
+            <select id="mWorkCode"></select>
+        </div>
+        <div class="modal-row">
+            <label>시작 / 종료 시간</label>
+            <div class="row-2">
+                <select id="mStart"></select>
+                <select id="mEnd"></select>
+            </div>
+        </div>
+        <div class="modal-row">
+            <label>사유</label>
+            <textarea id="mReason" placeholder="사유를 입력하세요"></textarea>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-modal-cancel" onclick="closeModalDirect()">취소</button>
+            <button class="btn-modal-save"   onclick="doModalSave()">저장</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+
+<script th:inline="javascript">
+    const DAYS       = /*[[${days}]]*/ [];
+    const CURRENT_YM = /*[[${currentYm}]]*/ '';
+    const TARGET_EMP = /*[[${targetEmp}]]*/ '';
+    const SELECTED_DEPT = /*[[${selectedDept}]]*/ '';
+    const CAN_VIEW_ALL  = /*[[${canViewAll}]]*/ false;
+    const IS_ADMIN      = /*[[${isAdmin}]]*/ false;
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    const WORK_CODES = {
+        OVERTIME: [{v:'연장',    l:'연장근로'},   {v:'조출연장', l:'조출연장'}],
+        HOLIDAY:  [{v:'휴일근무', l:'휴일근무'}],
+        LEAVE:    [{v:'조퇴',    l:'조퇴'},        {v:'외출',    l:'외출'},
+                   {v:'외근',    l:'외근'},         {v:'전반차',  l:'전반차'}, {v:'후반차', l:'후반차'}],
+        OTHER:    [{v:'근무변경', l:'근무변경'}]
+    };
+
+    /* ───────── 캘린더 렌더링 ───────── */
+    function dowToCol(num) { return num - 1; } // MSSQL: 1=일~7=토
+
+    function shiftCls(wdt) {
+        if (wdt === 'OFF')     return 'badge b-off';
+        if (wdt === 'HOLIDAY') return 'badge b-holiday';
+        return wdt ? 'badge b-work' : '';
+    }
+    function reqCls(s) {
+        const m = {DRAFT:'b-draft', SUBMITTED:'b-submit', APPROVED:'b-approved', REJECTED:'b-rejected'};
+        return 'badge ' + (m[s] || 'b-draft');
+    }
+    function catLabel(c) {
+        return {OVERTIME:'연장', HOLIDAY:'휴일', LEAVE:'휴가/조퇴', OTHER:'기타'}[c] || c;
+    }
+    function statusLabel(s) {
+        return {DRAFT:'미상신', SUBMITTED:'승인중', APPROVED:'승인', REJECTED:'반려'}[s] || s;
+    }
+
+    function renderCalendar() {
+        if (!DAYS.length) return;
+        const firstCol = dowToCol(DAYS[0].dayOfWeekNum);
+        const tbody = document.getElementById('calBody');
+        let html = '', col = 0;
+
+        const openRow  = () => { html += '<tr>'; col = 0; };
+        const closeRow = () => {
+            while (col < 7) { html += '<td class="empty"></td>'; col++; }
+            html += '</tr>';
+        };
+
+        openRow();
+        for (let i = 0; i < firstCol; i++) { html += '<td class="empty"></td>'; col++; }
+
+        DAYS.forEach(day => {
+            if (col === 7) { html += '</tr>'; openRow(); }
+            const c      = dowToCol(day.dayOfWeekNum);
+            const colCls = c === 0 ? 'col-sun' : c === 6 ? 'col-sat' : '';
+            const todCls = day.workDate === today ? 'today' : '';
+            const dn     = parseInt(day.workDate.slice(8));
+
+            let inner = `<div class="date-num">${dn}</div>`;
+
+            if (day.shiftCode) {
+                const fmt  = t => t ? String(t).slice(0, 5) : '';
+                const time = (day.workOnHhmm && day.workOffHhmm)
+                    ? `<span class="shift-time">${fmt(day.workOnHhmm)}~${fmt(day.workOffHhmm)}</span>` : '';
+                inner += `<span class="shift-badge"><span class="${shiftCls(day.workDayType)}">${day.shiftName || day.shiftCode}</span>${time}</span>`;
+            }
+
+            (day.requests || []).forEach(r => {
+                inner += `<span class="req-badge"><span class="${reqCls(r.status)}">${catLabel(r.requestCategory)} ${statusLabel(r.status)}</span></span>`;
+            });
+
+            html += `<td class="${colCls} ${todCls}" onclick="openModal('${day.workDate}')">${inner}</td>`;
+            col++;
+        });
+
+        closeRow();
+        tbody.innerHTML = html;
+    }
+
+    /* ───────── 부서/사원 변경 ───────── */
+    function onDeptChange(deptCode) {
+        // 부서 변경 시 페이지 재로드 → 서버에서 해당 부서 사원 목록 렌더링
+        location.href = `/attendance/calendar?ym=${CURRENT_YM}&deptCode=${deptCode}`;
+    }
+
+    function onEmpChange(empCode) {
+        if (!empCode) return;
+        const dept = IS_ADMIN ? document.getElementById('deptSelect').value : SELECTED_DEPT;
+        location.href = `/attendance/calendar?ym=${CURRENT_YM}&deptCode=${dept}&empCode=${empCode}`;
+    }
+
+    /* ───────── 근태 등록 모달 ───────── */
+    let modalDate = '';
+
+    function buildTimeOpts(selected) {
+        let opts = '<option value="">--</option>';
+        for (let h = 0; h < 24; h++) {
+            for (let m of [0, 30]) {
+                const v = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+                opts += `<option value="${v}"${v === selected ? ' selected' : ''}>${v}</option>`;
+            }
+        }
+        return opts;
+    }
+
+    function buildWorkCodeOpts(cat) {
+        const codes = WORK_CODES[cat] || [];
+        return '<option value="">-- 선택 --</option>'
+            + codes.map(c => `<option value="${c.v}">${c.l}</option>`).join('');
+    }
+
+    function onCategoryChange() {
+        const cat = document.getElementById('mCategory').value;
+        document.getElementById('mWorkCode').innerHTML = buildWorkCodeOpts(cat);
+    }
+
+    function openModal(date) {
+        modalDate = date;
+        document.getElementById('mDate').value     = date;
+        document.getElementById('mReason').value   = '';
+        document.getElementById('mStart').innerHTML = buildTimeOpts('');
+        document.getElementById('mEnd').innerHTML   = buildTimeOpts('');
+        onCategoryChange();
+        document.getElementById('modalBg').classList.add('open');
+    }
+
+    function closeModal(e) {
+        if (e.target === document.getElementById('modalBg')) closeModalDirect();
+    }
+    function closeModalDirect() {
+        document.getElementById('modalBg').classList.remove('open');
+    }
+
+    async function doModalSave() {
+        const category = document.getElementById('mCategory').value;
+        const workCode = document.getElementById('mWorkCode').value;
+        const start    = document.getElementById('mStart').value;
+        const end      = document.getElementById('mEnd').value;
+        const reason   = document.getElementById('mReason').value;
+
+        if (!workCode) { showToast('신청근무를 선택하세요.', 'error'); return; }
+
+        const dto = {
+            empCode:         TARGET_EMP,
+            workDate:        modalDate,
+            requestCategory: category,
+            requestWorkCode: workCode,
+            startTime:       start || null,
+            endTime:         end   || null,
+            reason:          reason
+        };
+
+        const res  = await fetch('/attendance/request/save', {
+            method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(dto)
+        });
+        const json = await res.json();
+        if (!json.success) { showToast(json.message || '저장 실패', 'error'); return; }
+
+        showToast('저장되었습니다.', 'success');
+        closeModalDirect();
+        setTimeout(() => location.reload(), 800);
+    }
+
+    function showToast(msg, type) {
+        const t = document.getElementById('toast');
+        t.textContent = msg; t.className = type; t.style.display = 'block';
+        setTimeout(() => { t.style.display = 'none'; }, 3000);
+    }
+
+    renderCalendar();
+</script>
+</div><!-- /layout:fragment="content" -->
+</body>
+</html>

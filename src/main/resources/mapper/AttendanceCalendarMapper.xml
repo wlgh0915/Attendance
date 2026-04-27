@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.company.attendancemanagement.mapper.AttendanceCalendarMapper">
+
+    <!-- 월별 일자별 근무계획 조회 -->
+    <select id="findDailyShifts"
+            resultType="com.company.attendancemanagement.dto.calendar.AttendanceDayDto">
+        <![CDATA[
+        WITH CAL AS (
+            SELECT CAST(#{startDate} AS DATE) AS DT
+            UNION ALL
+            SELECT DATEADD(DAY, 1, DT) FROM CAL
+            WHERE DT < CAST(#{endDate} AS DATE)
+        )
+        SELECT
+            CONVERT(VARCHAR(10), CAL.DT, 23)      AS workDate,
+            DATEPART(WEEKDAY, CAL.DT)              AS dayOfWeekNum,
+            ISNULL(s.SHIFT_CODE, '')               AS shiftCode,
+            ISNULL(s.SHIFT_NAME, '')               AS shiftName,
+            s.WORK_ON_HHMM                         AS workOnHhmm,
+            s.WORK_OFF_HHMM                        AS workOffHhmm,
+            ISNULL(s.WORK_DAY_TYPE, '')            AS workDayType
+        FROM CAL
+        LEFT JOIN HRIMASTER01 h
+               ON h.COMPANY = #{company} AND h.EMP_CODE = #{empCode}
+        LEFT JOIN ORGDEPTMASTER01 dept
+               ON h.COMPANY = dept.COMPANY AND h.DEPT_CODE = dept.DEPT_CODE
+        LEFT JOIN HRTWORKPATTERNMASTER01 pm
+               ON dept.COMPANY = pm.COMPANY
+              AND dept.WORK_PATTERN_CODE = pm.WORK_PATTERN_CODE
+              AND pm.USE_YN = 'Y'
+        LEFT JOIN HRTWORKPATTERNDETAIL01 pd
+               ON pm.COMPANY = pd.COMPANY
+              AND pm.WORK_PATTERN_CODE = pd.WORK_PATTERN_CODE
+              AND pd.SEQ = (
+                    (DATEDIFF(DAY, pm.START_DATE, CAL.DT) % pm.CYCLE_COUNT
+                      + pm.CYCLE_COUNT) % pm.CYCLE_COUNT + 1
+                  )
+        LEFT JOIN HRTSHIFTMASTER01 s
+               ON pd.COMPANY = s.COMPANY AND pd.SHIFT_CODE = s.SHIFT_CODE
+        ORDER BY CAL.DT
+        OPTION (MAXRECURSION 62)
+        ]]>
+    </select>
+
+    <!-- 월별 근태신청 목록 조회 -->
+    <select id="findRequests"
+            resultType="com.company.attendancemanagement.dto.calendar.AttendanceReqSummaryDto">
+        <![CDATA[
+        SELECT
+            CONVERT(VARCHAR(10), WORK_DATE, 23) AS workDate,
+            REQUEST_ID                           AS requestId,
+            REQUEST_CATEGORY                     AS requestCategory,
+            REQUEST_WORK_CODE                    AS requestWorkCode,
+            START_TIME                           AS startTime,
+            END_TIME                             AS endTime,
+            STATUS                               AS status
+        FROM HRTATTREQ01
+        WHERE COMPANY  = #{company}
+          AND EMP_CODE = #{empCode}
+          AND WORK_DATE BETWEEN CAST(#{startDate} AS DATE) AND CAST(#{endDate} AS DATE)
+        ORDER BY WORK_DATE, REQUEST_ID
+        ]]>
+    </select>
+
+    <!-- 부서원 목록 -->
+    <select id="findEmpsByDept"
+            resultType="com.company.attendancemanagement.dto.calendar.EmpSimpleDto">
+        SELECT EMP_CODE AS empCode, EMP_NAME AS empName
+        FROM HRIMASTER01
+        WHERE COMPANY   = #{company}
+          AND DEPT_CODE = #{deptCode}
+          AND RETIRE_DATE IS NULL
+        ORDER BY EMP_CODE
+    </select>
+
+    <!-- 사원 기본정보 -->
+    <select id="findEmpInfo" resultType="java.util.HashMap">
+        SELECT h.EMP_CODE  AS empCode,
+               h.EMP_NAME  AS empName,
+               d.DEPT_NAME AS deptName
+        FROM HRIMASTER01 h
+        LEFT JOIN ORGDEPTMASTER01 d
+               ON h.COMPANY = d.COMPANY AND h.DEPT_CODE = d.DEPT_CODE
+        WHERE h.COMPANY  = #{company}
+          AND h.EMP_CODE = #{empCode}
+    </select>
+
+</mapper>
