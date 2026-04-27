@@ -49,12 +49,8 @@ public class WorkPatternController {
     }
 
     @GetMapping("/list")
-    public String list(HttpSession session, Model model) {
-        LoginUserDto loginUser = getLoginUser(session);
-        if (loginUser == null) return "redirect:/login";
-
-        model.addAttribute("patterns", workPatternService.getPatternList(loginUser.getCompany()));
-        return "pattern/list";
+    public String list() {
+        return "redirect:/pattern/calendar";
     }
 
     @GetMapping("/new")
@@ -112,7 +108,7 @@ public class WorkPatternController {
             request.getMaster().setCompany(loginUser.getCompany());
             workPatternService.savePattern(request);
             redirectAttributes.addFlashAttribute("successMessage", "패턴이 저장되었습니다.");
-            return "redirect:/pattern/list";
+            return "redirect:/pattern/calendar";
         } catch (Exception e) {
             boolean isEdit = workPatternService.existsPattern(
                     loginUser.getCompany(), request.getMaster().getWorkPatternCode());
@@ -137,7 +133,7 @@ public class WorkPatternController {
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
-        return "redirect:/pattern/list";
+        return "redirect:/pattern/calendar";
     }
 
     private LoginUserDto getLoginUser(HttpSession session) {

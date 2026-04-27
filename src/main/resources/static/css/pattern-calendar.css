@@ -53,12 +53,19 @@
     text-align: center;
 }
 
-/* ===== 액션 툴바 (수정 · 삭제) ===== */
-.cal-toolbar {
+/* ===== 우측 액션 그룹 (수정 · 추가 · 삭제) ===== */
+.cal-actions {
     display: flex;
     align-items: center;
     gap: 6px;
-    margin-left: 12px;
+    margin-left: auto;
+}
+
+.cal-divider {
+    width: 1px;
+    height: 20px;
+    background: #ced4da;
+    margin: 0 4px;
 }
 
 .btn-action-sel {
@@ -123,28 +130,7 @@
 }
 .btn-add-sel:hover { background: #2471a3; }
 
-/* ===== 하단 푸터 (삭제 + 선택 카운트) ===== */
-.cal-footer {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding-top: 4px;
-}
 
-.btn-list {
-    margin-left: auto;
-    background: #7f8c8d;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    padding: 6px 14px;
-    font-size: 13px;
-    font-family: 'Malgun Gothic', sans-serif;
-    text-decoration: none;
-    display: inline-block;
-    transition: background 0.15s;
-}
-.btn-list:hover { background: #95a5a6; }
 
 /* ===== 본문 (테이블 + 범례) ===== */
 .cal-body {

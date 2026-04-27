@@ -9,6 +9,13 @@
 </head>
 <body>
 <div layout:fragment="content">
+
+    <!-- 플래시 메시지 (저장/삭제 후 리다이렉트 시) -->
+    <div th:if="${successMessage}" class="toast-data" data-type="success"
+         th:data-message="${successMessage}" style="display:none"></div>
+    <div th:if="${errorMessage}" class="toast-data" data-type="error"
+         th:data-message="${errorMessage}" style="display:none"></div>
+
 <div class="cal-page">
 
     <!-- 제목 -->
@@ -16,7 +23,7 @@
         <h2 class="cal-title">근태 패턴 달력</h2>
     </div>
 
-    <!-- 네비게이션 + 툴바 -->
+    <!-- 네비게이션 + 액션 -->
     <div class="cal-nav">
         <a th:href="@{/pattern/calendar(year=${prevYear},month=${prevMonth})}" class="btn-nav">&#8249; 이전</a>
         <span class="month-label" th:text="${calendar.year + '년 ' + calendar.month + '월'}"></span>
@@ -25,12 +32,13 @@
         <input type="month" id="monthPicker" class="month-picker"
                th:value="${yearMonthStr}" aria-label="월 선택">
 
-        <div class="cal-toolbar">
-            <button id="btnEdit" class="btn-action-sel btn-edit-sel" disabled>수정</button>
-            <button id="btnAdd"  class="btn-action-sel btn-add-sel">추가</button>
+        <div class="cal-actions">
+            <button id="btnEdit"   class="btn-action-sel btn-edit-sel"   disabled>수정</button>
+            <button id="btnAdd"    class="btn-action-sel btn-add-sel">추가</button>
+            <span class="cal-divider"></span>
+            <button id="btnDelete" class="btn-action-sel btn-delete-sel" disabled>삭제</button>
+            <span   id="selCount"  class="selected-count"></span>
         </div>
-
-        <a th:href="@{/pattern/list}" class="btn-list">목록으로</a>
     </div>
 
     <!-- 본문 -->
@@ -87,13 +95,6 @@
         </div>
 
     </div>
-
-    <!-- 하단 좌측: 삭제 + 선택 카운트 -->
-    <div class="cal-footer">
-        <button id="btnDelete" class="btn-action-sel btn-delete-sel" disabled>삭제</button>
-        <span   id="selCount"  class="selected-count"></span>
-    </div>
-
 </div>
 
 <script th:inline="javascript">
@@ -120,6 +121,16 @@ function getColor(code) {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+
+    /* ── sessionStorage 토스트 (fetch 삭제 후 리로드 시) ── */
+    const pendingToast = sessionStorage.getItem('calendarToast');
+    if (pendingToast) {
+        sessionStorage.removeItem('calendarToast');
+        try {
+            const t = JSON.parse(pendingToast);
+            if (typeof showToast === 'function') showToast(t.message, t.type);
+        } catch (e) {}
+    }
 
     /* ── 색상 초기화 ── */
     Object.keys(SHIFT_NAMES).forEach(function (code) { getColor(code); });
@@ -193,7 +204,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    /* 개별 체크박스 change (pointer-events:none이라 실제로는 td click 처리) */
     rowChecks.forEach(function (cb) {
         cb.addEventListener('change', function () {
             cb.closest('tr').classList.toggle('row-selected', cb.checked);
@@ -201,7 +211,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    /* 전체 선택 */
     checkAll.addEventListener('change', function () {
         rowChecks.forEach(function (cb) {
             cb.checked = checkAll.checked;
@@ -224,13 +233,30 @@ document.addEventListener('DOMContentLoaded', function () {
         if (codes.length === 0) return;
         if (!confirm('선택한 패턴 ' + codes.length + '개를 삭제하시겠습니까?\n(' + codes.join(', ') + ')')) return;
 
+        const failed = [];
         for (const code of codes) {
-            const body = new URLSearchParams({ workPatternCode: code });
-            await fetch('/pattern/delete', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: body.toString()
-            });
+            try {
+                await fetch('/pattern/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ workPatternCode: code }).toString()
+                });
+            } catch (e) {
+                failed.push(code);
+            }
+        }
+
+        const success = codes.length - failed.length;
+        if (failed.length > 0) {
+            sessionStorage.setItem('calendarToast', JSON.stringify({
+                type: 'error',
+                message: failed.join(', ') + ' 패턴은 삭제할 수 없습니다. (부서에서 사용 중)'
+            }));
+        } else {
+            sessionStorage.setItem('calendarToast', JSON.stringify({
+                type: 'success',
+                message: success + '개 패턴이 삭제되었습니다.'
+            }));
         }
         location.reload();
     });
