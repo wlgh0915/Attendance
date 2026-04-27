@@ -213,6 +213,18 @@ th.th-checkbox {
     width: 40px;
 }
 
+/* ===== 정보박스 + 툴바 행 ===== */
+.dept-toolbar-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.dept-toolbar-row .dept-info-table {
+    margin-bottom: 0;
+}
+
 /* ===== 사원 목록 툴바 ===== */
 .emp-toolbar {
     display: flex;
@@ -239,7 +251,9 @@ th.th-checkbox {
 }
 
 .btn-toolbar {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     padding: 7px 16px;
     border: none;
     border-radius: 5px;
@@ -248,6 +262,8 @@ th.th-checkbox {
     cursor: pointer;
     text-decoration: none;
     transition: background 0.2s;
+    height: 32px;
+    min-width: 80px;
 }
 
 .btn-change {
