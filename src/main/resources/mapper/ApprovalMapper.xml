@@ -6,36 +6,57 @@
 
     <insert id="insertApproval"
             parameterType="com.company.attendancemanagement.dto.request.ApprovalLineDto">
-        INSERT INTO HRTATTREQAPPR01 (REQUEST_ID, SEQ, COMPANY, APPROVER_CODE, APPROVAL_STATUS, CREATED_AT)
-        VALUES (#{requestId}, #{seq}, #{company}, #{approverCode}, #{approvalStatus}, GETDATE())
+        INSERT INTO HRTATTENDANCE_APPROVAL01 (
+            COMPANY, REQ_ID, STEP_NO,
+            STEP_TYPE, APPROVER_EMP_CODE, IS_FINAL,
+            STATUS, CREATED_AT, UPDATED_AT
+        ) VALUES (
+            #{company}, #{requestId}, #{stepNo},
+            #{stepType}, #{approverEmpCode}, #{isFinal},
+            #{status}, GETDATE(), GETDATE()
+        )
     </insert>
 
     <select id="findByRequestId"
             resultType="com.company.attendancemanagement.dto.request.ApprovalLineDto">
         SELECT
-            a.REQUEST_ID      AS requestId,
-            a.SEQ             AS seq,
-            a.COMPANY         AS company,
-            a.APPROVER_CODE   AS approverCode,
-            h.EMP_NAME        AS approverName,
-            a.APPROVAL_STATUS AS approvalStatus,
-            CONVERT(VARCHAR(19), a.APPROVED_AT, 120) AS approvedAt
-        FROM HRTATTREQAPPR01 a
+            a.COMPANY          AS company,
+            a.REQ_ID           AS requestId,
+            a.STEP_NO          AS stepNo,
+            a.STEP_TYPE        AS stepType,
+            a.APPROVER_EMP_CODE AS approverEmpCode,
+            h.EMP_NAME         AS approverName,
+            a.IS_FINAL         AS isFinal,
+            a.STATUS           AS status,
+            CONVERT(VARCHAR(19), a.DECISION_AT, 120) AS decisionAt,
+            a.REJECT_REASON    AS rejectReason
+        FROM HRTATTENDANCE_APPROVAL01 a
         LEFT JOIN HRIMASTER01 h
-               ON a.COMPANY = h.COMPANY AND a.APPROVER_CODE = h.EMP_CODE
-        WHERE a.REQUEST_ID = #{requestId}
-        ORDER BY a.SEQ
+               ON a.COMPANY = h.COMPANY AND a.APPROVER_EMP_CODE = h.EMP_CODE
+        WHERE a.REQ_ID = #{requestId}
+        ORDER BY a.STEP_NO
     </select>
 
     <delete id="deleteByRequestId">
-        DELETE FROM HRTATTREQAPPR01 WHERE REQUEST_ID = #{requestId}
+        DELETE FROM HRTATTENDANCE_APPROVAL01 WHERE REQ_ID = #{requestId}
     </delete>
 
-    <select id="countApproved" resultType="int">
+    <!-- APPROVE 단계 중 하나라도 APPROVED면 취소 불가 -->
+    <select id="countApprovedByApprover" resultType="int">
         SELECT COUNT(*)
-        FROM HRTATTREQAPPR01
-        WHERE REQUEST_ID = #{requestId}
-          AND APPROVAL_STATUS = 'APPROVED'
+        FROM HRTATTENDANCE_APPROVAL01
+        WHERE REQ_ID    = #{requestId}
+          AND STEP_TYPE = 'APPROVE'
+          AND STATUS    = 'APPROVED'
+    </select>
+
+    <!-- 결재선 생성용: 부서장 + 상위부서 코드 조회 -->
+    <select id="findDeptApprovalInfo" resultType="java.util.HashMap">
+        SELECT DEPT_LEADER  AS deptLeader,
+               PARENT_DEPT  AS parentDept
+        FROM ORGDEPTMASTER01
+        WHERE COMPANY   = #{company}
+          AND DEPT_CODE = #{deptCode}
     </select>
 
 </mapper>

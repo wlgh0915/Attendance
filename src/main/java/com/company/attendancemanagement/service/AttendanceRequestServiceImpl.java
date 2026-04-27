@@ -12,9 +12,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -124,39 +127,77 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             throw new IllegalArgumentException("이미 상신된 신청입니다.");
         }
 
-        String deptLeader = requestMapper.findDeptLeader(loginUser.getCompany(), loginUser.getDeptCode());
-        boolean isDeptLeader = loginUser.getEmpCode().equals(deptLeader);
+        String company       = loginUser.getCompany();
+        String requesterCode = loginUser.getEmpCode();
 
         approvalMapper.deleteByRequestId(requestId);
 
-        if (isDeptLeader) {
-            requestMapper.updateStatus(requestId, "APPROVED");
-            ApprovalLineDto line = new ApprovalLineDto();
-            line.setRequestId(requestId);
-            line.setSeq(1);
-            line.setCompany(loginUser.getCompany());
-            line.setApproverCode(loginUser.getEmpCode());
-            line.setApprovalStatus("APPROVED");
-            approvalMapper.insertApproval(line);
-        } else {
-            requestMapper.updateStatus(requestId, "SUBMITTED");
-            ApprovalLineDto line1 = new ApprovalLineDto();
-            line1.setRequestId(requestId);
-            line1.setSeq(1);
-            line1.setCompany(loginUser.getCompany());
-            line1.setApproverCode(loginUser.getEmpCode());
-            line1.setApprovalStatus("SUBMITTED");
-            approvalMapper.insertApproval(line1);
-            if (deptLeader != null && !deptLeader.isBlank()) {
-                ApprovalLineDto line2 = new ApprovalLineDto();
-                line2.setRequestId(requestId);
-                line2.setSeq(2);
-                line2.setCompany(loginUser.getCompany());
-                line2.setApproverCode(deptLeader);
-                line2.setApprovalStatus("PENDING");
-                approvalMapper.insertApproval(line2);
-            }
+        List<ApprovalLineDto> chain = buildApprovalChain(requestId, company, requesterCode, loginUser.getDeptCode());
+
+        for (ApprovalLineDto step : chain) {
+            approvalMapper.insertApproval(step);
         }
+
+        boolean allApproved = chain.stream()
+                .filter(s -> "APPROVE".equals(s.getStepType()))
+                .allMatch(s -> "APPROVED".equals(s.getStatus()));
+
+        requestMapper.updateStatus(requestId, allApproved ? "APPROVED" : "SUBMITTED");
+    }
+
+    /**
+     * 결재선 생성: SUBMIT(신청자) + 부서장 계층 순회 APPROVE 단계
+     * 신청자가 곧 부서장이면 해당 APPROVE 단계를 자동 승인 처리
+     */
+    private List<ApprovalLineDto> buildApprovalChain(String requestId, String company,
+                                                      String requesterCode, String deptCode) {
+        List<ApprovalLineDto> chain = new ArrayList<>();
+
+        // STEP 1: 신청자 (SUBMIT)
+        ApprovalLineDto submitStep = new ApprovalLineDto();
+        submitStep.setRequestId(requestId);
+        submitStep.setStepNo(1);
+        submitStep.setCompany(company);
+        submitStep.setApproverEmpCode(requesterCode);
+        submitStep.setStepType("SUBMIT");
+        submitStep.setIsFinal("N");
+        submitStep.setStatus("APPROVED");
+        chain.add(submitStep);
+
+        // 부서 계층을 순회하며 APPROVE 단계 추가
+        Set<String> visitedDepts = new HashSet<>();
+        String currentDeptCode = deptCode;
+
+        while (currentDeptCode != null && !currentDeptCode.isBlank()
+                && visitedDepts.add(currentDeptCode)) {
+            Map<String, String> deptInfo = approvalMapper.findDeptApprovalInfo(company, currentDeptCode);
+            if (deptInfo == null) break;
+
+            String leader    = deptInfo.get("deptLeader");
+            String parentDept = deptInfo.get("parentDept");
+
+            if (leader != null && !leader.isBlank()) {
+                ApprovalLineDto approveStep = new ApprovalLineDto();
+                approveStep.setRequestId(requestId);
+                approveStep.setStepNo(chain.size() + 1);
+                approveStep.setCompany(company);
+                approveStep.setApproverEmpCode(leader);
+                approveStep.setStepType("APPROVE");
+                approveStep.setIsFinal("N");
+                // 신청자가 해당 부서장이면 자동 승인
+                approveStep.setStatus(requesterCode.equals(leader) ? "APPROVED" : "PENDING");
+                chain.add(approveStep);
+            }
+
+            currentDeptCode = parentDept;
+        }
+
+        // 마지막 단계에 IS_FINAL='Y' 설정
+        if (!chain.isEmpty()) {
+            chain.get(chain.size() - 1).setIsFinal("Y");
+        }
+
+        return chain;
     }
 
     @Override
@@ -170,7 +211,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         if (!loginUser.getEmpCode().equals(existing.getRequesterCode())) {
             throw new IllegalArgumentException("상신자만 상신취소할 수 있습니다.");
         }
-        int approved = approvalMapper.countApproved(requestId);
+        int approved = approvalMapper.countApprovedByApprover(requestId);
         if (approved > 0) {
             throw new IllegalArgumentException("이미 승인된 건은 상신취소할 수 없습니다.");
         }
