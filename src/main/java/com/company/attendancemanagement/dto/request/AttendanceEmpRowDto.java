@@ -16,9 +16,10 @@ public class AttendanceEmpRowDto {
     private String workPlanName;
     private String workDayType;     // WORK / OFF / HOLIDAY
     // 기존 근태신청 (없으면 null)
-    private Long requestId;
+    private String requestId;
     private String requestWorkCode;
     private String reason;
+    private String reasonDetail;
     private String startTime;
     private String endTime;
     private String status;          // DRAFT / SUBMITTED / APPROVED / REJECTED

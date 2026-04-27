@@ -16,9 +16,9 @@ public interface AttendanceRequestService {
 
     AttendanceRequestDto saveRequest(AttendanceRequestDto dto, LoginUserDto loginUser);
 
-    void deleteRequest(Long requestId, LoginUserDto loginUser);
+    void deleteRequest(String requestId, LoginUserDto loginUser);
 
-    void submitRequest(Long requestId, LoginUserDto loginUser);
+    void submitRequest(String requestId, LoginUserDto loginUser);
 
-    void cancelSubmit(Long requestId, LoginUserDto loginUser);
+    void cancelSubmit(String requestId, LoginUserDto loginUser);
 }

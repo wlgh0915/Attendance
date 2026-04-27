@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +22,8 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
 
     private final AttendanceRequestMapper requestMapper;
     private final ApprovalMapper approvalMapper;
+
+    private static final DateTimeFormatter REQ_ID_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
     @Override
     public Map<String, Object> getFormData(LoginUserDto loginUser) {
@@ -65,36 +69,52 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         if (dto.getRequesterCode() == null || dto.getRequesterCode().isBlank()) {
             dto.setRequesterCode(loginUser.getEmpCode());
         }
+        dto.setRequesterDeptCode(loginUser.getDeptCode());
 
-        if (dto.getRequestId() != null) {
+        boolean isOther = "OTHER".equals(dto.getRequestCategory());
+
+        if (dto.getRequestId() != null && !dto.getRequestId().isBlank()) {
             AttendanceRequestDto existing = requestMapper.findByRequestId(dto.getRequestId());
             if (existing == null) throw new IllegalArgumentException("존재하지 않는 근태신청입니다.");
             if ("SUBMITTED".equals(existing.getStatus()) || "APPROVED".equals(existing.getStatus())) {
                 throw new IllegalArgumentException("상신 또는 승인된 건은 수정할 수 없습니다.");
             }
             dto.setStatus("DRAFT");
-            requestMapper.updateRequest(dto);
+            requestMapper.updateRequestHeader(dto);
+            if (isOther) {
+                requestMapper.updateOtherDetail(dto);
+            } else {
+                requestMapper.updateGeneralDetail(dto);
+            }
         } else {
+            dto.setRequestId(LocalDateTime.now().format(REQ_ID_FORMAT));
             dto.setStatus("DRAFT");
-            requestMapper.insertRequest(dto);
+            requestMapper.insertRequestHeader(dto);
+            if (isOther) {
+                requestMapper.insertOtherDetail(dto);
+            } else {
+                requestMapper.insertGeneralDetail(dto);
+            }
         }
         return dto;
     }
 
     @Override
     @Transactional
-    public void deleteRequest(Long requestId, LoginUserDto loginUser) {
+    public void deleteRequest(String requestId, LoginUserDto loginUser) {
         AttendanceRequestDto existing = requestMapper.findByRequestId(requestId);
         if (existing == null) throw new IllegalArgumentException("존재하지 않는 근태신청입니다.");
         if (!"DRAFT".equals(existing.getStatus())) {
             throw new IllegalArgumentException("상신된 근태신청은 삭제할 수 없습니다.");
         }
-        requestMapper.deleteRequest(requestId);
+        requestMapper.deleteGeneralDetail(requestId);
+        requestMapper.deleteOtherDetail(requestId);
+        requestMapper.deleteRequestHeader(requestId);
     }
 
     @Override
     @Transactional
-    public void submitRequest(Long requestId, LoginUserDto loginUser) {
+    public void submitRequest(String requestId, LoginUserDto loginUser) {
         AttendanceRequestDto existing = requestMapper.findByRequestId(requestId);
         if (existing == null) throw new IllegalArgumentException("존재하지 않는 근태신청입니다.");
         if ("APPROVED".equals(existing.getStatus())) {
@@ -107,11 +127,9 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         String deptLeader = requestMapper.findDeptLeader(loginUser.getCompany(), loginUser.getDeptCode());
         boolean isDeptLeader = loginUser.getEmpCode().equals(deptLeader);
 
-        // 기존 결재선 삭제 (재상신 대비)
         approvalMapper.deleteByRequestId(requestId);
 
         if (isDeptLeader) {
-            // 부서장 신청 → 자동 승인완료
             requestMapper.updateStatus(requestId, "APPROVED");
             ApprovalLineDto line = new ApprovalLineDto();
             line.setRequestId(requestId);
@@ -122,7 +140,6 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             approvalMapper.insertApproval(line);
         } else {
             requestMapper.updateStatus(requestId, "SUBMITTED");
-            // 1순위: 상신자 (상신완료)
             ApprovalLineDto line1 = new ApprovalLineDto();
             line1.setRequestId(requestId);
             line1.setSeq(1);
@@ -130,7 +147,6 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             line1.setApproverCode(loginUser.getEmpCode());
             line1.setApprovalStatus("SUBMITTED");
             approvalMapper.insertApproval(line1);
-            // 2순위: 부서장 (결재대기)
             if (deptLeader != null && !deptLeader.isBlank()) {
                 ApprovalLineDto line2 = new ApprovalLineDto();
                 line2.setRequestId(requestId);
@@ -145,7 +161,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
 
     @Override
     @Transactional
-    public void cancelSubmit(Long requestId, LoginUserDto loginUser) {
+    public void cancelSubmit(String requestId, LoginUserDto loginUser) {
         AttendanceRequestDto existing = requestMapper.findByRequestId(requestId);
         if (existing == null) throw new IllegalArgumentException("존재하지 않는 근태신청입니다.");
         if (!"SUBMITTED".equals(existing.getStatus())) {

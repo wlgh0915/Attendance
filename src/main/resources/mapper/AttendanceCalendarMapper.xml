@@ -50,18 +50,19 @@
             resultType="com.company.attendancemanagement.dto.calendar.AttendanceReqSummaryDto">
         <![CDATA[
         SELECT
-            CONVERT(VARCHAR(10), WORK_DATE, 23) AS workDate,
-            REQUEST_ID                           AS requestId,
-            REQUEST_CATEGORY                     AS requestCategory,
-            REQUEST_WORK_CODE                    AS requestWorkCode,
-            START_TIME                           AS startTime,
-            END_TIME                             AS endTime,
-            STATUS                               AS status
-        FROM HRTATTREQ01
-        WHERE COMPANY  = #{company}
-          AND EMP_CODE = #{empCode}
-          AND WORK_DATE BETWEEN CAST(#{startDate} AS DATE) AND CAST(#{endDate} AS DATE)
-        ORDER BY WORK_DATE, REQUEST_ID
+            CONVERT(VARCHAR(10), r.TARGET_DATE, 23)          AS workDate,
+            r.REQ_ID                                         AS requestId,
+            r.REQ_GROUP                                      AS requestCategory,
+            r.REQ_TYPE                                       AS requestWorkCode,
+            LEFT(CONVERT(VARCHAR(8), g.START_TIME, 108), 5) AS startTime,
+            LEFT(CONVERT(VARCHAR(8), g.END_TIME,   108), 5) AS endTime,
+            r.STATUS                                         AS status
+        FROM HRTATTENDANCEREQUEST01 r
+        LEFT JOIN HRTATTENDANCE_GENERAL01 g ON r.COMPANY = g.COMPANY AND r.REQ_ID = g.REQ_ID
+        WHERE r.COMPANY        = #{company}
+          AND r.TARGET_EMP_CODE = #{empCode}
+          AND r.TARGET_DATE BETWEEN CAST(#{startDate} AS DATE) AND CAST(#{endDate} AS DATE)
+        ORDER BY r.TARGET_DATE, r.REQ_ID
         ]]>
     </select>
 

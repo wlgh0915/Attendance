@@ -1,6 +1,7 @@
 package com.company.attendancemanagement.mapper;
 
 import com.company.attendancemanagement.dto.department.DepartmentDto;
+import com.company.attendancemanagement.dto.login.LoginUserDto;
 import com.company.attendancemanagement.dto.pattern.ShiftCodeDto;
 import com.company.attendancemanagement.dto.request.AttendanceEmpRowDto;
 import com.company.attendancemanagement.dto.request.AttendanceRequestDto;
@@ -13,15 +14,27 @@ public interface AttendanceRequestMapper {
 
     List<AttendanceEmpRowDto> searchEmployees(AttendanceRequestSearchDto search);
 
-    AttendanceRequestDto findByRequestId(@Param("requestId") Long requestId);
+    AttendanceRequestDto findByRequestId(@Param("requestId") String requestId);
 
-    int insertRequest(AttendanceRequestDto dto);
+    int insertRequestHeader(AttendanceRequestDto dto);
 
-    int updateRequest(AttendanceRequestDto dto);
+    int insertGeneralDetail(AttendanceRequestDto dto);
 
-    int deleteRequest(@Param("requestId") Long requestId);
+    int insertOtherDetail(AttendanceRequestDto dto);
 
-    int updateStatus(@Param("requestId") Long requestId, @Param("status") String status);
+    int updateRequestHeader(AttendanceRequestDto dto);
+
+    int updateGeneralDetail(AttendanceRequestDto dto);
+
+    int updateOtherDetail(AttendanceRequestDto dto);
+
+    int deleteGeneralDetail(@Param("requestId") String requestId);
+
+    int deleteOtherDetail(@Param("requestId") String requestId);
+
+    int deleteRequestHeader(@Param("requestId") String requestId);
+
+    int updateStatus(@Param("requestId") String requestId, @Param("status") String status);
 
     String findDeptLeader(@Param("company") String company, @Param("deptCode") String deptCode);
 

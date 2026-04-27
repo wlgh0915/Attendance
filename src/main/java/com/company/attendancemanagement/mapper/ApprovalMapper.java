@@ -9,9 +9,9 @@ public interface ApprovalMapper {
 
     void insertApproval(ApprovalLineDto dto);
 
-    List<ApprovalLineDto> findByRequestId(@Param("requestId") Long requestId);
+    List<ApprovalLineDto> findByRequestId(@Param("requestId") String requestId);
 
-    void deleteByRequestId(@Param("requestId") Long requestId);
+    void deleteByRequestId(@Param("requestId") String requestId);
 
-    int countApproved(@Param("requestId") Long requestId);
+    int countApproved(@Param("requestId") String requestId);
 }

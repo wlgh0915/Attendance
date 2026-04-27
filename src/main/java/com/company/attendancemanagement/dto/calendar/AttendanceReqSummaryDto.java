@@ -7,8 +7,8 @@ import lombok.Setter;
 @Setter
 public class AttendanceReqSummaryDto {
     private String workDate;
-    private Long   requestId;
-    private String requestCategory;   // OVERTIME / HOLIDAY / LEAVE / OTHER
+    private String requestId;
+    private String requestCategory;   // REQ_GROUP: GENERAL / OTHER
     private String requestWorkCode;
     private String startTime;
     private String endTime;

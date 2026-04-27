@@ -7,14 +7,17 @@ import lombok.Setter;
 @Setter
 public class AttendanceRequestDto {
     private String company;
-    private Long requestId;
-    private String empCode;
-    private String workDate;
-    private String requestCategory;   // OVERTIME / HOLIDAY / LEAVE / OTHER
-    private String requestWorkCode;
+    private String requestId;         // REQ_ID (VARCHAR 20)
+    private String empCode;           // TARGET_EMP_CODE
+    private String deptCode;          // TARGET_DEPT_CODE
+    private String workDate;          // TARGET_DATE
+    private String requestCategory;   // OVERTIME / HOLIDAY / LEAVE → REQ_GROUP=GENERAL; OTHER → REQ_GROUP=OTHER
+    private String requestWorkCode;   // REQ_TYPE (GENERAL) or CHANGE_SHIFT_CODE (OTHER)
     private String reason;
-    private String startTime;         // HH:MM
-    private String endTime;           // HH:MM
+    private String reasonDetail;      // REASON_DETAIL
+    private String startTime;         // HH:MM (일반근태만)
+    private String endTime;           // HH:MM (일반근태만)
     private String status;            // DRAFT / SUBMITTED / APPROVED / REJECTED
-    private String requesterCode;
+    private String requesterCode;     // REQUESTER_EMP_CODE
+    private String requesterDeptCode; // REQUESTER_DEPT_CODE
 }

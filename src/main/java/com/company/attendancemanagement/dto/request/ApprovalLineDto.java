@@ -6,7 +6,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class ApprovalLineDto {
-    private Long requestId;
+    private String requestId;
     private Integer seq;
     private String company;
     private String approverCode;

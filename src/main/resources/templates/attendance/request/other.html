@@ -22,7 +22,7 @@
         .btn-search:hover { background: #1a252f; }
 
         .req-table-wrap { overflow-x: auto; margin-bottom: 12px; }
-        .req-table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 900px; }
+        .req-table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 1050px; }
         .req-table thead th {
             background: #2c3e50; color: #fff; padding: 9px 8px;
             text-align: center; border-right: 1px solid #3d5166; white-space: nowrap;
@@ -109,13 +109,14 @@
                 <th style="width:100px;">부서</th>
                 <th style="width:100px;">근무계획</th>
                 <th style="width:150px;">변경 근무계획</th>
-                <th style="width:200px;">사유</th>
+                <th style="width:120px;">사유</th>
+                <th style="width:200px;">사유상세</th>
                 <th style="width:70px;">상태</th>
                 <th style="width:70px;">신청자</th>
             </tr>
             </thead>
             <tbody id="reqTableBody">
-                <tr><td colspan="9" class="no-data">조회 버튼을 클릭하세요.</td></tr>
+                <tr><td colspan="10" class="no-data">조회 버튼을 클릭하세요.</td></tr>
             </tbody>
         </table>
     </div>
@@ -163,7 +164,7 @@
     function renderTable(rows) {
         const tbody = document.getElementById('reqTableBody');
         if (!rows || rows.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" class="no-data">조회된 인원이 없습니다.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="no-data">조회된 인원이 없습니다.</td></tr>';
             tableData = [];
             return;
         }
@@ -171,6 +172,8 @@
         tbody.innerHTML = rows.map((r, idx) => {
             const locked = (r.status === 'SUBMITTED' || r.status === 'APPROVED');
             const dis = locked ? 'disabled' : '';
+            const reasonVal = (r.reason||'').replace(/"/g,'&quot;');
+            const reasonDetailVal = (r.reasonDetail||'').replace(/"/g,'&quot;');
             return '<tr data-idx="'+idx+'" onclick="selectRow(this)">'
                 + '<td><input type="checkbox" onclick="event.stopPropagation();toggleCheck(this)"></td>'
                 + '<td>'+(r.empCode||'')+'</td>'
@@ -178,7 +181,8 @@
                 + '<td>'+(r.deptName||'')+'</td>'
                 + '<td>'+(r.workPlanName||'-')+'</td>'
                 + '<td><select data-field="requestWorkCode" '+dis+'>'+buildShiftOptions(r.requestWorkCode)+'</select></td>'
-                + '<td><input type="text" data-field="reason" value="'+(r.reason||'')+'" placeholder="사유 입력" '+dis+'></td>'
+                + '<td><input type="text" data-field="reason" value="'+reasonVal+'" placeholder="사유" '+dis+'></td>'
+                + '<td><input type="text" data-field="reasonDetail" value="'+reasonDetailVal+'" placeholder="사유 상세 입력" '+dis+'></td>'
                 + '<td>'+statusBadge(r.status)+'</td>'
                 + '<td>'+(r.requesterName||'')+'</td>'
                 + '</tr>';
@@ -205,10 +209,12 @@
         return {
             requestId:       d.requestId||null,
             empCode:         d.empCode,
+            deptCode:        d.deptCode,
             workDate:        document.getElementById('workDate').value,
             requestCategory: 'OTHER',
             requestWorkCode: tr.querySelector('[data-field="requestWorkCode"]').value,
             reason:          tr.querySelector('[data-field="reason"]').value,
+            reasonDetail:    tr.querySelector('[data-field="reasonDetail"]').value,
             startTime:       null,
             endTime:         null
         };

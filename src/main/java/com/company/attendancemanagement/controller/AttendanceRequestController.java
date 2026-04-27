@@ -92,7 +92,7 @@ public class AttendanceRequestController {
         LoginUserDto loginUser = getLoginUser(session);
         if (loginUser == null) return ResponseEntity.status(401).build();
         try {
-            Long requestId = Long.parseLong(body.get("requestId").toString());
+            String requestId = body.get("requestId").toString();
             requestService.deleteRequest(requestId, loginUser);
             return ResponseEntity.ok(Map.of("success", true));
         } catch (Exception e) {
@@ -106,7 +106,7 @@ public class AttendanceRequestController {
         LoginUserDto loginUser = getLoginUser(session);
         if (loginUser == null) return ResponseEntity.status(401).build();
         try {
-            Long requestId = Long.parseLong(body.get("requestId").toString());
+            String requestId = body.get("requestId").toString();
             requestService.submitRequest(requestId, loginUser);
             return ResponseEntity.ok(Map.of("success", true));
         } catch (Exception e) {
@@ -120,7 +120,7 @@ public class AttendanceRequestController {
         LoginUserDto loginUser = getLoginUser(session);
         if (loginUser == null) return ResponseEntity.status(401).build();
         try {
-            Long requestId = Long.parseLong(body.get("requestId").toString());
+            String requestId = body.get("requestId").toString();
             requestService.cancelSubmit(requestId, loginUser);
             return ResponseEntity.ok(Map.of("success", true));
         } catch (Exception e) {
