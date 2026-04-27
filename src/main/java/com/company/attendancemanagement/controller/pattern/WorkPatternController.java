@@ -44,6 +44,7 @@ public class WorkPatternController {
         model.addAttribute("prevMonth", prev.getMonthValue());
         model.addAttribute("nextYear",  next.getYear());
         model.addAttribute("nextMonth", next.getMonthValue());
+        model.addAttribute("yearMonthStr", String.format("%04d-%02d", year, month));
         return "pattern/calendar";
     }
 
