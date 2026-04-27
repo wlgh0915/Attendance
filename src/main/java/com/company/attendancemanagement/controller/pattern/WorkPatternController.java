@@ -13,6 +13,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,10 +42,14 @@ public class WorkPatternController {
         WorkPatternMasterDto master = new WorkPatternMasterDto();
         master.setCompany(loginUser.getCompany());
         master.setUseYn("Y");
+        master.setPatternType("FIXED");
+        master.setCycleUnit("W");
+        master.setCycleCount(1);
+        master.setStartDate(LocalDate.now().withDayOfMonth(1));
         request.setMaster(master);
 
         List<WorkPatternDetailDto> details = new ArrayList<>();
-        for (int i = 1; i <= 31; i++) {
+        for (int i = 1; i <= 28; i++) {
             WorkPatternDetailDto dto = new WorkPatternDetailDto();
             dto.setSeq(i);
             details.add(dto);

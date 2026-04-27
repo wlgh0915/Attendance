@@ -117,7 +117,7 @@
 
                 <div class="form-group">
                     <label>패턴유형</label>
-                    <select th:field="*{master.patternType}">
+                    <select th:field="*{master.patternType}" data-field="patternType">
                         <option value="">선택하세요</option>
                         <option value="FIXED">고정형</option>
                         <option value="ROTATE">교대형</option>
@@ -126,7 +126,7 @@
 
                 <div class="form-group">
                     <label>주기단위</label>
-                    <select th:field="*{master.cycleUnit}">
+                    <select th:field="*{master.cycleUnit}" data-field="cycleUnit">
                         <option value="">선택하세요</option>
                         <option value="W">주(W)</option>
                         <option value="D">일(D)</option>
@@ -135,17 +135,24 @@
 
                 <div class="form-group">
                     <label>주기횟수</label>
-                    <input type="number" th:field="*{master.cycleCount}" min="1" max="31" placeholder="예: 1">
+                    <input type="number" th:field="*{master.cycleCount}" data-field="cycleCount" min="1" max="31" placeholder="예: 1">
                 </div>
 
                 <div class="form-group">
                     <label class="required">시작일</label>
-                    <input type="date" th:field="*{master.startDate}" data-role="startDate">
+                    <input type="date"
+                           id="master_startDate"
+                           name="master.startDate"
+                           th:value="${pattern.master.startDate != null ? #temporals.format(pattern.master.startDate, 'yyyy-MM-dd') : ''}"
+                           data-role="startDate">
                 </div>
 
                 <div class="form-group">
                     <label>종료일</label>
-                    <input type="date" th:field="*{master.endDate}">
+                    <input type="date"
+                           id="master_endDate"
+                           name="master.endDate"
+                           th:value="${pattern.master.endDate != null ? #temporals.format(pattern.master.endDate, 'yyyy-MM-dd') : ''}">
                 </div>
 
                 <div class="form-group">
@@ -195,57 +202,137 @@
             </form>
         </div>
     </div>
-</div>
 
 <script>
     const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
+    let optionsTemplate = '';
+
+    function captureOptionsTemplate() {
+        const firstSel = document.querySelector('#detailTable tbody tr.day-row select');
+        if (firstSel) optionsTemplate = firstSel.innerHTML;
+    }
+
+    function getStartDate() {
+        const input = document.querySelector('[data-role="startDate"]');
+        if (!input || !input.value) return null;
+        const d = new Date(input.value + 'T00:00:00');
+        return isNaN(d.getTime()) ? null : d;
+    }
+
+    function getPatternDays() {
+        const typeEl  = document.querySelector('[data-field="patternType"]');
+        const unitEl  = document.querySelector('[data-field="cycleUnit"]');
+        const countEl = document.querySelector('[data-field="cycleCount"]');
+        const type  = typeEl  ? typeEl.value  : 'FIXED';
+        const unit  = unitEl  ? unitEl.value  : 'W';
+        const count = Math.max(1, parseInt(countEl ? countEl.value : '1') || 1);
+        if (!type || type === 'FIXED') return 28;
+        return unit === 'W' ? count * 7 : count;
+    }
+
+    function insertWeekHeaders() {
+        const tbody = document.querySelector('#detailTable tbody');
+        if (!tbody) return;
+        tbody.querySelectorAll('tr.week-header-row').forEach(function(r) { r.remove(); });
+        const rows = Array.from(tbody.querySelectorAll('tr.day-row'));
+        if (rows.length <= 7) return;
+        rows.forEach(function(row, index) {
+            if (index % 7 === 0) {
+                const headerRow = document.createElement('tr');
+                headerRow.className = 'week-header-row';
+                headerRow.innerHTML = '<td colspan="3">▶ ' + (Math.floor(index / 7) + 1) + '주</td>';
+                row.parentNode.insertBefore(headerRow, row);
+            }
+        });
+    }
 
     function updateDayLabels() {
-        const startDateInput = document.querySelector('[data-role="startDate"]');
-        if (!startDateInput || !startDateInput.value) return;
-
-        const startDate = new Date(startDateInput.value + 'T00:00:00');
-        const rows = document.querySelectorAll('#detailTable tbody tr.day-row');
-
-        rows.forEach(function(row, index) {
+        const startDate = getStartDate();
+        document.querySelectorAll('#detailTable tbody tr.day-row').forEach(function(row, index) {
+            const label = row.querySelector('.day-text');
+            if (!label) return;
+            if (!startDate) { label.textContent = '-'; label.className = 'day-text'; return; }
             const d = new Date(startDate);
             d.setDate(d.getDate() + index);
             const dow = d.getDay();
-
-            const label = row.querySelector('.day-text');
-            if (label) {
-                label.textContent = DAY_NAMES[dow];
-                label.className = 'day-text' + (dow === 6 ? ' day-sat' : dow === 0 ? ' day-sun' : '');
-            }
-
+            label.textContent = DAY_NAMES[dow];
+            label.className = 'day-text' + (dow === 6 ? ' day-sat' : dow === 0 ? ' day-sun' : '');
             row.classList.remove('row-saturday', 'row-sunday');
             if (dow === 6) row.classList.add('row-saturday');
             if (dow === 0) row.classList.add('row-sunday');
         });
     }
 
-    function insertWeekHeaders() {
+    function updateTable() {
+        insertWeekHeaders();
+        updateDayLabels();
+    }
+
+    function rebuildDetailRows(days) {
         const tbody = document.querySelector('#detailTable tbody');
-        const rows = Array.from(tbody.querySelectorAll('tr.day-row'));
-        rows.forEach(function(row, index) {
-            if (index % 7 === 0) {
-                const weekNum = Math.floor(index / 7) + 1;
-                const headerRow = document.createElement('tr');
-                headerRow.className = 'week-header-row';
-                headerRow.innerHTML = '<td colspan="3">▶ ' + weekNum + '주</td>';
-                row.parentNode.insertBefore(headerRow, row);
-            }
+        const saved = [];
+        tbody.querySelectorAll('tr.day-row').forEach(function(row) {
+            const sel = row.querySelector('select');
+            saved.push(sel ? sel.value : '');
         });
+        tbody.innerHTML = '';
+        for (let i = 0; i < days; i++) {
+            const tr = document.createElement('tr');
+            tr.className = 'day-row';
+
+            const td1 = document.createElement('td');
+            td1.innerHTML = '<span>' + (i + 1) + '</span>' +
+                '<input type="hidden" name="details[' + i + '].seq" value="' + (i + 1) + '">';
+
+            const td2 = document.createElement('td');
+            td2.innerHTML = '<span class="day-text">-</span>';
+
+            const sel = document.createElement('select');
+            sel.name = 'details[' + i + '].shiftCode';
+            sel.innerHTML = optionsTemplate;
+            if (saved[i]) sel.value = saved[i];
+
+            const td3 = document.createElement('td');
+            td3.appendChild(sel);
+
+            tr.appendChild(td1);
+            tr.appendChild(td2);
+            tr.appendChild(td3);
+            tbody.appendChild(tr);
+        }
+        updateTable();
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        insertWeekHeaders();
-        updateDayLabels();
+        captureOptionsTemplate();
+        updateTable();
+
         const startDateInput = document.querySelector('[data-role="startDate"]');
         if (startDateInput) {
-            startDateInput.addEventListener('change', updateDayLabels);
+            startDateInput.addEventListener('change', updateTable);
+            startDateInput.addEventListener('input', updateTable);
+        }
+
+        const typeEl  = document.querySelector('[data-field="patternType"]');
+        const unitEl  = document.querySelector('[data-field="cycleUnit"]');
+        const countEl = document.querySelector('[data-field="cycleCount"]');
+
+        if (typeEl) {
+            typeEl.addEventListener('change', function() {
+                if (this.value === 'FIXED') {
+                    if (unitEl)  unitEl.value  = 'W';
+                    if (countEl) countEl.value = '1';
+                }
+                rebuildDetailRows(getPatternDays());
+            });
+        }
+        if (unitEl)  unitEl.addEventListener('change',  function() { rebuildDetailRows(getPatternDays()); });
+        if (countEl) {
+            countEl.addEventListener('change', function() { rebuildDetailRows(getPatternDays()); });
+            countEl.addEventListener('input',  function() { rebuildDetailRows(getPatternDays()); });
         }
     });
 </script>
+</div>
 </body>
 </html>

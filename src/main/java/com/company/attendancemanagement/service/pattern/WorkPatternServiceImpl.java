@@ -98,6 +98,7 @@ public class WorkPatternServiceImpl implements WorkPatternService {
                                        Map<String, ShiftCodeDto> shiftMap) {
 
         LocalDate startDate = master.getStartDate();
+        boolean isFixed = "FIXED".equals(master.getPatternType());
         ShiftCodeDto prevShift = null;
         int weekMinutes = 0;
         int weekDays = 0;
@@ -111,9 +112,6 @@ public class WorkPatternServiceImpl implements WorkPatternService {
                 throw new IllegalArgumentException((i + 1) + "일차 근태코드를 선택하세요.");
             }
 
-            boolean saturday = targetDate.getDayOfWeek() == DayOfWeek.SATURDAY;
-            boolean sunday = targetDate.getDayOfWeek() == DayOfWeek.SUNDAY;
-
             boolean isNight = isNightShift(shift);
             boolean isDay = isDayShift(shift);
             boolean isOff = isOffShift(shift);
@@ -123,16 +121,19 @@ public class WorkPatternServiceImpl implements WorkPatternService {
                 throw new IllegalArgumentException(targetDate + " : 익일근무 다음날에는 주간근무를 넣을 수 없습니다.");
             }
 
-            if (saturday && !isOff && !isNight) {
-                throw new IllegalArgumentException(targetDate + " : 토요일은 휴무 또는 익일근무만 가능합니다.");
-            }
+            if (isFixed) {
+                boolean saturday = targetDate.getDayOfWeek() == DayOfWeek.SATURDAY;
+                boolean sunday = targetDate.getDayOfWeek() == DayOfWeek.SUNDAY;
 
-            if (sunday && !isHoliday && !isNight) {
-                throw new IllegalArgumentException(targetDate + " : 일요일은 휴일 또는 익일근무만 가능합니다.");
-            }
-
-            if (isDay && (saturday || sunday)) {
-                throw new IllegalArgumentException(targetDate + " : 주간 근무조는 평일만 가능합니다.");
+                if (saturday && !isOff && !isNight) {
+                    throw new IllegalArgumentException(targetDate + " : 토요일은 휴무 또는 익일근무만 가능합니다.");
+                }
+                if (sunday && !isHoliday && !isNight) {
+                    throw new IllegalArgumentException(targetDate + " : 일요일은 휴일 또는 익일근무만 가능합니다.");
+                }
+                if (isDay && (saturday || sunday)) {
+                    throw new IllegalArgumentException(targetDate + " : 주간 근무조는 평일만 가능합니다.");
+                }
             }
 
             int workMinutes = shift.getWorkMinutes() == null ? 0 : shift.getWorkMinutes();
