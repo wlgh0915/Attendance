@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,13 +25,32 @@ public class WorkPatternController {
 
     private final WorkPatternService workPatternService;
 
-    @GetMapping("/list")
-    public String list(HttpSession session, Model model) {
+    @GetMapping("/calendar")
+    public String calendar(@RequestParam(required = false) Integer year,
+                           @RequestParam(required = false) Integer month,
+                           HttpSession session,
+                           Model model) {
         LoginUserDto loginUser = getLoginUser(session);
         if (loginUser == null) return "redirect:/login";
 
-        model.addAttribute("patterns", workPatternService.getPatternList(loginUser.getCompany()));
-        return "pattern/list";
+        if (year == null)  year  = LocalDate.now().getYear();
+        if (month == null) month = LocalDate.now().getMonthValue();
+
+        YearMonth prev = YearMonth.of(year, month).minusMonths(1);
+        YearMonth next = YearMonth.of(year, month).plusMonths(1);
+
+        model.addAttribute("calendar", workPatternService.getPatternCalendar(loginUser.getCompany(), year, month));
+        model.addAttribute("prevYear",  prev.getYear());
+        model.addAttribute("prevMonth", prev.getMonthValue());
+        model.addAttribute("nextYear",  next.getYear());
+        model.addAttribute("nextMonth", next.getMonthValue());
+        model.addAttribute("yearMonthStr", String.format("%04d-%02d", year, month));
+        return "pattern/calendar";
+    }
+
+    @GetMapping("/list")
+    public String list() {
+        return "redirect:/pattern/calendar";
     }
 
     @GetMapping("/new")
@@ -88,7 +108,7 @@ public class WorkPatternController {
             request.getMaster().setCompany(loginUser.getCompany());
             workPatternService.savePattern(request);
             redirectAttributes.addFlashAttribute("successMessage", "패턴이 저장되었습니다.");
-            return "redirect:/pattern/list";
+            return "redirect:/pattern/calendar";
         } catch (Exception e) {
             boolean isEdit = workPatternService.existsPattern(
                     loginUser.getCompany(), request.getMaster().getWorkPatternCode());
@@ -113,7 +133,7 @@ public class WorkPatternController {
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
-        return "redirect:/pattern/list";
+        return "redirect:/pattern/calendar";
     }
 
     private LoginUserDto getLoginUser(HttpSession session) {

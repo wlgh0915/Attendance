@@ -1,0 +1,336 @@
+/* ===== 페이지 루트 ===== */
+.cal-page {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    font-family: 'Malgun Gothic', sans-serif;
+    padding: 30px;
+}
+
+/* ===== 제목 헤더 ===== */
+.cal-header {
+    padding-bottom: 10px;
+    border-bottom: 2px solid #2c3e50;
+    margin-bottom: 2px;
+}
+
+.cal-title {
+    font-size: 30px;
+    font-weight: bold;
+    color: #2c3e50;
+    margin: 0;
+}
+
+/* ===== 네비게이션 바 (월 이동 + 버튼) ===== */
+.cal-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.btn-nav {
+    background: #2c3e50;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: 14px;
+    font-family: 'Malgun Gothic', sans-serif;
+    text-decoration: none;
+    display: inline-block;
+    transition: background 0.15s;
+}
+
+.btn-nav:hover { background: #3d5166; }
+
+.month-label {
+    font-size: 15px;
+    font-weight: 700;
+    color: #2c3e50;
+    min-width: 88px;
+    text-align: center;
+}
+
+/* ===== 우측 액션 그룹 (수정 · 추가 · 삭제) ===== */
+.cal-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.cal-divider {
+    width: 1px;
+    height: 20px;
+    background: #ced4da;
+    margin: 0 4px;
+}
+
+.btn-action-sel {
+    display: inline-block;
+    padding: 6px 16px;
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Malgun Gothic', sans-serif;
+    transition: background 0.15s, opacity 0.15s;
+}
+
+.btn-action-sel:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.btn-edit-sel {
+    background: #27ae60;
+    color: #fff;
+}
+.btn-edit-sel:not(:disabled):hover { background: #1e8449; }
+
+.btn-delete-sel {
+    background: #e74c3c;
+    color: #fff;
+}
+.btn-delete-sel:not(:disabled):hover { background: #c0392b; }
+
+.selected-count {
+    font-size: 12px;
+    color: #7f8c8d;
+    white-space: nowrap;
+}
+
+/* ===== 월 직접 선택 입력 ===== */
+.month-picker {
+    padding: 5px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: 'Malgun Gothic', sans-serif;
+    color: #2c3e50;
+    background: #fff;
+    cursor: pointer;
+    height: 31px;
+    transition: border-color 0.15s;
+}
+
+.month-picker:focus {
+    outline: none;
+    border-color: #2c3e50;
+    box-shadow: 0 0 0 2px rgba(44, 62, 80, 0.12);
+}
+
+/* ===== 추가 버튼 ===== */
+.btn-add-sel {
+    background: #2980b9;
+    color: #fff;
+}
+.btn-add-sel:hover { background: #2471a3; }
+
+
+
+/* ===== 본문 (테이블 + 범례) ===== */
+.cal-body {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    min-height: 0;
+}
+
+/* ===== 테이블 래퍼 ===== */
+.cal-table-wrap {
+    flex: 1;
+    overflow-x: auto;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    min-width: 0;
+}
+
+/* ===== 달력 테이블 ===== */
+.cal-table {
+    border-collapse: collapse;
+    font-size: 12px;
+    white-space: nowrap;
+    min-width: 100%;
+}
+
+/* ===== 고정 컬럼 (sticky) ===== */
+/* 체크: 0px(36px), 코드: 36px(76px), 이름: 112px */
+
+.cal-table th.col-check,
+.cal-table td.col-check {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    width: 36px;
+    min-width: 36px;
+    text-align: center;
+    background: #2c3e50;
+    padding: 0;
+    cursor: pointer;
+}
+
+.cal-table td.col-check {
+    background: #f5f6fa;
+    border-bottom: 1px solid #e8eaed;
+    border-right: 1px solid #e8eaed;
+}
+
+.cal-table th.col-code,
+.cal-table td.col-code {
+    position: sticky;
+    left: 36px;
+    z-index: 2;
+    min-width: 76px;
+    max-width: 86px;
+    background: #2c3e50;
+    color: #fff;
+    text-align: center;
+    padding: 8px 6px;
+}
+
+.cal-table td.col-code {
+    background: #fff;
+    color: #2c3e50;
+    border-bottom: 1px solid #e8eaed;
+    border-right: 1px solid #e0e0e0;
+    font-weight: 600;
+}
+
+.cal-table th.col-name,
+.cal-table td.col-name {
+    position: sticky;
+    left: 112px;
+    z-index: 2;
+    min-width: 110px;
+    max-width: 130px;
+    background: #2c3e50;
+    color: #fff;
+    text-align: left;
+    padding: 8px 10px;
+}
+
+.cal-table td.col-name {
+    background: #fff;
+    color: #2c3e50;
+    border-bottom: 1px solid #e8eaed;
+    border-right: 1px solid #e0e0e0;
+}
+
+/* ===== 날짜 헤더 ===== */
+.cal-table th {
+    background: #2c3e50;
+    color: #fff;
+    padding: 8px 4px;
+    text-align: center;
+    border-right: 1px solid #3d5166;
+    font-weight: 600;
+}
+
+.cal-table th.day-sat { background: #1a6fa0; }
+.cal-table th.day-sun { background: #8e2218; }
+
+/* ===== 데이터 행 ===== */
+.cal-table td {
+    padding: 0;
+    border-right: 1px solid #e8eaed;
+    border-bottom: 1px solid #e8eaed;
+    text-align: center;
+    vertical-align: middle;
+    height: 36px;
+    min-width: 42px;
+}
+
+.cal-table tbody tr:hover td { filter: brightness(0.93); }
+
+/* 선택된 행 강조 */
+.cal-table tbody tr.row-selected td.col-check { background: #d6eaf8; }
+.cal-table tbody tr.row-selected td.col-code,
+.cal-table tbody tr.row-selected td.col-name  { background: #ebf5fb; }
+
+/* ===== 근태 셀 ===== */
+.shift-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #2c3e50;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.shift-cell.empty {
+    background: #f8f9fa;
+    color: #ced4da;
+    font-weight: 400;
+    font-size: 10px;
+}
+
+/* ===== 체크박스 ===== */
+.cal-table input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    accent-color: #2980b9;
+    pointer-events: none; /* 클릭은 td가 처리 */
+}
+
+.cal-table th.col-check input[type="checkbox"] {
+    pointer-events: auto; /* 헤더 체크박스는 직접 클릭 허용 */
+}
+
+/* ===== 빈 데이터 ===== */
+.no-data {
+    padding: 40px;
+    text-align: center;
+    color: #95a5a6;
+    font-size: 14px;
+}
+
+/* ===== 범례 패널 ===== */
+.legend-panel {
+    width: 200px;
+    flex-shrink: 0;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    padding: 14px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.legend-panel h4 {
+    margin: 0 0 12px;
+    font-size: 13px;
+    color: #2c3e50;
+    font-weight: 700;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #2c3e50;
+    font-family: 'Malgun Gothic', sans-serif;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-family: 'Malgun Gothic', sans-serif;
+}
+
+.legend-dot {
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.legend-info { line-height: 1.4; }
+.legend-name { font-weight: 700; color: #2c3e50; font-size: 12px; }
+.legend-code { color: #7f8c8d; font-size: 11px; }
+.legend-time { color: #95a5a6; font-size: 10px; }

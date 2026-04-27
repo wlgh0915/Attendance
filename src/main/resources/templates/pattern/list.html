@@ -16,7 +16,10 @@
              th:data-message="${errorMessage}" style="display:none"></div>
 
         <h2>근태 패턴 목록</h2>
-        <a th:href="@{/pattern/new}" class="btn-back" style="margin-bottom:16px; display:inline-block;">+ 신규 등록</a>
+        <div style="display:flex; gap:10px; margin-bottom:16px;">
+            <a th:href="@{/pattern/new}" class="btn-back">+ 신규 등록</a>
+            <a th:href="@{/pattern/calendar}" class="btn-back" style="background:#16a085;">달력 보기</a>
+        </div>
 
         <table>
             <thead>
