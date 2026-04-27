@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,6 +24,28 @@ import java.util.List;
 public class WorkPatternController {
 
     private final WorkPatternService workPatternService;
+
+    @GetMapping("/calendar")
+    public String calendar(@RequestParam(required = false) Integer year,
+                           @RequestParam(required = false) Integer month,
+                           HttpSession session,
+                           Model model) {
+        LoginUserDto loginUser = getLoginUser(session);
+        if (loginUser == null) return "redirect:/login";
+
+        if (year == null)  year  = LocalDate.now().getYear();
+        if (month == null) month = LocalDate.now().getMonthValue();
+
+        YearMonth prev = YearMonth.of(year, month).minusMonths(1);
+        YearMonth next = YearMonth.of(year, month).plusMonths(1);
+
+        model.addAttribute("calendar", workPatternService.getPatternCalendar(loginUser.getCompany(), year, month));
+        model.addAttribute("prevYear",  prev.getYear());
+        model.addAttribute("prevMonth", prev.getMonthValue());
+        model.addAttribute("nextYear",  next.getYear());
+        model.addAttribute("nextMonth", next.getMonthValue());
+        return "pattern/calendar";
+    }
 
     @GetMapping("/list")
     public String list(HttpSession session, Model model) {

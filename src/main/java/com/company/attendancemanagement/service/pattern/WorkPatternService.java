@@ -1,5 +1,6 @@
 package com.company.attendancemanagement.service.pattern;
 
+import com.company.attendancemanagement.dto.pattern.PatternCalendarDto;
 import com.company.attendancemanagement.dto.pattern.ShiftCodeDto;
 import com.company.attendancemanagement.dto.pattern.WorkPatternSaveRequest;
 import com.company.attendancemanagement.dto.pattern.WorkPatternMasterDto;
@@ -19,4 +20,6 @@ public interface WorkPatternService {
     void deletePattern(String company, String workPatternCode);
 
     boolean existsPattern(String company, String workPatternCode);
+
+    PatternCalendarDto getPatternCalendar(String company, int year, int month);
 }
