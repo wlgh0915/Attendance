@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/default_layout}">
+<head>
+    <meta charset="UTF-8">
+    <title>근태 승인</title>
+    <link rel="stylesheet" th:href="@{/css/approval.css}">
+</head>
+<body>
+<div layout:fragment="content">
+<div class="appr-page">
+    <div class="page-title">근태 승인</div>
+
+    <div class="status-tabs">
+        <div class="status-tab active" data-status="PENDING" onclick="switchStatus(this)">결재할 문서</div>
+        <div class="status-tab" data-status="APPROVED" onclick="switchStatus(this)">승인된 문서</div>
+        <div class="status-tab" data-status="REJECTED" onclick="switchStatus(this)">반려된 문서</div>
+    </div>
+
+    <div class="category-tabs">
+        <div class="category-tab active" data-cat="OVERTIME" onclick="switchCategory(this)">연장근로</div>
+        <div class="category-tab" data-cat="HOLIDAY" onclick="switchCategory(this)">휴일근로</div>
+        <div class="category-tab" data-cat="LEAVE" onclick="switchCategory(this)">조퇴/외출/반차</div>
+        <div class="category-tab" data-cat="OTHER" onclick="switchCategory(this)">기타근태</div>
+    </div>
+
+    <div class="search-panel">
+        <div class="search-group">
+            <label>기간</label>
+            <div style="display:flex;gap:6px;align-items:center;">
+                <input type="date" id="fromDate">
+                <span style="font-size:13px;">~</span>
+                <input type="date" id="toDate">
+            </div>
+        </div>
+        <div class="search-group">
+            <label>사번</label>
+            <input type="text" id="empCodeFilter" placeholder="전체" style="width:110px;">
+        </div>
+        <button class="btn-search" onclick="doSearch()">조회</button>
+    </div>
+
+    <div class="req-table-wrap">
+        <table class="req-table" id="apprTable">
+            <thead>
+            <tr id="tableHead">
+                <th style="width:36px;"><input type="checkbox" id="checkAll" onclick="toggleAll(this)"></th>
+                <th style="width:90px;">근무일</th>
+                <th style="width:80px;">사번</th>
+                <th style="width:75px;">성명</th>
+                <th style="width:100px;">부서</th>
+                <th style="width:110px;">신청유형</th>
+                <th style="width:130px;">사유</th>
+                <th style="width:90px;">시작시간</th>
+                <th style="width:110px;">종료/변경근무</th>
+                <th style="width:80px;">신청상태</th>
+                <th style="width:125px;">처리일시</th>
+                <th style="width:140px;">반려사유</th>
+                <th style="width:70px;">상세</th>
+            </tr>
+            </thead>
+            <tbody id="apprTableBody">
+                <tr><td colspan="13" class="no-data">조회 버튼을 클릭하세요.</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="action-bar" id="actionBar">
+        <button class="btn-act btn-approve" onclick="doBulkApprove()">일괄 승인</button>
+        <button class="btn-act btn-reject" onclick="openRejectModal()">일괄 반려</button>
+    </div>
+</div>
+
+<div id="toast"></div>
+
+<div class="modal-overlay" id="detailModal">
+    <div class="modal-box">
+        <div class="modal-title">근태 신청 상세</div>
+        <div class="detail-section">
+            <h4>신청 정보</h4>
+            <div class="detail-grid" id="detailInfo"></div>
+        </div>
+        <div class="detail-section">
+            <h4>결재선</h4>
+            <table class="chain-table">
+                <thead>
+                    <tr><th>순번</th><th>구분</th><th>결재자</th><th>상태</th><th>처리일시</th><th>반려사유</th></tr>
+                </thead>
+                <tbody id="chainBody"></tbody>
+            </table>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-close" onclick="closeDetailModal()">닫기</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="rejectModal">
+    <div class="modal-box reject-modal-box">
+        <div class="modal-title">반려 사유 입력</div>
+        <textarea id="rejectReasonInput" placeholder="반려 사유를 입력하세요."></textarea>
+        <div class="modal-footer">
+            <button class="btn-close" onclick="closeRejectModal()">취소</button>
+            <button class="btn-confirm-reject" onclick="doBulkReject()">반려 확인</button>
+        </div>
+    </div>
+</div>
+
+<script th:src="@{/js/approval.js}"></script>
+</div>
+</body>
+</html>

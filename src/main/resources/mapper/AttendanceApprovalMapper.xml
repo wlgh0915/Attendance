@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.company.attendancemanagement.mapper.AttendanceApprovalMapper">
+
+    <!-- 결재 목록 조회 -->
+    <select id="searchApprovals"
+            parameterType="com.company.attendancemanagement.dto.approval.ApprovalSearchDto"
+            resultType="com.company.attendancemanagement.dto.approval.ApprovalItemDto">
+        SELECT
+            r.REQ_ID                                         AS requestId,
+            CONVERT(VARCHAR(10), r.TARGET_DATE, 23)          AS targetDate,
+            r.REQ_TYPE                                       AS reqType,
+            r.REQ_GROUP                                      AS reqGroup,
+            r.REASON                                         AS reason,
+            r.REASON_DETAIL                                  AS reasonDetail,
+            r.STATUS                                         AS requestStatus,
+            te.EMP_CODE                                      AS targetEmpCode,
+            te.EMP_NAME                                      AS targetEmpName,
+            td.DEPT_NAME                                     AS targetDeptName,
+            LEFT(CONVERT(VARCHAR(8), g.START_TIME, 108), 5) AS startTime,
+            LEFT(CONVERT(VARCHAR(8), g.END_TIME,   108), 5) AS endTime,
+            o.CHANGE_SHIFT_CODE                              AS changeShiftCode,
+            s.SHIFT_NAME                                     AS changeShiftName,
+            a.STEP_NO                                        AS myStepNo,
+            a.STATUS                                         AS myStatus,
+            CONVERT(VARCHAR(19), a.DECISION_AT, 120)         AS myDecisionAt,
+            a.REJECT_REASON                                  AS rejectReason
+        FROM HRTATTENDANCE_APPROVAL01 a
+        JOIN HRTATTENDANCEREQUEST01 r
+          ON a.COMPANY = r.COMPANY AND a.REQ_ID = r.REQ_ID
+        JOIN HRIMASTER01 te
+          ON r.COMPANY = te.COMPANY AND r.TARGET_EMP_CODE = te.EMP_CODE
+        LEFT JOIN ORGDEPTMASTER01 td
+          ON te.COMPANY = td.COMPANY AND te.DEPT_CODE = td.DEPT_CODE
+        LEFT JOIN HRTATTENDANCE_GENERAL01 g
+          ON r.COMPANY = g.COMPANY AND r.REQ_ID = g.REQ_ID
+        LEFT JOIN HRTATTENDANCE_OTHER01 o
+          ON r.COMPANY = o.COMPANY AND r.REQ_ID = o.REQ_ID
+        LEFT JOIN HRTSHIFTMASTER01 s
+          ON r.COMPANY = s.COMPANY AND o.CHANGE_SHIFT_CODE = s.SHIFT_CODE
+        WHERE a.COMPANY             = #{company}
+          AND a.APPROVER_EMP_CODE   = #{approverEmpCode}
+          AND a.STEP_TYPE           = 'APPROVE'
+          AND a.STATUS              = #{stepStatus}
+          <if test="'PENDING'.equals(stepStatus)">
+              AND r.STATUS = 'SUBMITTED'
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM HRTATTENDANCE_APPROVAL01 prev
+                  WHERE prev.COMPANY = a.COMPANY
+                    AND prev.REQ_ID = a.REQ_ID
+                    AND prev.STEP_TYPE = 'APPROVE'
+                    AND prev.STEP_NO &lt; a.STEP_NO
+                    AND prev.STATUS &lt;&gt; 'APPROVED'
+              )
+          </if>
+          <if test="'OVERTIME'.equals(category)">
+              AND r.REQ_TYPE IN ('연장', '조출연장')
+          </if>
+          <if test="'HOLIDAY'.equals(category)">
+              AND r.REQ_TYPE = '휴일근무'
+          </if>
+          <if test="'LEAVE'.equals(category)">
+              AND r.REQ_TYPE IN ('조퇴', '외근', '외출', '전반차', '후반차')
+          </if>
+          <if test="'OTHER'.equals(category)">
+              AND r.REQ_GROUP = 'OTHER'
+          </if>
+          <if test="fromDate != null and fromDate != ''">
+              AND r.TARGET_DATE >= CAST(#{fromDate} AS DATE)
+          </if>
+          <if test="toDate != null and toDate != ''">
+              AND r.TARGET_DATE &lt;= CAST(#{toDate} AS DATE)
+          </if>
+          <if test="empCode != null and empCode != ''">
+              AND te.EMP_CODE = #{empCode}
+          </if>
+        ORDER BY r.TARGET_DATE DESC, r.REQ_ID
+    </select>
+
+    <!-- 상세 조회 (팝업용) -->
+    <select id="findDetail"
+            resultType="com.company.attendancemanagement.dto.approval.ApprovalDetailDto">
+        SELECT
+            r.REQ_ID                                         AS requestId,
+            CONVERT(VARCHAR(10), r.TARGET_DATE, 23)          AS targetDate,
+            r.REQ_TYPE                                       AS reqType,
+            r.REQ_GROUP                                      AS reqGroup,
+            r.REASON                                         AS reason,
+            r.REASON_DETAIL                                  AS reasonDetail,
+            r.STATUS                                         AS requestStatus,
+            te.EMP_CODE                                      AS targetEmpCode,
+            te.EMP_NAME                                      AS targetEmpName,
+            td.DEPT_NAME                                     AS targetDeptName,
+            re.EMP_CODE                                      AS requesterEmpCode,
+            re.EMP_NAME                                      AS requesterEmpName,
+            LEFT(CONVERT(VARCHAR(8), g.START_TIME, 108), 5) AS startTime,
+            LEFT(CONVERT(VARCHAR(8), g.END_TIME,   108), 5) AS endTime,
+            o.CHANGE_SHIFT_CODE                              AS changeShiftCode,
+            s.SHIFT_NAME                                     AS changeShiftName
+        FROM HRTATTENDANCEREQUEST01 r
+        JOIN  HRIMASTER01 te ON r.COMPANY = te.COMPANY AND r.TARGET_EMP_CODE   = te.EMP_CODE
+        LEFT JOIN ORGDEPTMASTER01 td ON te.COMPANY = td.COMPANY AND te.DEPT_CODE = td.DEPT_CODE
+        JOIN  HRIMASTER01 re ON r.COMPANY = re.COMPANY AND r.REQUESTER_EMP_CODE = re.EMP_CODE
+        LEFT JOIN HRTATTENDANCE_GENERAL01 g ON r.COMPANY = g.COMPANY AND r.REQ_ID = g.REQ_ID
+        LEFT JOIN HRTATTENDANCE_OTHER01   o ON r.COMPANY = o.COMPANY AND r.REQ_ID = o.REQ_ID
+        LEFT JOIN HRTSHIFTMASTER01        s ON r.COMPANY = s.COMPANY AND o.CHANGE_SHIFT_CODE = s.SHIFT_CODE
+        WHERE r.REQ_ID = #{requestId}
+          AND r.COMPANY = #{company}
+          AND EXISTS (
+              SELECT 1
+              FROM HRTATTENDANCE_APPROVAL01 a
+              WHERE a.COMPANY = r.COMPANY
+                AND a.REQ_ID = r.REQ_ID
+                AND a.APPROVER_EMP_CODE = #{approverEmpCode}
+                AND a.STEP_TYPE = 'APPROVE'
+          )
+    </select>
+
+    <!-- 내 결재 단계 조회 -->
+    <select id="findMyStep"
+            resultType="com.company.attendancemanagement.dto.request.ApprovalLineDto">
+        SELECT STEP_NO   AS stepNo,
+               IS_FINAL  AS isFinal,
+               STATUS     AS status
+        FROM HRTATTENDANCE_APPROVAL01
+        WHERE REQ_ID            = #{requestId}
+          AND COMPANY           = #{company}
+          AND APPROVER_EMP_CODE = #{approverEmpCode}
+          AND STEP_TYPE         = 'APPROVE'
+    </select>
+
+    <!-- 앞 결재 단계 미완료 건수 -->
+    <select id="countPreviousUnapprovedSteps" resultType="int">
+        SELECT COUNT(*)
+        FROM HRTATTENDANCE_APPROVAL01
+        WHERE COMPANY = #{company}
+          AND REQ_ID = #{requestId}
+          AND STEP_TYPE = 'APPROVE'
+          AND STEP_NO &lt; #{stepNo}
+          AND STATUS &lt;&gt; 'APPROVED'
+    </select>
+
+    <!-- 승인 처리 -->
+    <update id="updateStepApproved">
+        UPDATE HRTATTENDANCE_APPROVAL01
+        SET STATUS      = 'APPROVED',
+            DECISION_AT = GETDATE(),
+            UPDATED_AT  = GETDATE()
+        WHERE REQ_ID  = #{requestId}
+          AND STEP_NO = #{stepNo}
+    </update>
+
+    <!-- 반려 처리 -->
+    <update id="updateStepRejected">
+        UPDATE HRTATTENDANCE_APPROVAL01
+        SET STATUS        = 'REJECTED',
+            DECISION_AT   = GETDATE(),
+            REJECT_REASON = #{rejectReason},
+            UPDATED_AT    = GETDATE()
+        WHERE REQ_ID  = #{requestId}
+          AND STEP_NO = #{stepNo}
+    </update>
+
+</mapper>
