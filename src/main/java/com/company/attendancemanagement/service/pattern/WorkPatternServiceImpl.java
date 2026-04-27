@@ -1,5 +1,7 @@
 package com.company.attendancemanagement.service.pattern;
 
+import com.company.attendancemanagement.dto.pattern.PatternCalendarDto;
+import com.company.attendancemanagement.dto.pattern.PatternCalendarRowDto;
 import com.company.attendancemanagement.dto.pattern.ShiftCodeDto;
 import com.company.attendancemanagement.dto.pattern.WorkPatternDetailDto;
 import com.company.attendancemanagement.dto.pattern.WorkPatternMasterDto;
@@ -11,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -98,6 +102,7 @@ public class WorkPatternServiceImpl implements WorkPatternService {
                                        Map<String, ShiftCodeDto> shiftMap) {
 
         LocalDate startDate = master.getStartDate();
+        boolean isFixed = "FIXED".equals(master.getPatternType());
         ShiftCodeDto prevShift = null;
         int weekMinutes = 0;
         int weekDays = 0;
@@ -111,9 +116,6 @@ public class WorkPatternServiceImpl implements WorkPatternService {
                 throw new IllegalArgumentException((i + 1) + "일차 근태코드를 선택하세요.");
             }
 
-            boolean saturday = targetDate.getDayOfWeek() == DayOfWeek.SATURDAY;
-            boolean sunday = targetDate.getDayOfWeek() == DayOfWeek.SUNDAY;
-
             boolean isNight = isNightShift(shift);
             boolean isDay = isDayShift(shift);
             boolean isOff = isOffShift(shift);
@@ -123,16 +125,19 @@ public class WorkPatternServiceImpl implements WorkPatternService {
                 throw new IllegalArgumentException(targetDate + " : 익일근무 다음날에는 주간근무를 넣을 수 없습니다.");
             }
 
-            if (saturday && !isOff && !isNight) {
-                throw new IllegalArgumentException(targetDate + " : 토요일은 휴무 또는 익일근무만 가능합니다.");
-            }
+            if (isFixed) {
+                boolean saturday = targetDate.getDayOfWeek() == DayOfWeek.SATURDAY;
+                boolean sunday = targetDate.getDayOfWeek() == DayOfWeek.SUNDAY;
 
-            if (sunday && !isHoliday && !isNight) {
-                throw new IllegalArgumentException(targetDate + " : 일요일은 휴일 또는 익일근무만 가능합니다.");
-            }
-
-            if (isDay && (saturday || sunday)) {
-                throw new IllegalArgumentException(targetDate + " : 주간 근무조는 평일만 가능합니다.");
+                if (saturday && !isOff && !isNight) {
+                    throw new IllegalArgumentException(targetDate + " : 토요일은 휴무 또는 익일근무만 가능합니다.");
+                }
+                if (sunday && !isHoliday && !isNight) {
+                    throw new IllegalArgumentException(targetDate + " : 일요일은 휴일 또는 익일근무만 가능합니다.");
+                }
+                if (isDay && (saturday || sunday)) {
+                    throw new IllegalArgumentException(targetDate + " : 주간 근무조는 평일만 가능합니다.");
+                }
             }
 
             int workMinutes = shift.getWorkMinutes() == null ? 0 : shift.getWorkMinutes();
@@ -197,5 +202,96 @@ public class WorkPatternServiceImpl implements WorkPatternService {
     @Override
     public boolean existsPattern(String company, String workPatternCode) {
         return workPatternMapper.existsPatternCode(company, workPatternCode) > 0;
+    }
+
+    @Override
+    public PatternCalendarDto getPatternCalendar(String company, int year, int month) {
+        YearMonth ym = YearMonth.of(year, month);
+        int daysInMonth = ym.lengthOfMonth();
+
+        List<LocalDate> dates = new ArrayList<>();
+        for (int d = 1; d <= daysInMonth; d++) {
+            dates.add(LocalDate.of(year, month, d));
+        }
+
+        List<ShiftCodeDto> shiftCodes = workPatternMapper.findShiftCodes(company);
+        Map<String, ShiftCodeDto> shiftMap = shiftCodes.stream()
+                .collect(Collectors.toMap(ShiftCodeDto::getShiftCode, Function.identity()));
+
+        List<WorkPatternMasterDto> patterns = workPatternMapper.findPatternList(company);
+        List<PatternCalendarRowDto> rows = new ArrayList<>();
+
+        for (WorkPatternMasterDto master : patterns) {
+            if (master.getStartDate() == null) continue;
+
+            List<WorkPatternDetailDto> details = workPatternMapper.findPatternDetails(company, master.getWorkPatternCode());
+            if (details.isEmpty()) continue;
+
+            Map<Integer, String> seqToShiftCode = new HashMap<>();
+            for (WorkPatternDetailDto d : details) {
+                if (d.getSeq() != null) seqToShiftCode.put(d.getSeq(), d.getShiftCode());
+            }
+            int cycleLength = details.size();
+
+            List<String> rowShiftCodes = new ArrayList<>(Collections.nCopies(daysInMonth, null));
+            List<String> rowShiftNames = new ArrayList<>(Collections.nCopies(daysInMonth, null));
+
+            for (LocalDate date : dates) {
+                if (date.isBefore(master.getStartDate())) continue;
+                if (master.getEndDate() != null && date.isAfter(master.getEndDate())) continue;
+
+                long dayOffset = ChronoUnit.DAYS.between(master.getStartDate(), date);
+                int seq = (int) (dayOffset % cycleLength) + 1;
+
+                String shiftCode = seqToShiftCode.get(seq);
+                if (shiftCode != null && !shiftCode.isBlank()) {
+                    int idx = date.getDayOfMonth() - 1;
+                    rowShiftCodes.set(idx, shiftCode);
+                    ShiftCodeDto shift = shiftMap.get(shiftCode);
+                    rowShiftNames.set(idx, shift != null ? shift.getShiftName() : shiftCode);
+                }
+            }
+
+            PatternCalendarRowDto row = new PatternCalendarRowDto();
+            row.setWorkPatternCode(master.getWorkPatternCode());
+            row.setWorkPatternName(master.getWorkPatternName());
+            row.setShiftCodes(rowShiftCodes);
+            row.setShiftNames(rowShiftNames);
+            rows.add(row);
+        }
+
+        String[] KOR_DAYS = {"일", "월", "화", "수", "목", "금", "토"};
+        List<String> dayHeaders = new ArrayList<>();
+        List<String> dayCssClasses = new ArrayList<>();
+        for (LocalDate date : dates) {
+            int dowValue = date.getDayOfWeek().getValue(); // 1=Mon, 7=Sun
+            String korDay = KOR_DAYS[dowValue % 7];
+            dayHeaders.add(date.getDayOfMonth() + "(" + korDay + ")");
+            if (dowValue == 6) dayCssClasses.add("day-sat");
+            else if (dowValue == 7) dayCssClasses.add("day-sun");
+            else dayCssClasses.add("");
+        }
+
+        PatternCalendarDto result = new PatternCalendarDto();
+        result.setYear(year);
+        result.setMonth(month);
+        result.setDates(dates);
+        result.setDayHeaders(dayHeaders);
+        result.setDayCssClasses(dayCssClasses);
+        result.setRows(rows);
+        result.setShiftCodes(shiftCodes);
+
+        Map<String, String> shiftNameMap = new HashMap<>();
+        Map<String, String> shiftTimeMap = new HashMap<>();
+        for (ShiftCodeDto s : shiftCodes) {
+            shiftNameMap.put(s.getShiftCode(), s.getShiftName() != null ? s.getShiftName() : "");
+            String time = (s.getWorkOnHhmm() != null && s.getWorkOffHhmm() != null)
+                    ? s.getWorkOnHhmm() + "~" + s.getWorkOffHhmm() : "";
+            shiftTimeMap.put(s.getShiftCode(), time);
+        }
+        result.setShiftNameMap(shiftNameMap);
+        result.setShiftTimeMap(shiftTimeMap);
+
+        return result;
     }
 }
