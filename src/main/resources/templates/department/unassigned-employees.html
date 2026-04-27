@@ -6,37 +6,40 @@
     <meta charset="UTF-8">
     <title>미배정 사원 목록</title>
     <link rel="stylesheet" th:href="@{/css/department-list.css}">
-    <link rel="stylesheet" th:href="@{/css/success-banner.css}">
 </head>
 <body>
 <div layout:fragment="content">
     <div class="content-wrapper">
 
-        <a th:href="@{/departments/employees(company=${company}, deptCode=${deptCode})}" class="btn-back">← 부서 사원 목록으로</a>
+        <div th:if="${errorMessage}" class="toast-data" data-type="error"
+             th:data-message="${errorMessage}" style="display:none"></div>
 
-        <h2>미배정 사원 목록</h2>
-
-        <div class="dept-info-table">
-            <div class="dept-info-row">
-                <div class="dept-info-cell">
-                    <span class="dept-info-label">추가 대상 부서</span>
-                    <span class="dept-info-value" th:text="${deptName}"></span>
-                </div>
-                <div class="dept-info-cell">
-                    <span class="dept-info-label">부서코드</span>
-                    <span class="dept-info-value" th:text="${deptCode}"></span>
-                </div>
-            </div>
+        <div class="page-header">
+            <h2>미배정 사원 목록</h2>
+            <a th:href="@{/departments/employees(company=${company}, deptCode=${deptCode})}" class="btn-back">← 부서 사원 목록으로</a>
         </div>
-
-        <div th:if="${errorMessage}" class="toast-data" data-type="error" th:data-message="${errorMessage}" style="display:none"></div>
 
         <form th:action="@{/departments/employees/add}" method="post">
             <input type="hidden" name="company" th:value="${company}">
             <input type="hidden" name="deptCode" th:value="${deptCode}">
 
-            <div class="emp-toolbar">
-                <button type="submit" class="btn-toolbar btn-change">선택 사원 추가</button>
+            <div class="dept-toolbar-row">
+                <div class="dept-info-table">
+                    <div class="dept-info-row">
+                        <div class="dept-info-cell">
+                            <span class="dept-info-label">추가 대상 부서</span>
+                            <span class="dept-info-value" th:text="${deptName}"></span>
+                        </div>
+                        <div class="dept-info-cell">
+                            <span class="dept-info-label">부서코드</span>
+                            <span class="dept-info-value" th:text="${deptCode}"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="emp-toolbar">
+                    <button type="submit" class="btn-toolbar btn-change">선택 사원 추가</button>
+                </div>
             </div>
 
             <table>
@@ -63,32 +66,9 @@
                 </tbody>
             </table>
         </form>
+
     </div>
-    <script th:inline="none">
-        document.addEventListener('DOMContentLoaded', function () {
-            var selectAll = document.getElementById('selectAll');
-
-            selectAll.addEventListener('change', function () {
-                document.querySelectorAll('input[name="empCodes"]').forEach(function (cb) {
-                    cb.checked = selectAll.checked;
-                });
-            });
-
-            document.querySelector('thead th.th-checkbox').addEventListener('click', function (e) {
-                if (e.target === selectAll) return;
-                selectAll.checked = !selectAll.checked;
-                selectAll.dispatchEvent(new Event('change'));
-            });
-
-            document.querySelectorAll('tbody tr').forEach(function (row) {
-                row.addEventListener('click', function (e) {
-                    if (e.target.type === 'checkbox') return;
-                    var cb = row.querySelector('input[name="empCodes"]');
-                    if (cb) cb.checked = !cb.checked;
-                });
-            });
-        });
-    </script>
+    <script th:src="@{/js/department-employees.js}"></script>
 </div>
 </body>
 </html>
