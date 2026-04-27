@@ -4,4 +4,38 @@
 
 <mapper namespace="com.company.attendancemanagement.mapper.ApprovalMapper">
 
+    <insert id="insertApproval"
+            parameterType="com.company.attendancemanagement.dto.request.ApprovalLineDto">
+        INSERT INTO HRTATTREQAPPR01 (REQUEST_ID, SEQ, COMPANY, APPROVER_CODE, APPROVAL_STATUS, CREATED_AT)
+        VALUES (#{requestId}, #{seq}, #{company}, #{approverCode}, #{approvalStatus}, GETDATE())
+    </insert>
+
+    <select id="findByRequestId"
+            resultType="com.company.attendancemanagement.dto.request.ApprovalLineDto">
+        SELECT
+            a.REQUEST_ID      AS requestId,
+            a.SEQ             AS seq,
+            a.COMPANY         AS company,
+            a.APPROVER_CODE   AS approverCode,
+            h.EMP_NAME        AS approverName,
+            a.APPROVAL_STATUS AS approvalStatus,
+            CONVERT(VARCHAR(19), a.APPROVED_AT, 120) AS approvedAt
+        FROM HRTATTREQAPPR01 a
+        LEFT JOIN HRIMASTER01 h
+               ON a.COMPANY = h.COMPANY AND a.APPROVER_CODE = h.EMP_CODE
+        WHERE a.REQUEST_ID = #{requestId}
+        ORDER BY a.SEQ
+    </select>
+
+    <delete id="deleteByRequestId">
+        DELETE FROM HRTATTREQAPPR01 WHERE REQUEST_ID = #{requestId}
+    </delete>
+
+    <select id="countApproved" resultType="int">
+        SELECT COUNT(*)
+        FROM HRTATTREQAPPR01
+        WHERE REQUEST_ID = #{requestId}
+          AND APPROVAL_STATUS = 'APPROVED'
+    </select>
+
 </mapper>

@@ -79,6 +79,28 @@
         }
         .detail-table select:focus { border-color: #2c3e50; outline: none; }
 
+        .detail-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 32px 0 12px;
+        }
+        .detail-header-row .detail-section-header { margin: 0; flex: 1; }
+
+        .btn-filter-toggle {
+            padding: 5px 14px;
+            border: 1px solid #2c3e50;
+            border-radius: 4px;
+            background: #fff;
+            color: #2c3e50;
+            font-size: 12px;
+            font-family: 'Malgun Gothic', sans-serif;
+            cursor: pointer;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .btn-filter-toggle.active { background: #2c3e50; color: #fff; }
+
         .form-actions {
             display: flex;
             gap: 12px;
@@ -163,7 +185,13 @@
                     </select>
                 </div>
 
-                <div class="detail-section-header">일별 근태코드 설정</div>
+                <div class="detail-header-row">
+                    <div class="detail-section-header">일별 근태코드 설정</div>
+                    <div style="display:flex; gap:8px;">
+                        <button type="button" class="btn-filter-toggle" onclick="copyFirstCycle()">첫 주기 복사</button>
+                        <button type="button" id="filterToggleBtn" class="btn-filter-toggle" onclick="toggleWorkDayFilter()">근무일만 표시</button>
+                    </div>
+                </div>
                 <p class="detail-hint">시작일 입력 시 요일이 자동 표시됩니다. 주 52시간 규칙에 맞게 설정하세요.</p>
 
                 <table id="detailTable" class="detail-table">
@@ -186,6 +214,7 @@
                                 <option value="">-- 선택 --</option>
                                 <option th:each="shift : ${shiftCodes}"
                                         th:value="${shift.shiftCode}"
+                                        th:attr="data-wdt=${shift.workDayType}"
                                         th:text="${shift.shiftCode + ' - ' + shift.shiftName + (shift.workOnHhmm != null ? ' (' + shift.workOnHhmm + '~' + shift.workOffHhmm + ')' : '')}">
                                 </option>
                             </select>
@@ -206,6 +235,7 @@
 <script>
     const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
     let optionsTemplate = '';
+    let showWorkDayOnly = false;
 
     function captureOptionsTemplate() {
         const firstSel = document.querySelector('#detailTable tbody tr.day-row select');
@@ -227,7 +257,16 @@
         const unit  = unitEl  ? unitEl.value  : 'W';
         const count = Math.max(1, parseInt(countEl ? countEl.value : '1') || 1);
         if (!type || type === 'FIXED') return 28;
-        return unit === 'W' ? count * 7 : count;
+        if (unit === 'W') return count * 7;
+        return count * 4;  // 일(D) 단위: 4조 회전 기준 4회 반복 표시
+    }
+
+    function getCycleSize() {
+        const unitEl  = document.querySelector('[data-field="cycleUnit"]');
+        const countEl = document.querySelector('[data-field="cycleCount"]');
+        const unit  = unitEl  ? unitEl.value  : 'W';
+        const count = Math.max(1, parseInt(countEl ? countEl.value : '1') || 1);
+        return unit === 'W' ? 7 : count;
     }
 
     function insertWeekHeaders() {
@@ -235,12 +274,16 @@
         if (!tbody) return;
         tbody.querySelectorAll('tr.week-header-row').forEach(function(r) { r.remove(); });
         const rows = Array.from(tbody.querySelectorAll('tr.day-row'));
-        if (rows.length <= 7) return;
+        const cycleSize = getCycleSize();
+        const unitEl = document.querySelector('[data-field="cycleUnit"]');
+        const unit = unitEl ? unitEl.value : 'W';
+        const cycleLabel = unit === 'W' ? '주' : '회차';
+        if (rows.length <= cycleSize) return;
         rows.forEach(function(row, index) {
-            if (index % 7 === 0) {
+            if (index % cycleSize === 0) {
                 const headerRow = document.createElement('tr');
                 headerRow.className = 'week-header-row';
-                headerRow.innerHTML = '<td colspan="3">▶ ' + (Math.floor(index / 7) + 1) + '주</td>';
+                headerRow.innerHTML = '<td colspan="3">▶ ' + (Math.floor(index / cycleSize) + 1) + cycleLabel + '</td>';
                 row.parentNode.insertBefore(headerRow, row);
             }
         });
@@ -248,12 +291,13 @@
 
     function updateDayLabels() {
         const startDate = getStartDate();
+        const cycleSize = getCycleSize();
         document.querySelectorAll('#detailTable tbody tr.day-row').forEach(function(row, index) {
             const label = row.querySelector('.day-text');
             if (!label) return;
             if (!startDate) { label.textContent = '-'; label.className = 'day-text'; return; }
             const d = new Date(startDate);
-            d.setDate(d.getDate() + index);
+            d.setDate(d.getDate() + (index % cycleSize));
             const dow = d.getDay();
             label.textContent = DAY_NAMES[dow];
             label.className = 'day-text' + (dow === 6 ? ' day-sat' : dow === 0 ? ' day-sun' : '');
@@ -266,6 +310,65 @@
     function updateTable() {
         insertWeekHeaders();
         updateDayLabels();
+        applyWorkDayFilter();
+    }
+
+    function toggleWorkDayFilter() {
+        showWorkDayOnly = !showWorkDayOnly;
+        const btn = document.getElementById('filterToggleBtn');
+        btn.classList.toggle('active', showWorkDayOnly);
+        btn.textContent = showWorkDayOnly ? '전체 표시' : '근무일만 표시';
+        applyWorkDayFilter();
+    }
+
+    function isOffDayRow(row) {
+        const sel = row.querySelector('select');
+        if (!sel) return false;
+        if (!sel.value) return true;
+        const opt = sel.querySelector('option[value="' + sel.value + '"]');
+        if (!opt) return false;
+        const wdt = opt.dataset.wdt || '';
+        return wdt === 'OFF' || wdt === 'HOLIDAY';
+    }
+
+    function copyFirstCycle() {
+        const tbody = document.querySelector('#detailTable tbody');
+        const dayRows = Array.from(tbody.querySelectorAll('tr.day-row'));
+        const cycleSize = getCycleSize();
+        if (dayRows.length <= cycleSize) { alert('표시된 행이 1주기뿐입니다.'); return; }
+        const hasCode = dayRows.slice(0, cycleSize).some(function(row) {
+            const sel = row.querySelector('select');
+            return sel && sel.value;
+        });
+        if (!hasCode) { alert('첫 주기의 근태코드를 먼저 입력해주세요.'); return; }
+        for (let i = cycleSize; i < dayRows.length; i++) {
+            const sourceSel = dayRows[i % cycleSize].querySelector('select');
+            const targetSel = dayRows[i].querySelector('select');
+            if (sourceSel && targetSel) targetSel.value = sourceSel.value;
+        }
+        applyWorkDayFilter();
+    }
+
+    function applyWorkDayFilter() {
+        const tbody = document.querySelector('#detailTable tbody');
+        if (!tbody) return;
+        // day-row 표시/숨김
+        tbody.querySelectorAll('tr.day-row').forEach(function(row) {
+            row.style.display = (showWorkDayOnly && isOffDayRow(row)) ? 'none' : '';
+        });
+        // week-header-row: 뒤따르는 day-row가 모두 숨겨지면 같이 숨김
+        tbody.querySelectorAll('tr.week-header-row').forEach(function(header) {
+            let next = header.nextElementSibling;
+            let anyVisible = false;
+            while (next && !next.classList.contains('week-header-row')) {
+                if (next.classList.contains('day-row') && next.style.display !== 'none') {
+                    anyVisible = true;
+                    break;
+                }
+                next = next.nextElementSibling;
+            }
+            header.style.display = anyVisible ? '' : 'none';
+        });
     }
 
     function rebuildDetailRows(days) {
@@ -291,6 +394,7 @@
             sel.name = 'details[' + i + '].shiftCode';
             sel.innerHTML = optionsTemplate;
             if (saved[i]) sel.value = saved[i];
+            sel.addEventListener('change', function() { if (showWorkDayOnly) applyWorkDayFilter(); });
 
             const td3 = document.createElement('td');
             td3.appendChild(sel);
