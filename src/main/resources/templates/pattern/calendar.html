@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/default_layout}">
+<head>
+    <meta charset="UTF-8">
+    <title>근태 패턴 달력</title>
+    <style>
+        .cal-page { display: flex; flex-direction: column; gap: 16px; }
+
+        /* 상단 컨트롤 */
+        .cal-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .cal-controls h2 { margin: 0; font-size: 18px; color: #2c3e50; }
+        .btn-nav {
+            background: #2c3e50; color: #fff;
+            border: none; border-radius: 4px;
+            padding: 6px 14px; cursor: pointer; font-size: 14px;
+            font-family: 'Malgun Gothic', sans-serif;
+        }
+        .btn-nav:hover { background: #3d5166; }
+        .month-label {
+            font-size: 16px; font-weight: 700; color: #2c3e50;
+            min-width: 90px; text-align: center;
+        }
+        .btn-list {
+            margin-left: auto;
+            background: #7f8c8d; color: #fff;
+            border: none; border-radius: 4px;
+            padding: 6px 14px; cursor: pointer; font-size: 13px;
+            font-family: 'Malgun Gothic', sans-serif;
+            text-decoration: none; display: inline-block;
+        }
+        .btn-list:hover { background: #95a5a6; }
+
+        /* 본문 레이아웃 */
+        .cal-body {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+        }
+
+        /* 테이블 영역 */
+        .cal-table-wrap {
+            flex: 1;
+            overflow-x: auto;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .cal-table {
+            border-collapse: collapse;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        /* 고정 컬럼 2개 */
+        .cal-table th.col-code,
+        .cal-table td.col-code {
+            position: sticky; left: 0; z-index: 2;
+            background: #2c3e50; color: #fff;
+            min-width: 70px; max-width: 80px;
+        }
+        .cal-table td.col-code { background: #34495e; color: #ecf0f1; }
+
+        .cal-table th.col-name,
+        .cal-table td.col-name {
+            position: sticky; left: 70px; z-index: 2;
+            background: #2c3e50; color: #fff;
+            min-width: 100px; max-width: 130px;
+        }
+        .cal-table td.col-name { background: #34495e; color: #ecf0f1; font-weight: 600; }
+
+        /* 날짜 헤더 */
+        .cal-table th {
+            background: #2c3e50; color: #fff;
+            padding: 8px 4px; text-align: center;
+            border-right: 1px solid #3d5166;
+            font-weight: 600;
+        }
+        .cal-table th.day-sat { background: #2471a3; }
+        .cal-table th.day-sun { background: #922b21; }
+
+        /* 데이터 행 */
+        .cal-table td {
+            padding: 0;
+            border-right: 1px solid #e8eaed;
+            border-bottom: 1px solid #e8eaed;
+            text-align: center;
+            vertical-align: middle;
+            height: 36px;
+            min-width: 40px;
+        }
+        .cal-table tbody tr:hover td { filter: brightness(0.93); }
+
+        /* 근태 셀 */
+        .shift-cell {
+            display: block;
+            height: 36px; line-height: 36px;
+            font-size: 11px; font-weight: 700;
+            color: #fff;
+            overflow: hidden; text-overflow: ellipsis;
+        }
+        .shift-cell.empty {
+            background: #f8f9fa; color: #bdc3c7;
+            font-weight: 400; font-size: 10px;
+        }
+
+        /* 범례 패널 */
+        .legend-panel {
+            min-width: 190px; max-width: 220px;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 14px;
+            flex-shrink: 0;
+        }
+        .legend-panel h4 {
+            margin: 0 0 12px;
+            font-size: 13px; color: #2c3e50;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #2c3e50;
+        }
+        .legend-item {
+            display: flex; align-items: center;
+            gap: 8px; margin-bottom: 8px; font-size: 12px;
+        }
+        .legend-dot {
+            width: 24px; height: 24px; border-radius: 4px;
+            flex-shrink: 0; display: inline-block;
+        }
+        .legend-text { color: #2c3e50; }
+        .legend-sub { color: #7f8c8d; font-size: 11px; }
+
+        .no-data {
+            padding: 32px; text-align: center;
+            color: #95a5a6; font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+<div layout:fragment="content">
+<div class="content-wrapper">
+<div class="cal-page">
+
+    <!-- 상단 컨트롤 -->
+    <div class="cal-controls">
+        <h2>근태 패턴 달력</h2>
+
+        <a th:href="@{/pattern/calendar(year=${prevYear},month=${prevMonth})}" class="btn-nav">&#8249; 이전</a>
+
+        <span class="month-label" th:text="${calendar.year + '년 ' + calendar.month + '월'}"></span>
+
+        <a th:href="@{/pattern/calendar(year=${nextYear},month=${nextMonth})}" class="btn-nav">다음 &#8250;</a>
+
+        <a th:href="@{/pattern/list}" class="btn-list">목록으로</a>
+    </div>
+
+    <!-- 본문 -->
+    <div class="cal-body">
+
+        <!-- 달력 테이블 -->
+        <div class="cal-table-wrap">
+            <table class="cal-table">
+                <thead>
+                <tr>
+                    <th class="col-code">패턴코드</th>
+                    <th class="col-name">패턴명</th>
+                    <th th:each="hdr, hdrStat : ${calendar.dayHeaders}"
+                        th:class="${calendar.dayCssClasses[hdrStat.index]}"
+                        th:text="${hdr}">
+                    </th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:if="${#lists.isEmpty(calendar.rows)}">
+                    <td th:colspan="${calendar.dates.size() + 2}" class="no-data">
+                        등록된 패턴이 없습니다.
+                    </td>
+                </tr>
+                <tr th:each="row : ${calendar.rows}">
+                    <td class="col-code" th:text="${row.workPatternCode}"></td>
+                    <td class="col-name" th:text="${row.workPatternName}"></td>
+                    <td th:each="date, dateStat : ${calendar.dates}">
+                        <th:block th:with="sc=${row.shiftCodes[dateStat.index]}">
+                            <span th:if="${sc != null}"
+                                  class="shift-cell"
+                                  th:data-shift="${sc}"
+                                  th:text="${sc}"></span>
+                            <span th:if="${sc == null}"
+                                  class="shift-cell empty">-</span>
+                        </th:block>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 범례 -->
+        <div class="legend-panel">
+            <h4>근태코드 범례</h4>
+            <div id="legendBody">
+                <!-- JS로 채움 -->
+                <div style="font-size:12px;color:#bdc3c7;">로딩 중...</div>
+            </div>
+        </div>
+
+    </div>
+</div>
+</div>
+
+<script th:inline="javascript">
+/*<![CDATA[*/
+const SHIFT_NAMES = /*[[${calendar.shiftNameMap}]]*/ {};
+const SHIFT_TIMES  = /*[[${calendar.shiftTimeMap}]]*/ {};
+
+const PALETTE = [
+    '#2980B9', '#27AE60', '#E67E22', '#8E44AD',
+    '#16A085', '#C0392B', '#F39C12', '#2C3E50',
+    '#1ABC9C', '#D35400', '#7F8C8D', '#6C3483',
+    '#117A65', '#B7950B', '#1A5276', '#78281F'
+];
+const colorMap = {};
+let colorIdx = 0;
+
+function getColor(shiftCode) {
+    if (!colorMap[shiftCode]) {
+        colorMap[shiftCode] = PALETTE[colorIdx % PALETTE.length];
+        colorIdx++;
+    }
+    return colorMap[shiftCode];
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    // 셀 색상 적용
+    document.querySelectorAll('.shift-cell[data-shift]').forEach(function (cell) {
+        const code = cell.dataset.shift;
+        if (code) {
+            cell.style.backgroundColor = getColor(code);
+        }
+    });
+
+    // 범례 생성
+    const legendBody = document.getElementById('legendBody');
+    legendBody.innerHTML = '';
+    if (Object.keys(colorMap).length === 0) {
+        legendBody.innerHTML = '<div style="font-size:12px;color:#bdc3c7;">표시할 근태코드 없음</div>';
+        return;
+    }
+    Object.entries(colorMap).forEach(function ([code, color]) {
+        const name = SHIFT_NAMES[code] || code;
+        const time = SHIFT_TIMES[code] || '';
+        legendBody.innerHTML +=
+            '<div class="legend-item">' +
+            '  <span class="legend-dot" style="background:' + color + '"></span>' +
+            '  <div>' +
+            '    <div class="legend-text"><b>' + code + '</b> ' + name + '</div>' +
+            (time ? '<div class="legend-sub">' + time + '</div>' : '') +
+            '  </div>' +
+            '</div>';
+    });
+});
+/*]]>*/
+</script>
+</div>
+</body>
+</html>
