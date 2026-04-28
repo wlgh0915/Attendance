@@ -7,31 +7,103 @@
     <title>근태 패턴 등록</title>
     <link rel="stylesheet" th:href="@{/css/form-common.css}">
     <style>
-        .form-container { max-width: 860px; }
+        /* 전체 wrapper: align-items:center 유지 → 사이드바 유무와 무관하게 나머지 공간의 중앙 */
+        .content-wrapper { padding: 28px 32px; }
+        .form-container  { max-width: 960px; width: 100%; }
+
+        /* ── 2열 레이아웃 ── */
+        .form-layout {
+            display: flex;
+            gap: 28px;
+            align-items: flex-start;
+            width: 100%;
+        }
+
+        /* ── 두 카드 공통 높이 ── */
+        .form-left,
+        .form-right {
+            height: calc(100vh - 265px);
+            min-height: 420px;
+        }
+
+        /* ── 왼쪽 카드 ── */
+        .form-left {
+            width: 360px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            background: #fff;
+            border: 1px solid #dde1e6;
+            border-radius: 8px;
+            padding: 20px 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            overflow-y: auto;
+        }
+
+        /* 카드 안 입력 필드: max-width 해제, 패딩 정리 */
+        .form-left .form-group input,
+        .form-left .form-group select {
+            max-width: none;
+            padding: 9px 12px;
+            font-size: 14px;
+            border-radius: 4px;
+        }
+
+        /* ── 오른쪽 카드 ── */
+        .form-right {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            border: 1px solid #dde1e6;
+            border-radius: 8px;
+            padding: 20px 20px 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        /* 공통 패널 헤더 (왼/오른쪽 카드 모두 사용) */
+        .detail-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+            flex-shrink: 0;
+        }
 
         .detail-section-header {
             font-size: 14px;
             font-weight: 700;
             color: #2c3e50;
-            margin: 32px 0 12px;
-            padding: 8px 14px;
+            padding: 7px 14px;
             border-left: 4px solid #2c3e50;
-            background: #f8f9fa;
+            background: #f1f3f5;
+            border-radius: 0 4px 4px 0;
+            flex: 1;
         }
 
         .detail-hint {
             font-size: 12px;
-            color: #7f8c8d;
-            margin: -6px 0 14px;
+            color: #95a5a6;
+            margin: 0 0 10px;
+            flex-shrink: 0;
         }
 
+        /* 독립 스크롤 영역: 남은 높이를 모두 채움 */
+        .detail-scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid #e0e4e8;
+            border-radius: 6px;
+            min-height: 0;          /* flex child가 축소될 수 있도록 */
+        }
+
+        /* ── 테이블 ── */
         .detail-table {
             width: 100%;
             border-collapse: collapse;
             font-size: 13px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.07);
-            border-radius: 6px;
-            overflow: hidden;
         }
 
         .detail-table thead th {
@@ -40,6 +112,9 @@
             padding: 10px 14px;
             text-align: center;
             border-right: 1px solid #3d5166;
+            position: sticky;
+            top: 0;
+            z-index: 1;
         }
         .detail-table thead th:last-child { border-right: none; }
 
@@ -79,14 +154,7 @@
         }
         .detail-table select:focus { border-color: #2c3e50; outline: none; }
 
-        .detail-header-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin: 32px 0 12px;
-        }
-        .detail-header-row .detail-section-header { margin: 0; flex: 1; }
-
+        /* ── 필터 버튼 ── */
         .btn-filter-toggle {
             padding: 5px 14px;
             border: 1px solid #2c3e50;
@@ -100,15 +168,37 @@
             white-space: nowrap;
         }
         .btn-filter-toggle.active { background: #2c3e50; color: #fff; }
+        .btn-filter-group { display: flex; gap: 8px; }
 
+        /* ── 저장 / 목록으로 버튼: 두 카드 바깥 아래, 오른쪽 카드 하단 정렬 ── */
         .form-actions {
             display: flex;
-            gap: 12px;
-            margin-top: 28px;
-            padding-top: 20px;
-            border-top: 1px solid #e0e0e0;
+            gap: 10px;
             align-items: center;
+            margin-left: calc(360px + 28px); /* 왼쪽 카드 너비 + gap */
+            padding-top: 14px;
         }
+        .form-actions .btn-submit {
+            margin-top: 0;
+            padding: 11px 32px;
+            font-size: 14px;
+        }
+        /* btn-cancel: btn-submit과 동일한 외형, 슬레이트 그레이 */
+        .btn-cancel {
+            background-color: #546e7a;
+            color: #fff;
+            padding: 11px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: 'Malgun Gothic', sans-serif;
+            text-decoration: none;
+            display: inline-block;
+            transition: background 0.3s;
+        }
+        .btn-cancel:hover { background-color: #455a64; color: #fff; }
     </style>
 </head>
 <body>
@@ -123,106 +213,127 @@
             <div th:if="${errorMessage}" class="global-error" th:text="${errorMessage}"></div>
 
             <form th:action="@{/pattern/save}" method="post" th:object="${pattern}" class="dept-form">
+                <div class="form-layout">
 
-                <div class="form-group">
-                    <label class="required">패턴코드</label>
-                    <input type="text" th:field="*{master.workPatternCode}"
-                           th:readonly="${isEdit}"
-                           placeholder="예: WD, 3S2">
-                </div>
+                    <!-- ── 왼쪽: 입력 필드 ── -->
+                    <div class="form-left">
 
-                <div class="form-group">
-                    <label class="required">패턴명</label>
-                    <input type="text" th:field="*{master.workPatternName}"
-                           placeholder="예: 주간조, 3조2교대">
-                </div>
+                        <div class="detail-panel-header">
+                            <div class="detail-section-header">패턴 기본 정보</div>
+                        </div>
 
-                <div class="form-group">
-                    <label>패턴유형</label>
-                    <select th:field="*{master.patternType}" data-field="patternType">
-                        <option value="">선택하세요</option>
-                        <option value="FIXED">고정형</option>
-                        <option value="ROTATE">교대형</option>
-                    </select>
-                </div>
+                        <div class="form-group">
+                            <label class="required">패턴코드</label>
+                            <input type="text" th:field="*{master.workPatternCode}"
+                                   th:readonly="${isEdit}"
+                                   placeholder="예: WD, 3S2">
+                        </div>
 
-                <div class="form-group">
-                    <label>주기단위</label>
-                    <select th:field="*{master.cycleUnit}" data-field="cycleUnit">
-                        <option value="">선택하세요</option>
-                        <option value="W">주(W)</option>
-                        <option value="D">일(D)</option>
-                    </select>
-                </div>
+                        <div class="form-group">
+                            <label class="required">패턴명</label>
+                            <input type="text" th:field="*{master.workPatternName}"
+                                   placeholder="예: 주간조, 3조2교대">
+                        </div>
 
-                <div class="form-group">
-                    <label>주기횟수</label>
-                    <input type="number" th:field="*{master.cycleCount}" data-field="cycleCount" min="1" max="31" placeholder="예: 1">
-                </div>
-
-                <div class="form-group">
-                    <label class="required">시작일</label>
-                    <input type="date"
-                           id="master_startDate"
-                           name="master.startDate"
-                           th:value="${pattern.master.startDate != null ? #temporals.format(pattern.master.startDate, 'yyyy-MM-dd') : ''}"
-                           data-role="startDate">
-                </div>
-
-                <div class="form-group">
-                    <label>종료일</label>
-                    <input type="date"
-                           id="master_endDate"
-                           name="master.endDate"
-                           th:value="${pattern.master.endDate != null ? #temporals.format(pattern.master.endDate, 'yyyy-MM-dd') : ''}">
-                </div>
-
-                <div class="form-group">
-                    <label>사용여부</label>
-                    <select th:field="*{master.useYn}">
-                        <option value="Y">Y - 사용</option>
-                        <option value="N">N - 미사용</option>
-                    </select>
-                </div>
-
-                <div class="detail-header-row">
-                    <div class="detail-section-header">일별 근태코드 설정</div>
-                    <div style="display:flex; gap:8px;">
-                        <button type="button" class="btn-filter-toggle" onclick="copyFirstCycle()">첫 주기 복사</button>
-                        <button type="button" id="filterToggleBtn" class="btn-filter-toggle" onclick="toggleWorkDayFilter()">근무일만 표시</button>
-                    </div>
-                </div>
-                <p class="detail-hint">시작일 입력 시 요일이 자동 표시됩니다. 주 52시간 규칙에 맞게 설정하세요.</p>
-
-                <table id="detailTable" class="detail-table">
-                    <thead>
-                    <tr>
-                        <th style="width:55px;">일차</th>
-                        <th style="width:50px;">요일</th>
-                        <th>근태코드</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr th:each="detail, stat : *{details}" class="day-row">
-                        <td>
-                            <span th:text="${detail.seq}"></span>
-                            <input type="hidden" th:field="*{details[__${stat.index}__].seq}">
-                        </td>
-                        <td><span class="day-text">-</span></td>
-                        <td>
-                            <select th:field="*{details[__${stat.index}__].shiftCode}">
-                                <option value="">-- 선택 --</option>
-                                <option th:each="shift : ${shiftCodes}"
-                                        th:value="${shift.shiftCode}"
-                                        th:attr="data-wdt=${shift.workDayType}"
-                                        th:text="${shift.shiftCode + ' - ' + shift.shiftName + (shift.workOnHhmm != null ? ' (' + shift.workOnHhmm + '~' + shift.workOffHhmm + ')' : '')}">
-                                </option>
+                        <div class="form-group">
+                            <label>패턴유형</label>
+                            <select th:field="*{master.patternType}" data-field="patternType">
+                                <option value="">선택하세요</option>
+                                <option value="FIXED">고정형</option>
+                                <option value="ROTATE">교대형</option>
                             </select>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
+                        </div>
 
+                        <div class="form-group">
+                            <label>주기단위</label>
+                            <select th:field="*{master.cycleUnit}" data-field="cycleUnit">
+                                <option value="">선택하세요</option>
+                                <option value="W">주(W)</option>
+                                <option value="D">일(D)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>주기횟수</label>
+                            <input type="number" th:field="*{master.cycleCount}" data-field="cycleCount"
+                                   min="1" max="31" placeholder="예: 1">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="required">시작일</label>
+                            <input type="date"
+                                   id="master_startDate"
+                                   name="master.startDate"
+                                   th:value="${pattern.master.startDate != null ? #temporals.format(pattern.master.startDate, 'yyyy-MM-dd') : ''}"
+                                   data-role="startDate">
+                        </div>
+
+                        <div class="form-group">
+                            <label>종료일</label>
+                            <input type="date"
+                                   id="master_endDate"
+                                   name="master.endDate"
+                                   th:value="${pattern.master.endDate != null ? #temporals.format(pattern.master.endDate, 'yyyy-MM-dd') : ''}">
+                        </div>
+
+                        <div class="form-group">
+                            <label>사용여부</label>
+                            <select th:field="*{master.useYn}">
+                                <option value="Y">Y - 사용</option>
+                                <option value="N">N - 미사용</option>
+                            </select>
+                        </div>
+
+                    </div><!-- /form-left -->
+
+                    <!-- ── 오른쪽: 일별 근태코드 ── -->
+                    <div class="form-right">
+
+                        <div class="detail-panel-header">
+                            <div class="detail-section-header">일별 근태코드 설정</div>
+                            <div class="btn-filter-group">
+                                <button type="button" class="btn-filter-toggle" onclick="copyFirstCycle()">첫 주기 복사</button>
+                                <button type="button" id="filterToggleBtn" class="btn-filter-toggle" onclick="toggleWorkDayFilter()">근무일만 표시</button>
+                            </div>
+                        </div>
+                        <p class="detail-hint">시작일 입력 시 요일이 자동 표시됩니다. 주 52시간 규칙에 맞게 설정하세요.</p>
+
+                        <div class="detail-scroll-area">
+                            <table id="detailTable" class="detail-table">
+                                <thead>
+                                <tr>
+                                    <th style="width:55px;">일차</th>
+                                    <th style="width:50px;">요일</th>
+                                    <th>근태코드</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="detail, stat : *{details}" class="day-row">
+                                    <td>
+                                        <span th:text="${detail.seq}"></span>
+                                        <input type="hidden" th:field="*{details[__${stat.index}__].seq}">
+                                    </td>
+                                    <td><span class="day-text">-</span></td>
+                                    <td>
+                                        <select th:field="*{details[__${stat.index}__].shiftCode}">
+                                            <option value="">-- 선택 --</option>
+                                            <option th:each="shift : ${shiftCodes}"
+                                                    th:value="${shift.shiftCode}"
+                                                    th:attr="data-wdt=${shift.workDayType}"
+                                                    th:text="${shift.shiftCode + ' - ' + shift.shiftName + (shift.workOnHhmm != null ? ' (' + shift.workOnHhmm + '~' + shift.workOffHhmm + ')' : '')}">
+                                            </option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div><!-- /detail-scroll-area -->
+
+                    </div><!-- /form-right -->
+
+                </div><!-- /form-layout -->
+
+                <!-- ── 버튼: 두 카드 바깥, 오른쪽 카드 하단 정렬 ── -->
                 <div class="form-actions">
                     <button type="submit" class="btn-submit">저장</button>
                     <a th:href="@{/pattern/calendar}" class="btn-cancel">목록으로</a>
@@ -258,7 +369,7 @@
         const count = Math.max(1, parseInt(countEl ? countEl.value : '1') || 1);
         if (!type || type === 'FIXED') return 28;
         if (unit === 'W') return count * 7;
-        return count * 4;  // 일(D) 단위: 4조 회전 기준 4회 반복 표시
+        return count * 4;
     }
 
     function getCycleSize() {
@@ -352,11 +463,9 @@
     function applyWorkDayFilter() {
         const tbody = document.querySelector('#detailTable tbody');
         if (!tbody) return;
-        // day-row 표시/숨김
         tbody.querySelectorAll('tr.day-row').forEach(function(row) {
             row.style.display = (showWorkDayOnly && isOffDayRow(row)) ? 'none' : '';
         });
-        // week-header-row: 뒤따르는 day-row가 모두 숨겨지면 같이 숨김
         tbody.querySelectorAll('tr.week-header-row').forEach(function(header) {
             let next = header.nextElementSibling;
             let anyVisible = false;
