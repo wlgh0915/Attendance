@@ -77,6 +77,43 @@
         ORDER BY EMP_CODE
     </select>
 
+    <!-- 월별 출퇴근 실적 조회 (캘린더 표시용) -->
+    <select id="findRecords"
+            resultType="com.company.attendancemanagement.dto.record.DailyAttendanceDto">
+        SELECT YYYYMMDD          AS yyyymmdd,
+               ACTUAL_SHIFT_CODE AS actualShiftCode,
+               LEFT(CONVERT(VARCHAR(8), CHECK_IN,  108), 5) AS checkIn,
+               LEFT(CONVERT(VARCHAR(8), CHECK_OUT, 108), 5) AS checkOut,
+               WORK_MIN          AS workMin,
+               OVERNIGHT_YN      AS overnightYn
+        FROM HRTDAILYATTENDANCE01
+        WHERE COMPANY  = #{company}
+          AND EMP_CODE = #{empCode}
+          AND YYYYMMDD BETWEEN #{startYmd} AND #{endYmd}
+    </select>
+
+    <!-- ADMIN 접근 가능 부서: 본인 부서 + 하위 부서 전체 (재귀) -->
+    <select id="findAccessibleDepts"
+            resultType="com.company.attendancemanagement.dto.department.DepartmentDto">
+        WITH SubDepts AS (
+            SELECT DEPT_CODE, DEPT_NAME
+            FROM ORGDEPTMASTER01
+            WHERE COMPANY   = #{company}
+              AND DEPT_CODE = #{deptCode}
+              AND USE_YN    = 'Y'
+            UNION ALL
+            SELECT d.DEPT_CODE, d.DEPT_NAME
+            FROM ORGDEPTMASTER01 d
+            INNER JOIN SubDepts s ON d.PARENT_DEPT = s.DEPT_CODE
+            WHERE d.COMPANY = #{company}
+              AND d.USE_YN  = 'Y'
+        )
+        SELECT DEPT_CODE AS deptCode, DEPT_NAME AS deptName
+        FROM SubDepts
+        ORDER BY DEPT_CODE
+        OPTION (MAXRECURSION 20)
+    </select>
+
     <!-- 사원 기본정보 -->
     <select id="findEmpInfo" resultType="java.util.HashMap">
         SELECT h.EMP_CODE  AS empCode,
