@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/default_layout}">
+<head>
+    <meta charset="UTF-8">
+    <title>출퇴근 실적 관리</title>
+    <style>
+        .rec-page { max-width: 1100px; padding: 20px 24px; }
+
+        .rec-top  { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-bottom: 16px; }
+        .rec-nav  { display: flex; align-items: center; gap: 8px; }
+        .rec-nav a {
+            padding: 5px 14px; border: 1px solid #2c3e50; border-radius: 4px;
+            color: #2c3e50; text-decoration: none; font-size: 13px; font-weight: 600;
+        }
+        .rec-nav a:hover { background: #2c3e50; color: #fff; }
+        .ym-label { font-size: 16px; font-weight: 700; color: #2c3e50; min-width: 120px; text-align: center; }
+        .filter-group { display: flex; flex-direction: column; gap: 3px; }
+        .filter-group label { font-size: 11px; color: #666; font-weight: 600; }
+        .filter-group select {
+            padding: 5px 10px; border: 1px solid #ced4da; border-radius: 4px;
+            font-size: 13px; font-family: 'Malgun Gothic', sans-serif; min-width: 160px;
+        }
+        .emp-badge {
+            margin-left: auto; align-self: center; font-size: 13px; color: #2c3e50;
+            font-weight: 600; background: #f0f4f8; padding: 6px 14px; border-radius: 20px;
+        }
+
+        .rec-table { width: 100%; border-collapse: collapse;
+                     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                     border-radius: 6px; overflow: hidden; font-size: 13px; }
+        .rec-table th { background: #2c3e50; color: #fff; padding: 10px 12px;
+                        text-align: center; font-size: 13px; font-weight: 600; }
+        .rec-table td { padding: 8px 12px; border-bottom: 1px solid #e8eaed;
+                        text-align: center; vertical-align: middle; }
+        .rec-table tr:hover td { background: #f8fafc; }
+        .rec-table tr.weekend td { background: #fdf8f8; }
+        .rec-table tr.weekend:hover td { background: #f8f0f0; }
+        .dt-col   { text-align: left !important; font-weight: 600; color: #2c3e50; }
+        .col-sun  { color: #e74c3c; }
+        .col-sat  { color: #2980b9; }
+        .has-data { color: #27ae60; font-weight: 600; }
+        .no-data  { color: #aaa; }
+
+        .btn-sm { padding: 4px 12px; border: none; border-radius: 4px; cursor: pointer;
+                  font-size: 12px; font-family: 'Malgun Gothic', sans-serif; font-weight: 600; }
+        .btn-edit   { background: #3498db; color: #fff; }
+        .btn-edit:hover   { background: #2980b9; }
+        .btn-delete { background: #e74c3c; color: #fff; margin-left: 4px; }
+        .btn-delete:hover { background: #c0392b; }
+
+        .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+                    z-index: 1000; align-items: center; justify-content: center; }
+        .modal-bg.open { display: flex; }
+        .modal { background: #fff; border-radius: 8px; padding: 28px 32px;
+                 width: 440px; max-width: 95vw; box-shadow: 0 8px 32px rgba(0,0,0,0.18); }
+        .modal h3 { font-size: 16px; font-weight: 700; color: #2c3e50; margin: 0 0 20px; }
+        .modal-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+        .modal-row label { font-size: 12px; color: #555; font-weight: 600; }
+        .modal-row input, .modal-row select {
+            padding: 7px 10px; border: 1px solid #ced4da; border-radius: 4px;
+            font-size: 13px; font-family: 'Malgun Gothic', sans-serif;
+            width: 100%; box-sizing: border-box;
+        }
+        .modal-row .row-2 { display: flex; gap: 10px; }
+        .modal-row .row-2 input { flex: 1; }
+        .modal-note { font-size: 11px; color: #888; margin-top: -8px; margin-bottom: 8px; }
+        .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+        .btn-save   { padding: 8px 22px; background: #27ae60; color: #fff; border: none;
+                      border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600;
+                      font-family: 'Malgun Gothic', sans-serif; }
+        .btn-cancel { padding: 8px 22px; background: #95a5a6; color: #fff; border: none;
+                      border-radius: 4px; cursor: pointer; font-size: 13px;
+                      font-family: 'Malgun Gothic', sans-serif; }
+        .btn-save:hover   { background: #1e8449; }
+        .btn-cancel:hover { background: #7f8c8d; }
+
+        #toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px;
+                 border-radius: 6px; color: #fff; font-size: 13px; display: none; z-index: 9999; }
+        #toast.success { background: #27ae60; }
+        #toast.error   { background: #e74c3c; }
+    </style>
+</head>
+<body>
+<div layout:fragment="content">
+<div class="rec-page">
+
+    <!-- 상단 컨트롤 -->
+    <div class="rec-top">
+        <div class="rec-nav">
+            <a th:href="@{/attendance/record(ym=${prevYm}, empCode=${targetEmp}, deptCode=${selectedDept})}">&#9664;</a>
+            <span class="ym-label" th:text="${ymDisplay}"></span>
+            <a th:href="@{/attendance/record(ym=${nextYm}, empCode=${targetEmp}, deptCode=${selectedDept})}">&#9654;</a>
+        </div>
+
+        <div class="filter-group" th:if="${isAdmin}">
+            <label>부서</label>
+            <select id="deptSelect" onchange="onDeptChange(this.value)">
+                <option th:each="d : ${depts}"
+                        th:value="${d.deptCode}"
+                        th:text="${d.deptName}"
+                        th:selected="${d.deptCode == selectedDept}"></option>
+            </select>
+        </div>
+
+        <div class="filter-group" th:if="${isAdmin}">
+            <label>사원</label>
+            <select id="empSelect" onchange="onEmpChange(this.value)">
+                <option value="">-- 선택 --</option>
+                <option th:each="e : ${emps}"
+                        th:value="${e.empCode}"
+                        th:text="${e.empName + ' (' + e.empCode + ')'}"
+                        th:selected="${e.empCode == targetEmp}"></option>
+            </select>
+        </div>
+
+        <div class="emp-badge" th:if="${empInfo != null}"
+             th:text="${(empInfo['deptName'] != null ? empInfo['deptName'] : '') + ' | ' + (empInfo['empName'] != null ? empInfo['empName'] : '') + ' (' + targetEmp + ')'}">
+        </div>
+    </div>
+
+    <!-- 실적 테이블 -->
+    <table class="rec-table">
+        <thead>
+        <tr>
+            <th>날짜</th><th>요일</th><th>계획근태</th><th>실적근태</th>
+            <th>출근</th><th>퇴근</th><th>근무(분)</th><th>익일</th>
+            <th th:if="${isAdmin}">관리</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="row : ${rows}" th:classappend="${row.weekend ? 'weekend' : ''}">
+
+            <td class="dt-col"
+                th:classappend="${row.dayLabel == '일' ? 'col-sun' : (row.dayLabel == '토' ? 'col-sat' : '')}"
+                th:text="${row.dateDisplay}"></td>
+
+            <td th:classappend="${row.dayLabel == '일' ? 'col-sun' : (row.dayLabel == '토' ? 'col-sat' : '')}"
+                th:text="${row.dayLabel}"></td>
+
+            <td class="no-data" th:text="${row.shiftCode != null ? row.shiftCode : '-'}"></td>
+
+            <td th:classappend="${row.actualShiftCode != null ? 'has-data' : 'no-data'}"
+                th:text="${row.actualShiftCode != null ? row.actualShiftCode : '-'}"></td>
+
+            <td th:classappend="${row.checkIn != null ? 'has-data' : 'no-data'}"
+                th:text="${row.checkIn != null ? row.checkIn : '-'}"></td>
+
+            <td th:classappend="${row.checkOut != null ? 'has-data' : 'no-data'}"
+                th:text="${row.checkOut != null ? row.checkOut : '-'}"></td>
+
+            <td class="no-data" th:text="${row.workMin != null ? row.workMin : '-'}"></td>
+
+            <td class="no-data" th:text="${row.overnightYn != null ? row.overnightYn : '-'}"></td>
+
+            <td th:if="${isAdmin}">
+                <button class="btn-sm btn-edit"
+                        th:text="${row.hasRecord ? '수정' : '등록'}"
+                        th:attr="data-ymd=${row.yyyymmdd},
+                                 data-has=${row.hasRecord},
+                                 data-shift=${row.shiftCode},
+                                 data-actual=${row.actualShiftCode},
+                                 data-ci=${row.checkIn},
+                                 data-co=${row.checkOut},
+                                 data-wm=${row.workMin},
+                                 data-on=${row.overnightYn}"
+                        onclick="openModal(this)"></button>
+                <button th:if="${row.hasRecord}"
+                        class="btn-sm btn-delete"
+                        th:attr="data-ymd=${row.yyyymmdd}"
+                        onclick="doDelete(this.dataset.ymd)">삭제</button>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+</div>
+
+<!-- 등록/수정 모달 -->
+<div class="modal-bg" id="modalBg" onclick="closeModal(event)">
+    <div class="modal">
+        <h3 id="modalTitle">출퇴근 실적 등록</h3>
+        <div class="modal-row">
+            <label>날짜</label>
+            <input type="text" id="mDate" readonly>
+        </div>
+        <div class="modal-row">
+            <label>계획근태코드</label>
+            <select id="mShiftCode">
+                <option value="">-- 선택 --</option>
+            </select>
+        </div>
+        <div class="modal-row">
+            <label>실적근태코드</label>
+            <select id="mActualShiftCode">
+                <option value="">-- 선택 --</option>
+            </select>
+        </div>
+        <div class="modal-row">
+            <label>출근 / 퇴근</label>
+            <div class="row-2">
+                <input type="time" id="mCheckIn"  oninput="autoCalcWorkMin()">
+                <input type="time" id="mCheckOut" oninput="autoCalcWorkMin()">
+            </div>
+        </div>
+        <div class="modal-row">
+            <label>익일여부</label>
+            <select id="mOvernightYn" onchange="autoCalcWorkMin()">
+                <option value="N">N (당일 퇴근)</option>
+                <option value="Y">Y (익일 퇴근)</option>
+            </select>
+        </div>
+        <div class="modal-row">
+            <label>실근무분 (자동계산)</label>
+            <input type="number" id="mWorkMin" min="0" placeholder="분">
+        </div>
+        <p class="modal-note">출근·퇴근 입력 시 실근무분이 자동 계산됩니다.</p>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModalDirect()">취소</button>
+            <button class="btn-save"   onclick="doSave()">저장</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+
+<script th:inline="javascript">
+    const TARGET_EMP    = /*[[${targetEmp}]]*/ '';
+    const SELECTED_DEPT = /*[[${selectedDept}]]*/ '';
+    const CURRENT_YM    = /*[[${currentYm}]]*/ '';
+    const IS_ADMIN      = /*[[${isAdmin}]]*/ false;
+
+    /* ───────── 근태코드 로드 ───────── */
+    let shiftCodes = [];
+
+    async function loadShiftCodes() {
+        const res  = await fetch('/attendance/record/shift-codes');
+        shiftCodes = await res.json();
+        const opts = '<option value="">-- 선택 --</option>'
+            + shiftCodes.map(s => `<option value="${s.shiftCode}">${s.shiftCode} ${s.shiftName}</option>`).join('');
+        document.getElementById('mShiftCode').innerHTML       = opts;
+        document.getElementById('mActualShiftCode').innerHTML = opts;
+    }
+
+    loadShiftCodes();
+
+    /* ───────── 필터 변경 ───────── */
+    function onDeptChange(v) {
+        location.href = '/attendance/record?ym=' + CURRENT_YM + '&deptCode=' + v;
+    }
+    function onEmpChange(v) {
+        if (!v) return;
+        const dept = IS_ADMIN ? document.getElementById('deptSelect').value : SELECTED_DEPT;
+        location.href = '/attendance/record?ym=' + CURRENT_YM + '&deptCode=' + dept + '&empCode=' + v;
+    }
+
+    /* ───────── 실근무분 자동계산 ───────── */
+    function autoCalcWorkMin() {
+        const ci = document.getElementById('mCheckIn').value;
+        const co = document.getElementById('mCheckOut').value;
+        if (!ci || !co) return;
+        const ciMin = parseInt(ci.split(':')[0]) * 60 + parseInt(ci.split(':')[1]);
+        let   coMin = parseInt(co.split(':')[0]) * 60 + parseInt(co.split(':')[1]);
+        if (document.getElementById('mOvernightYn').value === 'Y') coMin += 1440;
+        const wm = coMin - ciMin - 60; // 점심 1시간 차감
+        if (wm > 0) document.getElementById('mWorkMin').value = wm;
+    }
+
+    /* ───────── 모달 열기 (data-* 에서 읽음) ───────── */
+    let currentYmd = '';
+
+    function openModal(btn) {
+        const d = btn.dataset;
+        currentYmd = d.ymd;
+        document.getElementById('modalTitle').textContent = d.has === 'true' ? '출퇴근 실적 수정' : '출퇴근 실적 등록';
+        document.getElementById('mDate').value            = d.ymd.slice(0,4) + '-' + d.ymd.slice(4,6) + '-' + d.ymd.slice(6,8);
+        document.getElementById('mShiftCode').value       = (d.shift  && d.shift  !== 'null') ? d.shift  : '';
+        document.getElementById('mActualShiftCode').value = (d.actual && d.actual !== 'null') ? d.actual : '';
+        document.getElementById('mCheckIn').value         = d.ci     !== 'null' ? (d.ci     || '') : '';
+        document.getElementById('mCheckOut').value        = d.co     !== 'null' ? (d.co     || '') : '';
+        document.getElementById('mOvernightYn').value     = d.on     !== 'null' ? (d.on     || 'N') : 'N';
+        document.getElementById('mWorkMin').value         = d.wm     !== 'null' ? (d.wm     || '') : '';
+        document.getElementById('modalBg').classList.add('open');
+    }
+
+    function closeModal(e) {
+        if (e.target === document.getElementById('modalBg')) closeModalDirect();
+    }
+    function closeModalDirect() {
+        document.getElementById('modalBg').classList.remove('open');
+    }
+
+    /* ───────── 저장 ───────── */
+    async function doSave() {
+        const wm  = document.getElementById('mWorkMin').value;
+        const dto = {
+            empCode:         TARGET_EMP,
+            yyyymmdd:        currentYmd,
+            deptCode:        SELECTED_DEPT,
+            shiftCode:       document.getElementById('mShiftCode').value.trim()       || null,
+            actualShiftCode: document.getElementById('mActualShiftCode').value.trim() || null,
+            checkIn:         document.getElementById('mCheckIn').value                || null,
+            checkOut:        document.getElementById('mCheckOut').value               || null,
+            workMin:         wm ? parseInt(wm) : null,
+            overnightYn:     document.getElementById('mOvernightYn').value
+        };
+        const res  = await fetch('/attendance/record/save', {
+            method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(dto)
+        });
+        const json = await res.json();
+        if (!json.success) { showToast(json.message || '저장 실패', 'error'); return; }
+        showToast('저장되었습니다.', 'success');
+        closeModalDirect();
+        setTimeout(() => location.reload(), 800);
+    }
+
+    /* ───────── 삭제 ───────── */
+    async function doDelete(ymd) {
+        if (!confirm('해당 날짜의 출퇴근 실적을 삭제하시겠습니까?')) return;
+        const res  = await fetch('/attendance/record/delete?empCode=' + TARGET_EMP + '&yyyymmdd=' + ymd, {
+            method: 'POST'
+        });
+        const json = await res.json();
+        if (!json.success) { showToast(json.message || '삭제 실패', 'error'); return; }
+        showToast('삭제되었습니다.', 'success');
+        setTimeout(() => location.reload(), 800);
+    }
+
+    /* ───────── 토스트 ───────── */
+    function showToast(msg, type) {
+        const t = document.getElementById('toast');
+        t.textContent = msg; t.className = type; t.style.display = 'block';
+        setTimeout(() => { t.style.display = 'none'; }, 3000);
+    }
+</script>
+</div>
+</body>
+</html>

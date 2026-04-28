@@ -55,6 +55,8 @@
         .shift-badge { display: block; margin-bottom: 2px; }
         .shift-time  { font-size: 9px; color: #888; }
         .req-badge   { display: block; margin-top: 1px; }
+        .rec-badge   { display: block; margin-top: 2px; font-size: 9px; color: #1a5c1a;
+                       background: #e8f5e9; padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
 
         /* 모달 */
         .modal-bg {
@@ -244,15 +246,28 @@
 
             let inner = `<div class="date-num">${dn}</div>`;
 
-            if (day.shiftCode) {
-                const fmt  = t => t ? String(t).slice(0, 5) : '';
-                const time = (day.workOnHhmm && day.workOffHhmm)
-                    ? `<span class="shift-time">${fmt(day.workOnHhmm)}~${fmt(day.workOffHhmm)}</span>` : '';
-                inner += `<span class="shift-badge"><span class="${shiftCls(day.workDayType)}">${day.shiftName || day.shiftCode}</span>${time}</span>`;
+            // 실적 등록된 날: 실적근태코드 + 출퇴근 시간 표시
+            // 실적 없는 날: 아무것도 표시하지 않음 (계획 "주간" 배지 제거)
+            if (day.record) {
+                if (day.record.actualShiftCode) {
+                    inner += `<span class="shift-badge"><span class="badge b-work">${day.record.actualShiftCode}</span></span>`;
+                }
+                if (day.record.checkIn || day.record.checkOut) {
+                    const ci = day.record.checkIn  || '--:--';
+                    const co = day.record.checkOut || '--:--';
+                    inner += `<span class="rec-badge">출 ${ci} / 퇴 ${co}</span>`;
+                }
             }
 
             (day.requests || []).forEach(r => {
-                inner += `<span class="req-badge"><span class="${reqCls(r.status)}">${catLabel(r.requestCategory)} ${statusLabel(r.status)}</span></span>`;
+                const typeLabel = r.requestWorkCode || catLabel(r.requestCategory);
+                let timeStr = '';
+                if (r.startTime || r.endTime) {
+                    const st = r.startTime || '--:--';
+                    const et = r.endTime   || '--:--';
+                    timeStr = `<span class="shift-time">${st}~${et}</span>`;
+                }
+                inner += `<span class="req-badge"><span class="${reqCls(r.status)}">${typeLabel} ${statusLabel(r.status)}</span>${timeStr}</span>`;
             });
 
             html += `<td class="${colCls} ${todCls}" onclick="openModal('${day.workDate}')">${inner}</td>`;
