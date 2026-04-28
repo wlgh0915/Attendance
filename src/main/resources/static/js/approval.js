@@ -262,16 +262,18 @@ async function openDetail(requestId) {
         ).join('');
 
     document.getElementById('detailModal').classList.add('open');
+    document.body.classList.add('detail-drawer-open');
 }
 
 function closeDetailModal() {
-    document.getElementById('detailModal').classList.remove('open');
+    const modal = document.getElementById('detailModal');
+    modal.classList.add('closing');
+    document.body.classList.remove('detail-drawer-open');
+    setTimeout(() => modal.classList.remove('open', 'closing'), 260);
 }
 
 document.addEventListener('click', function(e) {
-    const dm = document.getElementById('detailModal');
     const rm = document.getElementById('rejectModal');
-    if (e.target === dm) closeDetailModal();
     if (e.target === rm) closeRejectModal();
 });
 
