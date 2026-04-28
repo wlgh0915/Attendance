@@ -20,7 +20,9 @@
             te.EMP_NAME                                      AS targetEmpName,
             td.DEPT_NAME                                     AS targetDeptName,
             LEFT(CONVERT(VARCHAR(8), g.START_TIME, 108), 5) AS startTime,
+            ISNULL(g.START_TIME_TYPE, 'N0')                  AS startTimeType,
             LEFT(CONVERT(VARCHAR(8), g.END_TIME,   108), 5) AS endTime,
+            ISNULL(g.END_TIME_TYPE,   'N0')                  AS endTimeType,
             o.CHANGE_SHIFT_CODE                              AS changeShiftCode,
             s.SHIFT_NAME                                     AS changeShiftName,
             a.STEP_NO                                        AS myStepNo,
@@ -97,7 +99,9 @@
             re.EMP_CODE                                      AS requesterEmpCode,
             re.EMP_NAME                                      AS requesterEmpName,
             LEFT(CONVERT(VARCHAR(8), g.START_TIME, 108), 5) AS startTime,
+            ISNULL(g.START_TIME_TYPE, 'N0')                  AS startTimeType,
             LEFT(CONVERT(VARCHAR(8), g.END_TIME,   108), 5) AS endTime,
+            ISNULL(g.END_TIME_TYPE,   'N0')                  AS endTimeType,
             o.CHANGE_SHIFT_CODE                              AS changeShiftCode,
             s.SHIFT_NAME                                     AS changeShiftName
         FROM HRTATTENDANCEREQUEST01 r

@@ -21,7 +21,9 @@ public class AttendanceEmpRowDto {
     private String reason;
     private String reasonDetail;
     private String startTime;
+    private String startTimeType;    // N0: 당일 / N1: 익일
     private String endTime;
+    private String endTimeType;      // N0: 당일 / N1: 익일
     private String status;          // DRAFT / SUBMITTED / APPROVED / REJECTED
     private String requesterCode;
     private String requesterName;

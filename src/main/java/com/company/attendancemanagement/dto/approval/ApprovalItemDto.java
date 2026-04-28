@@ -17,7 +17,9 @@ public class ApprovalItemDto {
     private String  targetEmpName;
     private String  targetDeptName;
     private String  startTime;
+    private String  startTimeType;   // N0: 당일 / N1: 익일
     private String  endTime;
+    private String  endTimeType;     // N0: 당일 / N1: 익일
     private String  changeShiftCode;
     private String  changeShiftName;
     private Integer myStepNo;

@@ -30,7 +30,7 @@
         .category-tab.active { background: #2c3e50; color: #fff; font-weight: 700; border-color: #2c3e50; }
 
         .req-table-wrap { overflow-x: auto; margin-bottom: 12px; }
-        .req-table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 1150px; }
+        .req-table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 1250px; }
         .req-table thead th {
             background: #2c3e50; color: #fff; padding: 9px 8px;
             text-align: center; border-right: 1px solid #3d5166; white-space: nowrap;
@@ -116,8 +116,8 @@
                 <th style="width:120px;">신청근무</th>
                 <th style="width:120px;">사유</th>
                 <th style="width:200px;">사유상세</th>
-                <th style="width:90px;">시작시간</th>
-                <th style="width:90px;">종료시간</th>
+                <th style="width:140px;">시작시간</th>
+                <th style="width:140px;">종료시간</th>
                 <th style="width:70px;">상태</th>
                 <th style="width:70px;">신청자</th>
             </tr>
@@ -167,6 +167,12 @@
         return opts;
     }
 
+    function buildDayTypeOptions(selected) {
+        const v = selected || 'N0';
+        return '<option value="N0"'+(v==='N0'?' selected':'')+'>당일</option>'
+             + '<option value="N1"'+(v==='N1'?' selected':'')+'>익일</option>';
+    }
+
     function buildWorkCodeOptions(category, selected) {
         let opts = '<option value="">-- 선택 --</option>';
         (WORK_CODES[category]||[]).forEach(c => {
@@ -204,8 +210,14 @@
                 + '<td><select data-field="requestWorkCode" '+dis+'>'+buildWorkCodeOptions(currentCategory,r.requestWorkCode)+'</select></td>'
                 + '<td><input type="text" data-field="reason" value="'+reasonVal+'" placeholder="사유" '+dis+'></td>'
                 + '<td><input type="text" data-field="reasonDetail" value="'+reasonDetailVal+'" placeholder="사유 상세 입력" '+dis+'></td>'
-                + '<td><select data-field="startTime" '+dis+'>'+buildTimeOptions(r.startTime)+'</select></td>'
-                + '<td><select data-field="endTime" '+dis+'>'+buildTimeOptions(r.endTime)+'</select></td>'
+                + '<td><div style="display:flex;gap:3px;">'
+                + '<select data-field="startTimeType" style="width:52px;" '+dis+'>'+buildDayTypeOptions(r.startTimeType)+'</select>'
+                + '<select data-field="startTime" style="flex:1;" '+dis+'>'+buildTimeOptions(r.startTime)+'</select>'
+                + '</div></td>'
+                + '<td><div style="display:flex;gap:3px;">'
+                + '<select data-field="endTimeType" style="width:52px;" '+dis+'>'+buildDayTypeOptions(r.endTimeType)+'</select>'
+                + '<select data-field="endTime" style="flex:1;" '+dis+'>'+buildTimeOptions(r.endTime)+'</select>'
+                + '</div></td>'
                 + '<td>'+statusBadge(r.status)+'</td>'
                 + '<td>'+(r.requesterName||'')+'</td>'
                 + '</tr>';
@@ -238,7 +250,9 @@
             requestWorkCode: tr.querySelector('[data-field="requestWorkCode"]').value,
             reason:          tr.querySelector('[data-field="reason"]').value,
             reasonDetail:    tr.querySelector('[data-field="reasonDetail"]').value,
+            startTimeType:   tr.querySelector('[data-field="startTimeType"]').value,
             startTime:       tr.querySelector('[data-field="startTime"]').value,
+            endTimeType:     tr.querySelector('[data-field="endTimeType"]').value,
             endTime:         tr.querySelector('[data-field="endTime"]').value
         };
     }

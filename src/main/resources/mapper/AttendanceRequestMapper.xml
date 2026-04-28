@@ -22,7 +22,9 @@
             r.REASON                                              AS reason,
             r.REASON_DETAIL                                       AS reasonDetail,
             LEFT(CONVERT(VARCHAR(8), g.START_TIME, 108), 5)      AS startTime,
+            ISNULL(g.START_TIME_TYPE, 'N0')                       AS startTimeType,
             LEFT(CONVERT(VARCHAR(8), g.END_TIME,   108), 5)      AS endTime,
+            ISNULL(g.END_TIME_TYPE,   'N0')                       AS endTimeType,
             r.STATUS                                              AS status,
             r.REQUESTER_EMP_CODE                                  AS requesterCode,
             re.EMP_NAME                                           AS requesterName
@@ -101,7 +103,9 @@
             r.REASON                                          AS reason,
             r.REASON_DETAIL                                   AS reasonDetail,
             LEFT(CONVERT(VARCHAR(8), g.START_TIME, 108), 5)  AS startTime,
+            ISNULL(g.START_TIME_TYPE, 'N0')                   AS startTimeType,
             LEFT(CONVERT(VARCHAR(8), g.END_TIME,   108), 5)  AS endTime,
+            ISNULL(g.END_TIME_TYPE,   'N0')                   AS endTimeType,
             r.STATUS                                          AS status,
             r.REQUESTER_EMP_CODE                              AS requesterCode
         FROM HRTATTENDANCEREQUEST01 r
@@ -135,12 +139,18 @@
             parameterType="com.company.attendancemanagement.dto.request.AttendanceRequestDto">
         INSERT INTO HRTATTENDANCE_GENERAL01 (
             COMPANY, REQ_ID,
-            START_TIME, END_TIME, WORK_MIN,
+            START_TIME, START_TIME_TYPE,
+            END_TIME,   END_TIME_TYPE,
+            WORK_MIN,
             CREATED_AT, UPDATED_AT
         ) VALUES (
             #{company}, #{requestId},
-            CAST(#{startTime} AS TIME), CAST(#{endTime} AS TIME),
-            ABS(DATEDIFF(MINUTE, CAST(#{startTime} AS TIME), CAST(#{endTime} AS TIME))),
+            CAST(#{startTime} AS TIME), #{startTimeType},
+            CAST(#{endTime}   AS TIME), #{endTimeType},
+            CASE WHEN #{endTimeType} = 'N1'
+                 THEN 1440 + DATEDIFF(MINUTE, CAST(#{startTime} AS TIME), CAST(#{endTime} AS TIME))
+                 ELSE ABS(DATEDIFF(MINUTE, CAST(#{startTime} AS TIME), CAST(#{endTime} AS TIME)))
+            END,
             GETDATE(), GETDATE()
         )
     </insert>
@@ -177,10 +187,15 @@
     <update id="updateGeneralDetail"
             parameterType="com.company.attendancemanagement.dto.request.AttendanceRequestDto">
         UPDATE HRTATTENDANCE_GENERAL01
-        SET START_TIME = CAST(#{startTime} AS TIME),
-            END_TIME   = CAST(#{endTime}   AS TIME),
-            WORK_MIN   = ABS(DATEDIFF(MINUTE, CAST(#{startTime} AS TIME), CAST(#{endTime} AS TIME))),
-            UPDATED_AT = GETDATE()
+        SET START_TIME      = CAST(#{startTime} AS TIME),
+            START_TIME_TYPE = #{startTimeType},
+            END_TIME        = CAST(#{endTime}   AS TIME),
+            END_TIME_TYPE   = #{endTimeType},
+            WORK_MIN        = CASE WHEN #{endTimeType} = 'N1'
+                                   THEN 1440 + DATEDIFF(MINUTE, CAST(#{startTime} AS TIME), CAST(#{endTime} AS TIME))
+                                   ELSE ABS(DATEDIFF(MINUTE, CAST(#{startTime} AS TIME), CAST(#{endTime} AS TIME)))
+                              END,
+            UPDATED_AT      = GETDATE()
         WHERE REQ_ID  = #{requestId}
           AND COMPANY = #{company}
     </update>

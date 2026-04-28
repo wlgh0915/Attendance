@@ -55,14 +55,20 @@ function requestTypeName(r) {
     return r.reqType || '';
 }
 
+function dayTypeLabel(type) {
+    return type === 'N1' ? '익일' : '당일';
+}
+
 function startDisplay(r) {
     if (r.reqGroup === 'OTHER') return '-';
-    return r.startTime || '-';
+    if (!r.startTime) return '-';
+    return dayTypeLabel(r.startTimeType) + ' ' + r.startTime;
 }
 
 function endDisplay(r) {
     if (r.reqGroup === 'OTHER') return r.changeShiftName || r.changeShiftCode || '-';
-    return r.endTime || '-';
+    if (!r.endTime) return '-';
+    return dayTypeLabel(r.endTimeType) + ' ' + r.endTime;
 }
 
 function renderTable(rows) {
@@ -223,7 +229,9 @@ async function openDetail(requestId) {
 
     let timeInfo = '';
     if (d.reqGroup === 'GENERAL') {
-        timeInfo = '<div class="lbl">시간</div><div class="val">'+escapeHtml(d.startTime || '-')+' ~ '+escapeHtml(d.endTime || '-')+'</div>';
+        const startLabel = dayTypeLabel(d.startTimeType) + ' ' + (d.startTime || '-');
+        const endLabel   = dayTypeLabel(d.endTimeType)   + ' ' + (d.endTime   || '-');
+        timeInfo = '<div class="lbl">시간</div><div class="val">'+escapeHtml(startLabel)+' ~ '+escapeHtml(endLabel)+'</div>';
     } else {
         timeInfo = '<div class="lbl">변경근무</div><div class="val">'+escapeHtml(d.changeShiftName || d.changeShiftCode || '-')+'</div>';
     }
