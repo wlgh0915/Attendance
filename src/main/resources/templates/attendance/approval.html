@@ -74,25 +74,23 @@
 
 <div id="toast"></div>
 
-<div class="modal-overlay" id="detailModal">
-    <div class="modal-box">
-        <div class="modal-title">근태 신청 상세</div>
-        <div class="detail-section">
-            <h4>신청 정보</h4>
-            <div class="detail-grid" id="detailInfo"></div>
-        </div>
-        <div class="detail-section">
-            <h4>결재선</h4>
-            <table class="chain-table">
-                <thead>
-                    <tr><th>순번</th><th>구분</th><th>결재자</th><th>상태</th><th>처리일시</th><th>반려사유</th></tr>
-                </thead>
-                <tbody id="chainBody"></tbody>
-            </table>
-        </div>
-        <div class="modal-footer">
-            <button class="btn-close" onclick="closeDetailModal()">닫기</button>
-        </div>
+<div id="detailModal" class="detail-drawer">
+    <div class="detail-drawer-header">
+        <span class="modal-title">근태 신청 상세</span>
+        <button class="btn-drawer-close" onclick="closeDetailModal()">✕</button>
+    </div>
+    <div class="detail-section">
+        <h4>신청 정보</h4>
+        <div class="detail-grid" id="detailInfo"></div>
+    </div>
+    <div class="detail-section">
+        <h4>결재선</h4>
+        <table class="chain-table">
+            <thead>
+                <tr><th>순번</th><th>구분</th><th>결재자</th><th>상태</th><th>처리일시</th><th>반려사유</th></tr>
+            </thead>
+            <tbody id="chainBody"></tbody>
+        </table>
     </div>
 </div>
 
