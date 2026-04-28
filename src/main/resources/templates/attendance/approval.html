@@ -45,7 +45,7 @@
         <table class="req-table" id="apprTable">
             <thead>
             <tr id="tableHead">
-                <th style="width:36px;"><input type="checkbox" id="checkAll" onclick="toggleAll(this)"></th>
+                <th style="width:36px;" class="th-check" onclick="clickCheckAllCell()"><input type="checkbox" id="checkAll" onclick="event.stopPropagation();toggleAll(this)"></th>
                 <th style="width:90px;">근무일</th>
                 <th style="width:80px;">사번</th>
                 <th style="width:75px;">성명</th>

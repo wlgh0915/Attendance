@@ -33,17 +33,23 @@
 .btn-search { padding: 7px 20px; background: #2c3e50; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-family: 'Malgun Gothic', sans-serif; }
 .btn-search:hover { background: #1a252f; }
 
-.req-table-wrap { overflow-x: auto; margin-bottom: 12px; }
+.req-table-wrap { overflow-x: auto; margin-bottom: 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
 .req-table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 1180px; }
 .req-table thead th {
     background: #2c3e50; color: #fff; padding: 9px 8px;
     text-align: center; border-right: 1px solid #3d5166; white-space: nowrap;
 }
 .req-table thead th:last-child { border-right: none; }
-.req-table tbody tr { border-bottom: 1px solid #e8eaed; }
-.req-table tbody tr:hover { background: #f0f4f8; }
+.req-table tbody tr { border-bottom: 1px solid #e0e0e0; }
+.req-table tbody tr:last-child { border-bottom: none; }
+.req-table tbody tr:nth-child(odd)  { background: #fff; }
+.req-table tbody tr:nth-child(even) { background: #f2f4f7; }
+.req-table tbody tr:hover { background: #d6e4f0 !important; }
 .req-table tbody tr.selected { background: #d6eaf8 !important; }
-.req-table tbody td { padding: 6px 8px; text-align: center; vertical-align: middle; }
+.req-table tbody td { padding: 6px 8px; text-align: center; vertical-align: middle; border-right: 1px solid #e8eaed; }
+.req-table tbody td:last-child { border-right: none; }
+.td-check { cursor: pointer; }
+.th-check { cursor: pointer; }
 
 .badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; white-space: nowrap; }
 .badge-pending  { background: #fff3cd; color: #856404; }

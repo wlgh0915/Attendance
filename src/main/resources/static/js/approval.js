@@ -88,8 +88,8 @@ function renderTable(rows) {
         const chk = currentStatus === 'PENDING'
             ? '<input type="checkbox" onclick="event.stopPropagation();toggleCheck(this)">'
             : '';
-        return '<tr data-idx="'+idx+'" onclick="selectRow(this)">'
-            + '<td>'+chk+'</td>'
+        return '<tr data-idx="'+idx+'">'
+            + '<td class="td-check" onclick="clickCheckCell(this)">'+chk+'</td>'
             + '<td>'+escapeHtml(r.targetDate)+'</td>'
             + '<td>'+escapeHtml(r.targetEmpCode)+'</td>'
             + '<td>'+escapeHtml(r.targetEmpName)+'</td>'
@@ -106,11 +106,20 @@ function renderTable(rows) {
     }).join('');
 }
 
-function selectRow(tr) {
+function clickCheckAllCell() {
     if (currentStatus !== 'PENDING') return;
-    const cb = tr.querySelector('input[type="checkbox"]');
-    if (cb) cb.checked = !cb.checked;
-    tr.classList.toggle('selected', cb ? cb.checked : !tr.classList.contains('selected'));
+    const cb = document.getElementById('checkAll');
+    if (!cb) return;
+    cb.checked = !cb.checked;
+    toggleAll(cb);
+}
+
+function clickCheckCell(td) {
+    if (currentStatus !== 'PENDING') return;
+    const cb = td.querySelector('input[type="checkbox"]');
+    if (!cb) return;
+    cb.checked = !cb.checked;
+    toggleCheck(cb);
     syncCheckAll();
 }
 
