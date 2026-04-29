@@ -31,12 +31,19 @@
                ON dept.COMPANY = pm.COMPANY
               AND dept.WORK_PATTERN_CODE = pm.WORK_PATTERN_CODE
               AND pm.USE_YN = 'Y'
+        LEFT JOIN (
+            SELECT COMPANY, WORK_PATTERN_CODE, COUNT(*) AS CYCLE_LEN
+            FROM HRTWORKPATTERNDETAIL01
+            GROUP BY COMPANY, WORK_PATTERN_CODE
+        ) pdcount
+               ON pm.COMPANY = pdcount.COMPANY
+              AND pm.WORK_PATTERN_CODE = pdcount.WORK_PATTERN_CODE
         LEFT JOIN HRTWORKPATTERNDETAIL01 pd
                ON pm.COMPANY = pd.COMPANY
               AND pm.WORK_PATTERN_CODE = pd.WORK_PATTERN_CODE
               AND pd.SEQ = (
-                    (DATEDIFF(DAY, pm.START_DATE, CAL.DT) % pm.CYCLE_COUNT
-                      + pm.CYCLE_COUNT) % pm.CYCLE_COUNT + 1
+                    (DATEDIFF(DAY, pm.START_DATE, CAL.DT) % pdcount.CYCLE_LEN
+                      + pdcount.CYCLE_LEN) % pdcount.CYCLE_LEN + 1
                   )
         LEFT JOIN HRTSHIFTMASTER01 s
                ON pd.COMPANY = s.COMPANY AND pd.SHIFT_CODE = s.SHIFT_CODE

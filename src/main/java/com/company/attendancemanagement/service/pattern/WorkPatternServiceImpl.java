@@ -57,6 +57,8 @@ public class WorkPatternServiceImpl implements WorkPatternService {
 
         validateBusinessRules(request.getMaster(), request.getDetails(), shiftMap);
 
+        request.getMaster().setCycleCount(request.getDetails().size());
+
         if (workPatternMapper.existsPatternCode(company, patternCode) > 0) {
             workPatternMapper.updatePatternMaster(request.getMaster());
             workPatternMapper.deletePatternDetails(company, patternCode);
