@@ -1,0 +1,74 @@
+.rec-page { max-width: 1100px; padding: 20px 24px; }
+
+.rec-top  { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-bottom: 16px; }
+.rec-nav  { display: flex; align-items: center; gap: 8px; }
+.rec-nav a {
+    padding: 5px 14px; border: 1px solid #2c3e50; border-radius: 4px;
+    color: #2c3e50; text-decoration: none; font-size: 13px; font-weight: 600;
+}
+.rec-nav a:hover { background: #2c3e50; color: #fff; }
+.ym-label { font-size: 16px; font-weight: 700; color: #2c3e50; min-width: 120px; text-align: center; }
+.filter-group { display: flex; flex-direction: column; gap: 3px; }
+.filter-group label { font-size: 11px; color: #666; font-weight: 600; }
+.filter-group select {
+    padding: 5px 10px; border: 1px solid #ced4da; border-radius: 4px;
+    font-size: 13px; font-family: 'Malgun Gothic', sans-serif; min-width: 160px;
+}
+.emp-badge {
+    margin-left: auto; align-self: center; font-size: 13px; color: #2c3e50;
+    font-weight: 600; background: #f0f4f8; padding: 6px 14px; border-radius: 20px;
+}
+
+.rec-table { width: 100%; border-collapse: collapse;
+             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+             border-radius: 6px; overflow: hidden; font-size: 13px; }
+.rec-table th { background: #2c3e50; color: #fff; padding: 10px 12px;
+                text-align: center; font-size: 13px; font-weight: 600; }
+.rec-table td { padding: 8px 12px; border-bottom: 1px solid #e8eaed;
+                text-align: center; vertical-align: middle; }
+.rec-table tr:hover td { background: #f8fafc; }
+.rec-table tr.weekend td { background: #fdf8f8; }
+.rec-table tr.weekend:hover td { background: #f8f0f0; }
+.dt-col   { text-align: left !important; font-weight: 600; color: #2c3e50; }
+.col-sun  { color: #e74c3c; }
+.col-sat  { color: #2980b9; }
+.has-data { color: #27ae60; font-weight: 600; }
+.no-data  { color: #aaa; }
+
+.btn-sm { padding: 4px 12px; border: none; border-radius: 4px; cursor: pointer;
+          font-size: 12px; font-family: 'Malgun Gothic', sans-serif; font-weight: 600; }
+.btn-edit   { background: #3498db; color: #fff; }
+.btn-edit:hover   { background: #2980b9; }
+.btn-delete { background: #e74c3c; color: #fff; margin-left: 4px; }
+.btn-delete:hover { background: #c0392b; }
+
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+            z-index: 1000; align-items: center; justify-content: center; }
+.modal-bg.open { display: flex; }
+.modal { background: #fff; border-radius: 8px; padding: 28px 32px;
+         width: 440px; max-width: 95vw; box-shadow: 0 8px 32px rgba(0,0,0,0.18); }
+.modal h3 { font-size: 16px; font-weight: 700; color: #2c3e50; margin: 0 0 20px; }
+.modal-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+.modal-row label { font-size: 12px; color: #555; font-weight: 600; }
+.modal-row input, .modal-row select {
+    padding: 7px 10px; border: 1px solid #ced4da; border-radius: 4px;
+    font-size: 13px; font-family: 'Malgun Gothic', sans-serif;
+    width: 100%; box-sizing: border-box;
+}
+.modal-row .row-2 { display: flex; gap: 10px; }
+.modal-row .row-2 input { flex: 1; }
+.modal-note { font-size: 11px; color: #888; margin-top: -8px; margin-bottom: 8px; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+.btn-save   { padding: 8px 22px; background: #27ae60; color: #fff; border: none;
+              border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600;
+              font-family: 'Malgun Gothic', sans-serif; }
+.btn-cancel { padding: 8px 22px; background: #95a5a6; color: #fff; border: none;
+              border-radius: 4px; cursor: pointer; font-size: 13px;
+              font-family: 'Malgun Gothic', sans-serif; }
+.btn-save:hover   { background: #1e8449; }
+.btn-cancel:hover { background: #7f8c8d; }
+
+#toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px;
+         border-radius: 6px; color: #fff; font-size: 13px; display: none; z-index: 9999; }
+#toast.success { background: #27ae60; }
+#toast.error   { background: #e74c3c; }
