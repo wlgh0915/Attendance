@@ -167,6 +167,19 @@
         </foreach>
     </update>
 
+    <insert id="insertTransferHistory">
+        INSERT INTO HRIDEPTTRANSFER01 (COMPANY, EMP_CODE, DEPT_CODE, START_DATE, END_DATE, CREATED_AT)
+        VALUES (#{company}, #{empCode}, #{deptCode}, #{startDate}, #{endDate}, GETDATE())
+    </insert>
+
+    <update id="closeCurrentTransfer">
+        UPDATE HRIDEPTTRANSFER01
+        SET END_DATE = #{endDate}
+        WHERE COMPANY  = #{company}
+          AND EMP_CODE = #{empCode}
+          AND END_DATE IS NULL
+    </update>
+
     <update id="updateDepartment">
         UPDATE ORGDEPTMASTER01
         SET DEPT_NAME = #{deptName},

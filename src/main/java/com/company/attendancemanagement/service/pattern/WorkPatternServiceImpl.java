@@ -142,8 +142,8 @@ public class WorkPatternServiceImpl implements WorkPatternService {
 
             int workMinutes = shift.getWorkMinutes() == null ? 0 : shift.getWorkMinutes();
 
-            if (workMinutes > 480) {
-                throw new IllegalArgumentException(targetDate + " : 하루 근무시간은 8시간을 초과할 수 없습니다.");
+            if (workMinutes > 720) {
+                throw new IllegalArgumentException(targetDate + " : 하루 근무시간은 12시간을 초과할 수 없습니다.");
             }
 
             if (!isOff && !isHoliday) {

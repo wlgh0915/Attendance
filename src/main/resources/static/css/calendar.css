@@ -26,7 +26,7 @@
 .cal-grid th { background: #2c3e50; color: #fff; text-align: center; padding: 10px 0; font-size: 13px; font-weight: 600; }
 .cal-grid th.th-sun { color: #ff8a80; }
 .cal-grid th.th-sat { color: #80d8ff; }
-.cal-grid td { width: 14.28%; min-height: 110px; height: 110px; border: 1px solid #e8eaed; vertical-align: top; padding: 6px; cursor: pointer; transition: background 0.15s; }
+.cal-grid td { width: 14.28%; min-height: 130px; height: 130px; border: 1px solid #e8eaed; vertical-align: top; padding: 6px; cursor: pointer; transition: background 0.15s; }
 .cal-grid td:hover { background: #f0f4f8 !important; }
 .cal-grid td.empty { background: #fafafa; cursor: default; }
 .cal-grid td.empty:hover { background: #fafafa !important; }
@@ -37,7 +37,7 @@
 .date-num { font-size: 13px; font-weight: 700; color: #2c3e50; margin-bottom: 4px; }
 .badge { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 10px; font-weight: 600; margin: 1px 0; white-space: nowrap; }
 .b-work    { background: #d5e8fd; color: #1a5276; }
-.b-off     { background: #e8e8e8; color: #666; }
+.b-off     { background: #fde8e8; color: #922b21; }
 .b-holiday { background: #fde8e8; color: #922b21; }
 .b-draft    { background: #e0e0e0; color: #555; }
 .b-submit   { background: #d5f5e3; color: #1e5f3a; }
@@ -48,6 +48,8 @@
 .req-badge   { display: block; margin-top: 1px; }
 .rec-badge   { display: block; margin-top: 2px; font-size: 9px; color: #1a5c1a;
                background: #e8f5e9; padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
+.late-badge  { display: block; margin-top: 1px; font-size: 9px; color: #7b1f1f;
+               background: #fde8e8; padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
 
 .modal-bg {
     display: none; position: fixed; inset: 0;

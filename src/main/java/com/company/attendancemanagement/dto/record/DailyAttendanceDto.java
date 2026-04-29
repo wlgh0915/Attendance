@@ -12,4 +12,6 @@ public class DailyAttendanceDto {
     private String  checkOut;      // HH:mm
     private Integer workMin;
     private String  overnightYn;
+    private String  lateYn;
+    private Integer lateMin;
 }
