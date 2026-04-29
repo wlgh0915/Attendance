@@ -165,6 +165,12 @@ async function doSave() {
         const dto = rowToDto(tr);
         if (!dto.requestWorkCode) { showToast('신청근무를 선택하세요.','error'); return; }
         if (!dto.startTime || !dto.endTime) { showToast('시작/종료 시간을 선택하세요.','error'); return; }
+        if (dto.requestWorkCode === '조출연장' && dto.startTime >= '09:00') {
+            showToast('조출연장은 시작시간이 09:00 이전이어야 합니다.','error'); return;
+        }
+        if (dto.requestWorkCode === '연장' && dto.endTime <= '18:00') {
+            showToast('연장근무는 종료시간이 18:00 이후여야 합니다.','error'); return;
+        }
         const res = await fetch('/attendance/request/save', {
             method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(dto)
         });

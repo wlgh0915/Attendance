@@ -27,23 +27,33 @@ function statusLabel(s) {
     return {DRAFT:'미상신', SUBMITTED:'승인중', APPROVED:'승인', REJECTED:'반려'}[s] || s;
 }
 
+function weekTotalCell(weekMin) {
+    if (weekMin <= 0) return '<td class="week-total">-</td>';
+    const h    = Math.floor(weekMin / 60);
+    const m    = weekMin % 60;
+    const over = weekMin > 3120;
+    const txt  = h + '시간' + (m > 0 ? ' ' + m + '분' : '');
+    return `<td class="week-total${over ? ' over' : ''}">${txt}</td>`;
+}
+
 function renderCalendar() {
     if (!DAYS.length) return;
     const firstCol = dowToCol(DAYS[0].dayOfWeekNum);
     const tbody = document.getElementById('calBody');
-    let html = '', col = 0;
+    let html = '', col = 0, weekMin = 0;
 
-    const openRow  = () => { html += '<tr>'; col = 0; };
-    const closeRow = () => {
+    const openRow = () => { html += '<tr>'; col = 0; weekMin = 0; };
+    const endRow  = () => {
         while (col < 7) { html += '<td class="empty"></td>'; col++; }
-        html += '</tr>';
+        html += weekTotalCell(weekMin) + '</tr>';
     };
 
     openRow();
     for (let i = 0; i < firstCol; i++) { html += '<td class="empty"></td>'; col++; }
 
     DAYS.forEach(day => {
-        if (col === 7) { html += '</tr>'; openRow(); }
+        if (col === 7) { endRow(); openRow(); }
+        if (day.record && day.record.workMin) weekMin += day.record.workMin;
         const c      = dowToCol(day.dayOfWeekNum);
         const colCls = c === 0 ? 'col-sun' : c === 6 ? 'col-sat' : '';
         const todCls = day.workDate === today ? 'today' : '';
@@ -51,24 +61,34 @@ function renderCalendar() {
 
         let inner = `<div class="date-num">${dn}</div>`;
 
-        if (day.record) {
-            if (day.record.actualShiftCode) {
-                inner += `<span class="shift-badge"><span class="badge b-work">${day.record.actualShiftCode}</span></span>`;
-            }
-            if (day.record.checkIn || day.record.checkOut) {
-                const ci = day.record.checkIn  || '--:--';
-                const co = day.record.checkOut || '--:--';
-                inner += `<span class="rec-badge">출 ${ci} / 퇴 ${co}</span>`;
-            }
+        // 1. 계획 근태코드 (항상 표시)
+        if (day.shiftName) {
+            const timePart = (day.workDayType === 'WORK' && day.workOnHhmm && day.workOffHhmm)
+                ? `<span class="shift-time"> ${day.workOnHhmm}~${day.workOffHhmm}</span>`
+                : '';
+            inner += `<span class="shift-badge"><span class="${shiftCls(day.workDayType)}">${day.shiftName}</span>${timePart}</span>`;
         }
 
+        // 2. 실 출퇴근 시간
+        if (day.record && (day.record.checkIn || day.record.checkOut)) {
+            const ci = day.record.checkIn  || '--:--';
+            const co = day.record.checkOut || '--:--';
+            inner += `<span class="rec-badge">출 ${ci} / 퇴 ${co}</span>`;
+        }
+
+        // 3. 지각
+        if (day.record && day.record.lateYn === 'Y') {
+            inner += `<span class="late-badge">지각 ${day.record.lateMin}분</span>`;
+        }
+
+        // 4. 근태신청 (연장, 연차, 반차 등)
         (day.requests || []).forEach(r => {
             const typeLabel = r.requestWorkCode || catLabel(r.requestCategory);
             let timeStr = '';
             if (r.startTime || r.endTime) {
                 const st = r.startTime || '--:--';
                 const et = r.endTime   || '--:--';
-                timeStr = `<span class="shift-time">${st}~${et}</span>`;
+                timeStr = `<span class="shift-time"> ${st}~${et}</span>`;
             }
             inner += `<span class="req-badge"><span class="${reqCls(r.status)}">${typeLabel} ${statusLabel(r.status)}</span>${timeStr}</span>`;
         });
@@ -77,7 +97,7 @@ function renderCalendar() {
         col++;
     });
 
-    closeRow();
+    endRow();
     tbody.innerHTML = html;
 }
 
@@ -142,6 +162,20 @@ async function doModalSave() {
     const reason   = document.getElementById('mReason').value;
 
     if (!workCode) { showToast('신청근무를 선택하세요.', 'error'); return; }
+
+    if (category === 'HOLIDAY') {
+        const dayInfo = DAYS.find(d => d.workDate === modalDate);
+        if (!dayInfo || (dayInfo.workDayType !== 'OFF' && dayInfo.workDayType !== 'HOLIDAY')) {
+            showToast('휴일근무는 휴일(OFF/HOLIDAY)에만 신청할 수 있습니다.', 'error');
+            return;
+        }
+    }
+    if (workCode === '조출연장' && start && start >= '09:00') {
+        showToast('조출연장은 시작시간이 09:00 이전이어야 합니다.', 'error'); return;
+    }
+    if (workCode === '연장' && end && end <= '18:00') {
+        showToast('연장근무는 종료시간이 18:00 이후여야 합니다.', 'error'); return;
+    }
 
     const dto = {
         empCode:         TARGET_EMP,

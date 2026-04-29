@@ -7,6 +7,7 @@ import com.company.attendancemanagement.dto.department.DepartmentUpdateDto;
 import com.company.attendancemanagement.mapper.DepartmentMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -55,10 +56,20 @@ public class DepartmentService {
         return departmentMapper.findCompanyName(company);
     }
 
-    public void moveEmployeesToDept(String company, List<String> empCodes, String deptCode) {
-        if (empCodes != null && !empCodes.isEmpty()) {
-            departmentMapper.updateEmployeesDept(company, empCodes, deptCode);
+    public void moveEmployeesToDept(String company, List<String> empCodes, String deptCode, String transferDate) {
+        if (empCodes == null || empCodes.isEmpty()) return;
+
+        LocalDate startDate = (transferDate != null && !transferDate.isBlank())
+                ? LocalDate.parse(transferDate)
+                : LocalDate.now();
+        String start     = startDate.toString();
+        String yesterday = startDate.minusDays(1).toString();
+
+        for (String empCode : empCodes) {
+            departmentMapper.closeCurrentTransfer(company, empCode, yesterday);
+            departmentMapper.insertTransferHistory(company, empCode, deptCode, start);
         }
+        departmentMapper.updateEmployeesDept(company, empCodes, deptCode);
     }
 
     public boolean updateDepartment(DepartmentUpdateDto dto) {

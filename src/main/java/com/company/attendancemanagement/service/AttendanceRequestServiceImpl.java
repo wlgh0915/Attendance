@@ -76,6 +76,27 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
 
         boolean isOther = "OTHER".equals(dto.getRequestCategory());
 
+        // 조출연장: 시작시간 09:00 이전, 연장: 종료시간 18:00 이후
+        if ("조출연장".equals(dto.getRequestWorkCode())
+                && dto.getStartTime() != null && !dto.getStartTime().isBlank()
+                && dto.getStartTime().compareTo("09:00") >= 0) {
+            throw new IllegalArgumentException("조출연장은 시작시간이 09:00 이전이어야 합니다.");
+        }
+        if ("연장".equals(dto.getRequestWorkCode())
+                && dto.getEndTime() != null && !dto.getEndTime().isBlank()
+                && dto.getEndTime().compareTo("18:00") <= 0) {
+            throw new IllegalArgumentException("연장근무는 종료시간이 18:00 이후여야 합니다.");
+        }
+
+        // 휴일근무는 계획 근무유형이 OFF/HOLIDAY인 날에만 신청 가능
+        if ("HOLIDAY".equals(dto.getRequestCategory())) {
+            String wdt = requestMapper.findPlannedWorkDayType(
+                    dto.getCompany(), dto.getEmpCode(), dto.getWorkDate());
+            if (wdt == null || (!wdt.equals("OFF") && !wdt.equals("HOLIDAY"))) {
+                throw new IllegalArgumentException("휴일근무는 휴일(OFF/HOLIDAY)에만 신청할 수 있습니다.");
+            }
+        }
+
         if (dto.getRequestId() != null && !dto.getRequestId().isBlank()) {
             AttendanceRequestDto existing = requestMapper.findByRequestId(dto.getRequestId());
             if (existing == null) throw new IllegalArgumentException("존재하지 않는 근태신청입니다.");
