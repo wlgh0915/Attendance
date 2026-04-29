@@ -51,9 +51,9 @@
                                 th:value="${dept.deptCode}"
                                 th:text="${dept.deptName + ' (' + dept.deptCode + ')'}"></option>
                     </select>
-                    <input type="date" name="transferDate" class="dept-select"
+                    <input type="date" name="transferDate" class="transfer-date-input"
                            th:value="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}"
-                           style="min-width:140px;">
+                           title="발령일">
                     <button type="submit" class="btn-toolbar btn-change">부서 변경</button>
                     <a th:if="${!#strings.isEmpty(deptCode)}"
                        th:href="@{/departments/employees/unassigned(company=${company}, deptCode=${deptCode})}"

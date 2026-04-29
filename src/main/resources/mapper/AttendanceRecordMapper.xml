@@ -11,8 +11,10 @@
                ACTUAL_SHIFT_CODE AS actualShiftCode,
                LEFT(CONVERT(VARCHAR(8), CHECK_IN,  108), 5) AS checkIn,
                LEFT(CONVERT(VARCHAR(8), CHECK_OUT, 108), 5) AS checkOut,
-               WORK_MIN    AS workMin,
-               OVERNIGHT_YN AS overnightYn
+               WORK_MIN     AS workMin,
+               OVERNIGHT_YN AS overnightYn,
+               LATE_YN      AS lateYn,
+               LATE_MIN     AS lateMin
         FROM HRTDAILYATTENDANCE01
         WHERE COMPANY  = #{company}
           AND EMP_CODE = #{empCode}
@@ -37,13 +39,16 @@
                 CHECK_OUT         = #{checkOut},
                 WORK_MIN          = #{workMin},
                 OVERNIGHT_YN      = #{overnightYn},
+                LATE_YN           = #{lateYn},
+                LATE_MIN          = #{lateMin},
                 UPDATED_AT        = GETDATE()
         WHEN NOT MATCHED THEN
             INSERT (COMPANY, EMP_CODE, YYYYMMDD, DEPT_CODE, SHIFT_CODE, ACTUAL_SHIFT_CODE,
-                    CHECK_IN, CHECK_OUT, WORK_MIN, OVERNIGHT_YN, CREATED_AT, UPDATED_AT)
+                    CHECK_IN, CHECK_OUT, WORK_MIN, OVERNIGHT_YN, LATE_YN, LATE_MIN,
+                    CREATED_AT, UPDATED_AT)
             VALUES (#{company}, #{empCode}, #{yyyymmdd}, #{deptCode}, #{shiftCode},
                     #{actualShiftCode}, #{checkIn}, #{checkOut}, #{workMin},
-                    #{overnightYn}, GETDATE(), GETDATE());
+                    #{overnightYn}, #{lateYn}, #{lateMin}, GETDATE(), GETDATE());
     </update>
 
     <!-- 날짜별 계획 시프트 조회 (HRIDEPTTRANSFER01 기반) -->

@@ -15,6 +15,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -31,12 +32,15 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
     @Override
     public Map<String, Object> getFormData(LoginUserDto loginUser) {
         Map<String, Object> data = new HashMap<>();
-        List<DepartmentDto> depts = requestMapper.findDeptListForDropdown(loginUser.getCompany());
-        List<ShiftCodeDto> shiftCodes = requestMapper.findShiftCodes(loginUser.getCompany());
         String deptLeader = requestMapper.findDeptLeader(loginUser.getCompany(), loginUser.getDeptCode());
         boolean isDeptLeader = loginUser.getEmpCode().equals(deptLeader);
         boolean isAdmin      = "ADMIN".equals(loginUser.getRoleCode());
         boolean canViewAll   = isAdmin || isDeptLeader;
+
+        List<DepartmentDto> depts = isAdmin
+                ? requestMapper.findAccessibleDepts(loginUser.getCompany(), loginUser.getDeptCode())
+                : requestMapper.findDeptListForDropdown(loginUser.getCompany());
+        List<ShiftCodeDto> shiftCodes = requestMapper.findShiftCodes(loginUser.getCompany());
 
         data.put("depts", depts);
         data.put("shiftCodes", shiftCodes);
@@ -60,9 +64,126 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
 
         if (!canViewAll) {
             search.setDeptCode(loginUser.getDeptCode());
+        } else if (isAdmin) {
+            List<DepartmentDto> accessible = requestMapper.findAccessibleDepts(
+                    loginUser.getCompany(), loginUser.getDeptCode());
+            boolean ok = accessible.stream()
+                    .anyMatch(d -> d.getDeptCode().equals(search.getDeptCode()));
+            if (!ok) search.setDeptCode(loginUser.getDeptCode());
         }
 
-        return requestMapper.searchEmployees(search);
+        return mergeRequestsByEmployee(requestMapper.searchEmployees(search), search.getRequestCategory());
+    }
+
+    private List<AttendanceEmpRowDto> mergeRequestsByEmployee(List<AttendanceEmpRowDto> rows, String requestCategory) {
+        Map<String, AttendanceEmpRowDto> merged = new LinkedHashMap<>();
+        for (AttendanceEmpRowDto row : rows) {
+            AttendanceEmpRowDto requestInfo = copyRequestInfo(row);
+            String requestWorkCode = row.getRequestWorkCode();
+            AttendanceEmpRowDto base = merged.computeIfAbsent(row.getEmpCode(), empCode -> {
+                row.setRequestsByWorkCode(new LinkedHashMap<>());
+                clearDisplayRequest(row);
+                return row;
+            });
+            if (requestWorkCode != null && !requestWorkCode.isBlank()) {
+                AttendanceEmpRowDto stored = base.getRequestsByWorkCode().get(requestWorkCode);
+                if (stored == null || shouldReplaceRequestInfo(stored, requestInfo)) {
+                    base.getRequestsByWorkCode().put(requestWorkCode, requestInfo);
+                }
+                if (matchesSearchCategory(requestCategory, requestInfo, requestWorkCode)) {
+                    applyDisplayRequest(base, requestInfo);
+                }
+            }
+        }
+        return new ArrayList<>(merged.values());
+    }
+
+    private boolean shouldReplaceRequestInfo(AttendanceEmpRowDto stored, AttendanceEmpRowDto candidate) {
+        boolean storedInactive = "REJECTED".equals(stored.getStatus()) || "CANCELED".equals(stored.getStatus());
+        boolean candidateActive = "DRAFT".equals(candidate.getStatus())
+                || "SUBMITTED".equals(candidate.getStatus())
+                || "APPROVED".equals(candidate.getStatus());
+        return storedInactive && candidateActive;
+    }
+
+    private void clearDisplayRequest(AttendanceEmpRowDto row) {
+        row.setRequestId(null);
+        row.setExistingRequestGroup(null);
+        row.setRequestWorkCode(null);
+        row.setReason(null);
+        row.setReasonDetail(null);
+        row.setStartTime(null);
+        row.setStartTimeType(null);
+        row.setEndTime(null);
+        row.setEndTimeType(null);
+        row.setRequestWorkMin(null);
+        row.setStatus(null);
+        row.setRequesterCode(null);
+        row.setRequesterName(null);
+    }
+
+    private boolean matchesSearchCategory(String requestCategory, AttendanceEmpRowDto row, String requestWorkCode) {
+        if ("OTHER".equals(requestCategory)) {
+            return "OTHER".equals(row.getExistingRequestGroup());
+        }
+        if (!"GENERAL".equals(row.getExistingRequestGroup())) {
+            return false;
+        }
+        if ("OVERTIME".equals(requestCategory)) {
+            return "연장".equals(requestWorkCode) || "조출연장".equals(requestWorkCode);
+        }
+        if ("HOLIDAY".equals(requestCategory)) {
+            return "휴일근무".equals(requestWorkCode);
+        }
+        if ("LEAVE".equals(requestCategory)) {
+            return "조퇴".equals(requestWorkCode)
+                    || "외근".equals(requestWorkCode)
+                    || "외출".equals(requestWorkCode)
+                    || "전반차".equals(requestWorkCode)
+                    || "후반차".equals(requestWorkCode)
+                    || "오전반차".equals(requestWorkCode)
+                    || "오후반차".equals(requestWorkCode);
+        }
+        return false;
+    }
+
+    private void applyDisplayRequest(AttendanceEmpRowDto target, AttendanceEmpRowDto source) {
+        if (target.getRequestId() != null
+                && !target.getRequestId().equals(source.getRequestId())
+                && !shouldReplaceRequestInfo(target, source)) {
+            return;
+        }
+        target.setRequestId(source.getRequestId());
+        target.setExistingRequestGroup(source.getExistingRequestGroup());
+        target.setRequestWorkCode(source.getRequestWorkCode());
+        target.setReason(source.getReason());
+        target.setReasonDetail(source.getReasonDetail());
+        target.setStartTime(source.getStartTime());
+        target.setStartTimeType(source.getStartTimeType());
+        target.setEndTime(source.getEndTime());
+        target.setEndTimeType(source.getEndTimeType());
+        target.setRequestWorkMin(source.getRequestWorkMin());
+        target.setStatus(source.getStatus());
+        target.setRequesterCode(source.getRequesterCode());
+        target.setRequesterName(source.getRequesterName());
+    }
+
+    private AttendanceEmpRowDto copyRequestInfo(AttendanceEmpRowDto source) {
+        AttendanceEmpRowDto copy = new AttendanceEmpRowDto();
+        copy.setRequestId(source.getRequestId());
+        copy.setExistingRequestGroup(source.getExistingRequestGroup());
+        copy.setRequestWorkCode(source.getRequestWorkCode());
+        copy.setReason(source.getReason());
+        copy.setReasonDetail(source.getReasonDetail());
+        copy.setStartTime(source.getStartTime());
+        copy.setStartTimeType(source.getStartTimeType());
+        copy.setEndTime(source.getEndTime());
+        copy.setEndTimeType(source.getEndTimeType());
+        copy.setRequestWorkMin(source.getRequestWorkMin());
+        copy.setStatus(source.getStatus());
+        copy.setRequesterCode(source.getRequesterCode());
+        copy.setRequesterName(source.getRequesterName());
+        return copy;
     }
 
     @Override
@@ -103,6 +224,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             if ("SUBMITTED".equals(existing.getStatus()) || "APPROVED".equals(existing.getStatus())) {
                 throw new IllegalArgumentException("상신 또는 승인된 건은 수정할 수 없습니다.");
             }
+            validateNoActiveSameWorkRequest(dto);
             dto.setStatus("DRAFT");
             requestMapper.updateRequestHeader(dto);
             if (isOther) {
@@ -113,6 +235,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         } else {
             dto.setRequestId(LocalDateTime.now().format(REQ_ID_FORMAT));
             dto.setStatus("DRAFT");
+            validateNoActiveSameWorkRequest(dto);
             requestMapper.insertRequestHeader(dto);
             if (isOther) {
                 requestMapper.insertOtherDetail(dto);
@@ -121,6 +244,16 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             }
         }
         return dto;
+    }
+
+    private void validateNoActiveSameWorkRequest(AttendanceRequestDto dto) {
+        if (dto.getRequestWorkCode() == null || dto.getRequestWorkCode().isBlank()) {
+            return;
+        }
+        int duplicateCount = requestMapper.countActiveSameWorkRequest(dto);
+        if (duplicateCount > 0) {
+            throw new IllegalArgumentException("같은 일자에 같은 근무 신청이 이미 있습니다.");
+        }
     }
 
     @Override
@@ -226,17 +359,27 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
     public void cancelSubmit(String requestId, LoginUserDto loginUser) {
         AttendanceRequestDto existing = requestMapper.findByRequestId(requestId);
         if (existing == null) throw new IllegalArgumentException("존재하지 않는 근태신청입니다.");
-        if (!"SUBMITTED".equals(existing.getStatus())) {
-            throw new IllegalArgumentException("상신 상태의 신청만 취소할 수 있습니다.");
+        if (!canCancelRequest(existing, loginUser)) {
+            throw new IllegalArgumentException("신청자 또는 부서장만 취소할 수 있습니다.");
         }
-        if (!loginUser.getEmpCode().equals(existing.getRequesterCode())) {
-            throw new IllegalArgumentException("상신자만 상신취소할 수 있습니다.");
+        if ("SUBMITTED".equals(existing.getStatus()) || "APPROVED".equals(existing.getStatus())) {
+            int approvedCount = approvalMapper.countApprovedByApprover(requestId);
+            if ("SUBMITTED".equals(existing.getStatus()) && approvedCount == 0) {
+                approvalMapper.deleteByRequestId(requestId);
+                requestMapper.updateStatus(requestId, "DRAFT");
+                return;
+            }
+            requestMapper.updateStatus(requestId, "CANCELED");
+            return;
         }
-        int approved = approvalMapper.countApprovedByApprover(requestId);
-        if (approved > 0) {
-            throw new IllegalArgumentException("이미 승인된 건은 상신취소할 수 없습니다.");
+        throw new IllegalArgumentException("승인중 또는 승인완료 상태의 신청만 취소할 수 있습니다.");
+    }
+
+    private boolean canCancelRequest(AttendanceRequestDto request, LoginUserDto loginUser) {
+        if (loginUser.getEmpCode().equals(request.getRequesterCode())) {
+            return true;
         }
-        approvalMapper.deleteByRequestId(requestId);
-        requestMapper.updateStatus(requestId, "DRAFT");
+        String deptLeader = requestMapper.findDeptLeader(loginUser.getCompany(), request.getDeptCode());
+        return loginUser.getEmpCode().equals(deptLeader);
     }
 }

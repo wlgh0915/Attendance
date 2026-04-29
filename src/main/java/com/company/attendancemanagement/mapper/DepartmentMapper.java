@@ -2,6 +2,7 @@ package com.company.attendancemanagement.mapper;
 
 import com.company.attendancemanagement.dto.department.DepartmentCreateDto;
 import com.company.attendancemanagement.dto.department.DepartmentDto;
+import com.company.attendancemanagement.dto.department.DeptTransferDto;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import com.company.attendancemanagement.dto.department.DepartmentEmployeeDto;
@@ -35,12 +36,9 @@ public interface DepartmentMapper {
                             @Param("empCodes") List<String> empCodes,
                             @Param("deptCode") String deptCode);
 
-    void closeCurrentTransfer(@Param("company") String company,
-                              @Param("empCode") String empCode,
-                              @Param("endDate") String endDate);
+    void insertTransferHistory(DeptTransferDto dto);
 
-    void insertTransferHistory(@Param("company") String company,
-                               @Param("empCode") String empCode,
-                               @Param("deptCode") String deptCode,
-                               @Param("startDate") String startDate);
+    void closeCurrentTransfer(@Param("company")  String company,
+                              @Param("empCode")  String empCode,
+                              @Param("endDate")  String endDate);
 }

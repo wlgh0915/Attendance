@@ -16,6 +16,8 @@ public interface AttendanceRequestMapper {
 
     AttendanceRequestDto findByRequestId(@Param("requestId") String requestId);
 
+    int countActiveSameWorkRequest(AttendanceRequestDto dto);
+
     int insertRequestHeader(AttendanceRequestDto dto);
 
     int insertGeneralDetail(AttendanceRequestDto dto);
@@ -39,6 +41,8 @@ public interface AttendanceRequestMapper {
     String findDeptLeader(@Param("company") String company, @Param("deptCode") String deptCode);
 
     List<DepartmentDto> findDeptListForDropdown(@Param("company") String company);
+
+    List<DepartmentDto> findAccessibleDepts(@Param("company") String company, @Param("deptCode") String deptCode);
 
     List<ShiftCodeDto> findShiftCodes(@Param("company") String company);
 

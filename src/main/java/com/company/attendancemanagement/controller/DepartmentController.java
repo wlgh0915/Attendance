@@ -132,6 +132,8 @@ public class DepartmentController {
 
         if (empCodes == null || empCodes.isEmpty()) {
             redirectAttributes.addFlashAttribute("errorMessage", "사원을 선택해주세요.");
+        } else if (targetDeptCode == null || targetDeptCode.isBlank()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "이동할 부서를 선택해주세요.");
         } else {
             departmentService.moveEmployeesToDept(company, empCodes, targetDeptCode, transferDate);
             redirectAttributes.addFlashAttribute("successMessage", "부서 변경에 성공했습니다.");

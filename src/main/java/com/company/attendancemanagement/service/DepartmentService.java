@@ -4,12 +4,13 @@ import com.company.attendancemanagement.dto.department.DepartmentCreateDto;
 import com.company.attendancemanagement.dto.department.DepartmentDto;
 import com.company.attendancemanagement.dto.department.DepartmentEmployeeDto;
 import com.company.attendancemanagement.dto.department.DepartmentUpdateDto;
+import com.company.attendancemanagement.dto.department.DeptTransferDto;
 import com.company.attendancemanagement.mapper.DepartmentMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.ArrayList;
 
 @Service
 @RequiredArgsConstructor
@@ -56,19 +57,27 @@ public class DepartmentService {
         return departmentMapper.findCompanyName(company);
     }
 
-    public void moveEmployeesToDept(String company, List<String> empCodes, String deptCode, String transferDate) {
+    @Transactional
+    public void moveEmployeesToDept(String company, List<String> empCodes,
+                                    String deptCode, String transferDate) {
         if (empCodes == null || empCodes.isEmpty()) return;
 
-        LocalDate startDate = (transferDate != null && !transferDate.isBlank())
-                ? LocalDate.parse(transferDate)
-                : LocalDate.now();
-        String start     = startDate.toString();
-        String yesterday = startDate.minusDays(1).toString();
+        String startDate = (transferDate == null || transferDate.isBlank())
+                ? LocalDate.now().toString()
+                : transferDate;
+        String endDate = LocalDate.parse(startDate).minusDays(1).toString();
 
         for (String empCode : empCodes) {
-            departmentMapper.closeCurrentTransfer(company, empCode, yesterday);
-            departmentMapper.insertTransferHistory(company, empCode, deptCode, start);
+            departmentMapper.closeCurrentTransfer(company, empCode, endDate);
+
+            DeptTransferDto transfer = new DeptTransferDto();
+            transfer.setCompany(company);
+            transfer.setEmpCode(empCode);
+            transfer.setDeptCode(deptCode);
+            transfer.setStartDate(startDate);
+            departmentMapper.insertTransferHistory(transfer);
         }
+
         departmentMapper.updateEmployeesDept(company, empCodes, deptCode);
     }
 

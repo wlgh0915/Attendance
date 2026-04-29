@@ -1,5 +1,11 @@
 let tableData = [];
 
+const shiftCodesData = Array.from(document.querySelectorAll('#shiftOptionsData span')).map(sp => ({
+    shiftCode: sp.dataset.code,
+    shiftName: sp.dataset.name,
+    workMinutes: sp.dataset.workMin ? parseInt(sp.dataset.workMin, 10) : 0
+}));
+
 function buildShiftOptions(selected) {
     const spans = document.querySelectorAll('#shiftOptionsData span');
     let opts = '<option value="">-- 선택 --</option>';
@@ -11,10 +17,61 @@ function buildShiftOptions(selected) {
 }
 
 function statusBadge(status) {
-    const map = {DRAFT:'badge-draft',SUBMITTED:'badge-submit',APPROVED:'badge-approved',REJECTED:'badge-rejected'};
+    const map = {DRAFT:'badge-draft',SUBMITTED:'badge-submit',APPROVED:'badge-approved',REJECTED:'badge-rejected',CANCELED:'badge-rejected'};
     const lbl = {DRAFT:'미상신',SUBMITTED:'승인중',APPROVED:'승인완료',REJECTED:'반려'};
     const s = status||'DRAFT';
+    if (s === 'CANCELED') return '<span class="badge badge-rejected">취소</span>';
     return '<span class="badge '+(map[s]||'badge-draft')+'">'+(lbl[s]||s)+'</span>';
+}
+
+function existingRequestFor(row, workCode) {
+    return (row.requestsByWorkCode && workCode) ? row.requestsByWorkCode[workCode] : null;
+}
+
+function currentRequestForRow(tr, row) {
+    const workCode = tr.querySelector('[data-field="requestWorkCode"]').value;
+    return existingRequestFor(row, workCode);
+}
+
+function formatWorkMin(min) {
+    if (min == null || min === 0) return '-';
+    const h = Math.floor(min / 60), m = min % 60;
+    if (h > 0 && m > 0) return h + '시간 ' + m + '분';
+    if (h > 0) return h + '시간';
+    return m + '분';
+}
+
+function selectedShiftWorkMin(workCode, fallback) {
+    const shift = shiftCodesData.find(s => s.shiftCode === workCode || s.shiftName === workCode);
+    return shift ? shift.workMinutes : (fallback || 0);
+}
+
+function isActiveRequest(state) {
+    return state && ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(state.status);
+}
+
+function categoryOfRequest(state) {
+    if (!state || state.existingRequestGroup === 'OTHER') return 'OTHER';
+    if (state.requestWorkCode === '연장' || state.requestWorkCode === '조출연장') return 'OVERTIME';
+    if (state.requestWorkCode === '휴일근무') return 'HOLIDAY';
+    return 'LEAVE';
+}
+
+function requestEffectMin(state) {
+    const category = categoryOfRequest(state);
+    const min = state.requestWorkMin || 0;
+    if (category === 'OVERTIME' || category === 'HOLIDAY') return min;
+    if (category === 'LEAVE') return -min;
+    return 0;
+}
+
+function cumulativeEstimatedWorkMin(row, selectedWorkCode) {
+    let total = selectedWorkCode ? selectedShiftWorkMin(selectedWorkCode, row.shiftWorkMin) : (row.shiftWorkMin || 0);
+    Object.values(row.requestsByWorkCode || {}).forEach(state => {
+        if (!isActiveRequest(state) || state.existingRequestGroup === 'OTHER') return;
+        total += requestEffectMin(state);
+    });
+    return Math.max(total, 0);
 }
 
 function renderTable(rows) {
@@ -22,29 +79,49 @@ function renderTable(rows) {
     if (checkAll) checkAll.checked = false;
     const tbody = document.getElementById('reqTableBody');
     if (!rows || rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" class="no-data">조회된 인원이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" class="no-data">조회된 인원이 없습니다.</td></tr>';
         tableData = [];
         return;
     }
     tableData = rows;
     tbody.innerHTML = rows.map((r, idx) => {
-        const locked = (r.status === 'SUBMITTED' || r.status === 'APPROVED');
+        const selectedWorkCode = r.requestWorkCode || '';
+        const existing = existingRequestFor(r, selectedWorkCode) || r;
+        const locked = (existing.status === 'SUBMITTED' || existing.status === 'APPROVED');
         const dis = locked ? 'disabled' : '';
-        const reasonVal = (r.reason||'').replace(/"/g,'&quot;');
-        const reasonDetailVal = (r.reasonDetail||'').replace(/"/g,'&quot;');
+        const reasonVal = (existing.reason||'').replace(/"/g,'&quot;');
+        const reasonDetailVal = (existing.reasonDetail||'').replace(/"/g,'&quot;');
         return '<tr data-idx="'+idx+'">'
             + '<td class="td-check" onclick="clickCheckCell(this)"><input type="checkbox" onclick="event.stopPropagation();toggleCheck(this)"></td>'
             + '<td>'+(r.empCode||'')+'</td>'
             + '<td>'+(r.empName||'')+'</td>'
             + '<td>'+(r.deptName||'')+'</td>'
             + '<td>'+(r.workPlanName||'-')+'</td>'
-            + '<td><select data-field="requestWorkCode" '+dis+'>'+buildShiftOptions(r.requestWorkCode)+'</select></td>'
+            + '<td data-field="shiftWorkMin">'+formatWorkMin(cumulativeEstimatedWorkMin(r, selectedWorkCode))+'</td>'
+            + '<td><select data-field="requestWorkCode" onchange="onWorkCodeChange(this,'+idx+')">'+buildShiftOptions(selectedWorkCode)+'</select></td>'
             + '<td><input type="text" data-field="reason" value="'+reasonVal+'" placeholder="사유" '+dis+'></td>'
             + '<td><input type="text" data-field="reasonDetail" value="'+reasonDetailVal+'" placeholder="사유 상세 입력" '+dis+'></td>'
-            + '<td>'+statusBadge(r.status)+'</td>'
-            + '<td>'+(r.requesterName||'')+'</td>'
+            + '<td data-field="status">'+statusBadge(existing.status)+'</td>'
+            + '<td data-field="requesterName">'+(existing.requesterName||'')+'</td>'
             + '</tr>';
     }).join('');
+}
+
+function onWorkCodeChange(select, idx) {
+    const r = tableData[idx];
+    const existing = existingRequestFor(r, select.value);
+    const state = existing || {};
+    const locked = (state.status === 'SUBMITTED' || state.status === 'APPROVED');
+    const tr = select.closest('tr');
+    const reasonEl = tr.querySelector('[data-field="reason"]');
+    const detailEl = tr.querySelector('[data-field="reasonDetail"]');
+    reasonEl.value = state.reason || '';
+    detailEl.value = state.reasonDetail || '';
+    reasonEl.disabled = locked;
+    detailEl.disabled = locked;
+    tr.querySelector('[data-field="shiftWorkMin"]').textContent = formatWorkMin(cumulativeEstimatedWorkMin(r, select.value));
+    tr.querySelector('[data-field="status"]').innerHTML = statusBadge(state.status);
+    tr.querySelector('[data-field="requesterName"]').textContent = state.requesterName || '';
 }
 
 function clickCheckAllCell() {
@@ -89,13 +166,15 @@ function getSelectedRows() {
 function rowToDto(tr) {
     const idx = parseInt(tr.dataset.idx);
     const d = tableData[idx];
+    const requestWorkCode = tr.querySelector('[data-field="requestWorkCode"]').value;
+    const existing = currentRequestForRow(tr, d);
     return {
-        requestId:       d.requestId||null,
+        requestId:       existing && existing.status !== 'REJECTED' ? existing.requestId : null,
         empCode:         d.empCode,
         deptCode:        d.deptCode,
         workDate:        document.getElementById('workDate').value,
         requestCategory: 'OTHER',
-        requestWorkCode: tr.querySelector('[data-field="requestWorkCode"]').value,
+        requestWorkCode: requestWorkCode,
         reason:          tr.querySelector('[data-field="reason"]').value,
         reasonDetail:    tr.querySelector('[data-field="reasonDetail"]').value,
         startTime:       null,
@@ -142,7 +221,7 @@ async function doDelete() {
     if (selected.length === 0) { showToast('선택된 행이 없습니다.','error'); return; }
     if (!confirm('선택한 근태신청을 삭제하시겠습니까?')) return;
     for (const tr of selected) {
-        const requestId = tableData[parseInt(tr.dataset.idx)].requestId;
+        const requestId = rowToDto(tr).requestId;
         if (!requestId) { showToast('저장되지 않은 행은 삭제할 수 없습니다.','error'); return; }
         const res = await fetch('/attendance/request/delete', {
             method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({requestId})
@@ -159,9 +238,10 @@ async function doSubmit() {
     if (selected.length === 0) { showToast('선택된 행이 없습니다.','error'); return; }
     for (const tr of selected) {
         const idx = parseInt(tr.dataset.idx);
-        let requestId = tableData[idx].requestId;
-        if (!requestId) {
-            const dto = rowToDto(tr);
+        const dto = rowToDto(tr);
+        let requestId = dto.requestId;
+        const existing = currentRequestForRow(tr, tableData[idx]);
+        if (!requestId || !existing || existing.status === 'DRAFT' || existing.status === 'REJECTED') {
             if (!dto.requestWorkCode) { showToast('변경 근무계획을 선택하세요.','error'); return; }
             const sr = await fetch('/attendance/request/save', {
                 method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(dto)
@@ -186,7 +266,7 @@ async function doCancelSubmit() {
     if (selected.length === 0) { showToast('선택된 행이 없습니다.','error'); return; }
     if (!confirm('상신을 취소하시겠습니까?')) return;
     for (const tr of selected) {
-        const requestId = tableData[parseInt(tr.dataset.idx)].requestId;
+        const requestId = rowToDto(tr).requestId;
         if (!requestId) { showToast('저장된 신청건만 상신취소할 수 있습니다.','error'); return; }
         const res = await fetch('/attendance/request/cancel-submit', {
             method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({requestId})
