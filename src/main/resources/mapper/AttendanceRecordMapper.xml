@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.company.attendancemanagement.mapper.AttendanceRecordMapper">
+
+    <!-- 월별 출퇴근 실적 조회 -->
+    <select id="findByMonth"
+            resultType="com.company.attendancemanagement.dto.record.AttendanceRecordDto">
+        SELECT COMPANY, EMP_CODE, YYYYMMDD, DEPT_CODE, SHIFT_CODE,
+               ACTUAL_SHIFT_CODE AS actualShiftCode,
+               LEFT(CONVERT(VARCHAR(8), CHECK_IN,  108), 5) AS checkIn,
+               LEFT(CONVERT(VARCHAR(8), CHECK_OUT, 108), 5) AS checkOut,
+               WORK_MIN    AS workMin,
+               OVERNIGHT_YN AS overnightYn
+        FROM HRTDAILYATTENDANCE01
+        WHERE COMPANY  = #{company}
+          AND EMP_CODE = #{empCode}
+          AND YYYYMMDD BETWEEN #{startYmd} AND #{endYmd}
+        ORDER BY YYYYMMDD
+    </select>
+
+    <!-- 출퇴근 실적 저장 (UPSERT) -->
+    <update id="upsert" parameterType="com.company.attendancemanagement.dto.record.AttendanceRecordDto">
+        MERGE HRTDAILYATTENDANCE01 AS T
+        USING (VALUES (#{company}, #{empCode}, #{yyyymmdd}))
+              AS S(COMPANY, EMP_CODE, YYYYMMDD)
+        ON T.COMPANY = S.COMPANY
+       AND T.EMP_CODE = S.EMP_CODE
+       AND T.YYYYMMDD = S.YYYYMMDD
+        WHEN MATCHED THEN
+            UPDATE SET
+                DEPT_CODE         = #{deptCode},
+                SHIFT_CODE        = #{shiftCode},
+                ACTUAL_SHIFT_CODE = #{actualShiftCode},
+                CHECK_IN          = #{checkIn},
+                CHECK_OUT         = #{checkOut},
+                WORK_MIN          = #{workMin},
+                OVERNIGHT_YN      = #{overnightYn},
+                UPDATED_AT        = GETDATE()
+        WHEN NOT MATCHED THEN
+            INSERT (COMPANY, EMP_CODE, YYYYMMDD, DEPT_CODE, SHIFT_CODE, ACTUAL_SHIFT_CODE,
+                    CHECK_IN, CHECK_OUT, WORK_MIN, OVERNIGHT_YN, CREATED_AT, UPDATED_AT)
+            VALUES (#{company}, #{empCode}, #{yyyymmdd}, #{deptCode}, #{shiftCode},
+                    #{actualShiftCode}, #{checkIn}, #{checkOut}, #{workMin},
+                    #{overnightYn}, GETDATE(), GETDATE());
+    </update>
+
+    <!-- 출퇴근 실적 삭제 -->
+    <delete id="delete">
+        DELETE FROM HRTDAILYATTENDANCE01
+        WHERE COMPANY  = #{company}
+          AND EMP_CODE = #{empCode}
+          AND YYYYMMDD = #{yyyymmdd}
+    </delete>
+
+</mapper>
