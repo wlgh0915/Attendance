@@ -72,26 +72,106 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             if (!ok) search.setDeptCode(loginUser.getDeptCode());
         }
 
-        return mergeRequestsByEmployee(requestMapper.searchEmployees(search));
+        return mergeRequestsByEmployee(requestMapper.searchEmployees(search), search.getRequestCategory());
     }
 
-    private List<AttendanceEmpRowDto> mergeRequestsByEmployee(List<AttendanceEmpRowDto> rows) {
+    private List<AttendanceEmpRowDto> mergeRequestsByEmployee(List<AttendanceEmpRowDto> rows, String requestCategory) {
         Map<String, AttendanceEmpRowDto> merged = new LinkedHashMap<>();
         for (AttendanceEmpRowDto row : rows) {
+            AttendanceEmpRowDto requestInfo = copyRequestInfo(row);
+            String requestWorkCode = row.getRequestWorkCode();
             AttendanceEmpRowDto base = merged.computeIfAbsent(row.getEmpCode(), empCode -> {
                 row.setRequestsByWorkCode(new LinkedHashMap<>());
+                clearDisplayRequest(row);
                 return row;
             });
-            if (row.getRequestWorkCode() != null && !row.getRequestWorkCode().isBlank()) {
-                base.getRequestsByWorkCode().put(row.getRequestWorkCode(), copyRequestInfo(row));
+            if (requestWorkCode != null && !requestWorkCode.isBlank()) {
+                AttendanceEmpRowDto stored = base.getRequestsByWorkCode().get(requestWorkCode);
+                if (stored == null || shouldReplaceRequestInfo(stored, requestInfo)) {
+                    base.getRequestsByWorkCode().put(requestWorkCode, requestInfo);
+                }
+                if (matchesSearchCategory(requestCategory, requestInfo, requestWorkCode)) {
+                    applyDisplayRequest(base, requestInfo);
+                }
             }
         }
         return new ArrayList<>(merged.values());
     }
 
+    private boolean shouldReplaceRequestInfo(AttendanceEmpRowDto stored, AttendanceEmpRowDto candidate) {
+        boolean storedInactive = "REJECTED".equals(stored.getStatus()) || "CANCELED".equals(stored.getStatus());
+        boolean candidateActive = "DRAFT".equals(candidate.getStatus())
+                || "SUBMITTED".equals(candidate.getStatus())
+                || "APPROVED".equals(candidate.getStatus());
+        return storedInactive && candidateActive;
+    }
+
+    private void clearDisplayRequest(AttendanceEmpRowDto row) {
+        row.setRequestId(null);
+        row.setExistingRequestGroup(null);
+        row.setRequestWorkCode(null);
+        row.setReason(null);
+        row.setReasonDetail(null);
+        row.setStartTime(null);
+        row.setStartTimeType(null);
+        row.setEndTime(null);
+        row.setEndTimeType(null);
+        row.setRequestWorkMin(null);
+        row.setStatus(null);
+        row.setRequesterCode(null);
+        row.setRequesterName(null);
+    }
+
+    private boolean matchesSearchCategory(String requestCategory, AttendanceEmpRowDto row, String requestWorkCode) {
+        if ("OTHER".equals(requestCategory)) {
+            return "OTHER".equals(row.getExistingRequestGroup());
+        }
+        if (!"GENERAL".equals(row.getExistingRequestGroup())) {
+            return false;
+        }
+        if ("OVERTIME".equals(requestCategory)) {
+            return "연장".equals(requestWorkCode) || "조출연장".equals(requestWorkCode);
+        }
+        if ("HOLIDAY".equals(requestCategory)) {
+            return "휴일근무".equals(requestWorkCode);
+        }
+        if ("LEAVE".equals(requestCategory)) {
+            return "조퇴".equals(requestWorkCode)
+                    || "외근".equals(requestWorkCode)
+                    || "외출".equals(requestWorkCode)
+                    || "전반차".equals(requestWorkCode)
+                    || "후반차".equals(requestWorkCode)
+                    || "오전반차".equals(requestWorkCode)
+                    || "오후반차".equals(requestWorkCode);
+        }
+        return false;
+    }
+
+    private void applyDisplayRequest(AttendanceEmpRowDto target, AttendanceEmpRowDto source) {
+        if (target.getRequestId() != null
+                && !target.getRequestId().equals(source.getRequestId())
+                && !shouldReplaceRequestInfo(target, source)) {
+            return;
+        }
+        target.setRequestId(source.getRequestId());
+        target.setExistingRequestGroup(source.getExistingRequestGroup());
+        target.setRequestWorkCode(source.getRequestWorkCode());
+        target.setReason(source.getReason());
+        target.setReasonDetail(source.getReasonDetail());
+        target.setStartTime(source.getStartTime());
+        target.setStartTimeType(source.getStartTimeType());
+        target.setEndTime(source.getEndTime());
+        target.setEndTimeType(source.getEndTimeType());
+        target.setRequestWorkMin(source.getRequestWorkMin());
+        target.setStatus(source.getStatus());
+        target.setRequesterCode(source.getRequesterCode());
+        target.setRequesterName(source.getRequesterName());
+    }
+
     private AttendanceEmpRowDto copyRequestInfo(AttendanceEmpRowDto source) {
         AttendanceEmpRowDto copy = new AttendanceEmpRowDto();
         copy.setRequestId(source.getRequestId());
+        copy.setExistingRequestGroup(source.getExistingRequestGroup());
         copy.setRequestWorkCode(source.getRequestWorkCode());
         copy.setReason(source.getReason());
         copy.setReasonDetail(source.getReasonDetail());
@@ -99,6 +179,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         copy.setStartTimeType(source.getStartTimeType());
         copy.setEndTime(source.getEndTime());
         copy.setEndTimeType(source.getEndTimeType());
+        copy.setRequestWorkMin(source.getRequestWorkMin());
         copy.setStatus(source.getStatus());
         copy.setRequesterCode(source.getRequesterCode());
         copy.setRequesterName(source.getRequesterName());
@@ -257,8 +338,8 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
     public void cancelSubmit(String requestId, LoginUserDto loginUser) {
         AttendanceRequestDto existing = requestMapper.findByRequestId(requestId);
         if (existing == null) throw new IllegalArgumentException("존재하지 않는 근태신청입니다.");
-        if (!loginUser.getEmpCode().equals(existing.getRequesterCode())) {
-            throw new IllegalArgumentException("신청자만 취소할 수 있습니다.");
+        if (!canCancelRequest(existing, loginUser)) {
+            throw new IllegalArgumentException("신청자 또는 부서장만 취소할 수 있습니다.");
         }
         if ("SUBMITTED".equals(existing.getStatus()) || "APPROVED".equals(existing.getStatus())) {
             int approvedCount = approvalMapper.countApprovedByApprover(requestId);
@@ -271,5 +352,13 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             return;
         }
         throw new IllegalArgumentException("승인중 또는 승인완료 상태의 신청만 취소할 수 있습니다.");
+    }
+
+    private boolean canCancelRequest(AttendanceRequestDto request, LoginUserDto loginUser) {
+        if (loginUser.getEmpCode().equals(request.getRequesterCode())) {
+            return true;
+        }
+        String deptLeader = requestMapper.findDeptLeader(loginUser.getCompany(), request.getDeptCode());
+        return loginUser.getEmpCode().equals(deptLeader);
     }
 }

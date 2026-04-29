@@ -73,7 +73,8 @@
     <div style="display:none;" id="shiftOptionsData">
         <span th:each="sc : ${shiftCodes}"
               th:data-code="${sc.shiftCode}"
-              th:data-name="${sc.shiftName}">
+              th:data-name="${sc.shiftName}"
+              th:data-work-min="${sc.workMinutes}">
         </span>
     </div>
 

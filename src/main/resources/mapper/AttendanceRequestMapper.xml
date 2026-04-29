@@ -20,6 +20,7 @@
             LEFT(CONVERT(VARCHAR(8), s.WORK_OFF_HHMM, 108), 5)   AS shiftOffTime,
             weekly.weekWorkMin                                     AS shiftWorkMin,
             r.REQ_ID                                              AS requestId,
+            r.REQ_GROUP                                           AS existingRequestGroup,
             CASE WHEN r.REQ_GROUP = 'OTHER' THEN o.CHANGE_SHIFT_CODE
                  ELSE r.REQ_TYPE END                              AS requestWorkCode,
             r.REASON                                              AS reason,
@@ -28,6 +29,7 @@
             ISNULL(g.START_TIME_TYPE, 'N0')                       AS startTimeType,
             LEFT(CONVERT(VARCHAR(8), g.END_TIME,   108), 5)      AS endTime,
             ISNULL(g.END_TIME_TYPE,   'N0')                       AS endTimeType,
+            g.WORK_MIN                                             AS requestWorkMin,
             r.STATUS                                              AS status,
             r.REQUESTER_EMP_CODE                                  AS requesterCode,
             re.EMP_NAME                                           AS requesterName
@@ -85,21 +87,6 @@
               AND h.EMP_CODE = r.TARGET_EMP_CODE
               AND r.TARGET_DATE = CAST(#{workDate} AS DATE)
               AND r.STATUS &lt;&gt; 'CANCELED'
-              <if test="!'OTHER'.equals(requestCategory)">
-                  AND r.REQ_GROUP = 'GENERAL'
-                  <if test="'OVERTIME'.equals(requestCategory)">
-                      AND r.REQ_TYPE IN ('연장', '조출연장')
-                  </if>
-                  <if test="'HOLIDAY'.equals(requestCategory)">
-                      AND r.REQ_TYPE = '휴일근무'
-                  </if>
-                  <if test="'LEAVE'.equals(requestCategory)">
-                      AND r.REQ_TYPE IN ('조퇴', '외근', '외출', '전반차', '후반차', '오전반차', '오후반차')
-                  </if>
-              </if>
-              <if test="'OTHER'.equals(requestCategory)">
-                  AND r.REQ_GROUP = 'OTHER'
-              </if>
         LEFT JOIN HRTATTENDANCE_GENERAL01 g
                ON r.COMPANY = g.COMPANY AND r.REQ_ID = g.REQ_ID
         LEFT JOIN HRTATTENDANCE_OTHER01 o
@@ -316,7 +303,17 @@
                SHIFT_NAME AS shiftName,
                WORK_DAY_TYPE AS workDayType,
                CONVERT(VARCHAR(5), WORK_ON_HHMM,  108) AS workOnHhmm,
-               CONVERT(VARCHAR(5), WORK_OFF_HHMM, 108) AS workOffHhmm
+               CONVERT(VARCHAR(5), WORK_OFF_HHMM, 108) AS workOffHhmm,
+               CASE
+                   WHEN WORK_ON_HHMM IS NOT NULL AND WORK_OFF_HHMM IS NOT NULL
+                       THEN (CASE WHEN WORK_OFF_HHMM >= WORK_ON_HHMM
+                                  THEN DATEDIFF(MINUTE, WORK_ON_HHMM, WORK_OFF_HHMM)
+                                  ELSE 1440 + DATEDIFF(MINUTE, WORK_ON_HHMM, WORK_OFF_HHMM)
+                             END
+                             - ISNULL(DATEDIFF(MINUTE, BREAK1_START_HHMM, BREAK1_END_HHMM), 0)
+                             - ISNULL(DATEDIFF(MINUTE, BREAK2_START_HHMM, BREAK2_END_HHMM), 0))
+                   ELSE 0
+               END AS workMinutes
         FROM HRTSHIFTMASTER01
         WHERE COMPANY = #{company}
           AND USE_YN = 'Y'

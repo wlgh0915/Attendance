@@ -1,5 +1,11 @@
 let tableData = [];
 
+const shiftCodesData = Array.from(document.querySelectorAll('#shiftOptionsData span')).map(sp => ({
+    shiftCode: sp.dataset.code,
+    shiftName: sp.dataset.name,
+    workMinutes: sp.dataset.workMin ? parseInt(sp.dataset.workMin, 10) : 0
+}));
+
 function buildShiftOptions(selected) {
     const spans = document.querySelectorAll('#shiftOptionsData span');
     let opts = '<option value="">-- 선택 --</option>';
@@ -35,6 +41,39 @@ function formatWorkMin(min) {
     return m + '분';
 }
 
+function selectedShiftWorkMin(workCode, fallback) {
+    const shift = shiftCodesData.find(s => s.shiftCode === workCode || s.shiftName === workCode);
+    return shift ? shift.workMinutes : (fallback || 0);
+}
+
+function isActiveRequest(state) {
+    return state && ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(state.status);
+}
+
+function categoryOfRequest(state) {
+    if (!state || state.existingRequestGroup === 'OTHER') return 'OTHER';
+    if (state.requestWorkCode === '연장' || state.requestWorkCode === '조출연장') return 'OVERTIME';
+    if (state.requestWorkCode === '휴일근무') return 'HOLIDAY';
+    return 'LEAVE';
+}
+
+function requestEffectMin(state) {
+    const category = categoryOfRequest(state);
+    const min = state.requestWorkMin || 0;
+    if (category === 'OVERTIME' || category === 'HOLIDAY') return min;
+    if (category === 'LEAVE') return -min;
+    return 0;
+}
+
+function cumulativeEstimatedWorkMin(row, selectedWorkCode) {
+    let total = selectedWorkCode ? selectedShiftWorkMin(selectedWorkCode, row.shiftWorkMin) : (row.shiftWorkMin || 0);
+    Object.values(row.requestsByWorkCode || {}).forEach(state => {
+        if (!isActiveRequest(state) || state.existingRequestGroup === 'OTHER') return;
+        total += requestEffectMin(state);
+    });
+    return Math.max(total, 0);
+}
+
 function renderTable(rows) {
     const checkAll = document.getElementById('checkAll');
     if (checkAll) checkAll.checked = false;
@@ -58,7 +97,7 @@ function renderTable(rows) {
             + '<td>'+(r.empName||'')+'</td>'
             + '<td>'+(r.deptName||'')+'</td>'
             + '<td>'+(r.workPlanName||'-')+'</td>'
-            + '<td>'+formatWorkMin(r.shiftWorkMin)+'</td>'
+            + '<td data-field="shiftWorkMin">'+formatWorkMin(cumulativeEstimatedWorkMin(r, selectedWorkCode))+'</td>'
             + '<td><select data-field="requestWorkCode" onchange="onWorkCodeChange(this,'+idx+')">'+buildShiftOptions(selectedWorkCode)+'</select></td>'
             + '<td><input type="text" data-field="reason" value="'+reasonVal+'" placeholder="사유" '+dis+'></td>'
             + '<td><input type="text" data-field="reasonDetail" value="'+reasonDetailVal+'" placeholder="사유 상세 입력" '+dis+'></td>'
@@ -80,6 +119,7 @@ function onWorkCodeChange(select, idx) {
     detailEl.value = state.reasonDetail || '';
     reasonEl.disabled = locked;
     detailEl.disabled = locked;
+    tr.querySelector('[data-field="shiftWorkMin"]').textContent = formatWorkMin(cumulativeEstimatedWorkMin(r, select.value));
     tr.querySelector('[data-field="status"]').innerHTML = statusBadge(state.status);
     tr.querySelector('[data-field="requesterName"]').textContent = state.requesterName || '';
 }
@@ -129,7 +169,7 @@ function rowToDto(tr) {
     const requestWorkCode = tr.querySelector('[data-field="requestWorkCode"]').value;
     const existing = currentRequestForRow(tr, d);
     return {
-        requestId:       existing ? existing.requestId : null,
+        requestId:       existing && existing.status !== 'REJECTED' ? existing.requestId : null,
         empCode:         d.empCode,
         deptCode:        d.deptCode,
         workDate:        document.getElementById('workDate').value,
@@ -200,7 +240,8 @@ async function doSubmit() {
         const idx = parseInt(tr.dataset.idx);
         const dto = rowToDto(tr);
         let requestId = dto.requestId;
-        if (!requestId) {
+        const existing = currentRequestForRow(tr, tableData[idx]);
+        if (!requestId || !existing || existing.status === 'DRAFT' || existing.status === 'REJECTED') {
             if (!dto.requestWorkCode) { showToast('변경 근무계획을 선택하세요.','error'); return; }
             const sr = await fetch('/attendance/request/save', {
                 method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(dto)
