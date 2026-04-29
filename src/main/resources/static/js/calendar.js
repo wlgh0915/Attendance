@@ -51,24 +51,34 @@ function renderCalendar() {
 
         let inner = `<div class="date-num">${dn}</div>`;
 
-        if (day.record) {
-            if (day.record.actualShiftCode) {
-                inner += `<span class="shift-badge"><span class="badge b-work">${day.record.actualShiftCode}</span></span>`;
-            }
-            if (day.record.checkIn || day.record.checkOut) {
-                const ci = day.record.checkIn  || '--:--';
-                const co = day.record.checkOut || '--:--';
-                inner += `<span class="rec-badge">출 ${ci} / 퇴 ${co}</span>`;
-            }
+        // 1. 계획 근태코드 (항상 표시)
+        if (day.shiftName) {
+            const timePart = (day.workDayType === 'WORK' && day.workOnHhmm && day.workOffHhmm)
+                ? `<span class="shift-time"> ${day.workOnHhmm}~${day.workOffHhmm}</span>`
+                : '';
+            inner += `<span class="shift-badge"><span class="${shiftCls(day.workDayType)}">${day.shiftName}</span>${timePart}</span>`;
         }
 
+        // 2. 실 출퇴근 시간
+        if (day.record && (day.record.checkIn || day.record.checkOut)) {
+            const ci = day.record.checkIn  || '--:--';
+            const co = day.record.checkOut || '--:--';
+            inner += `<span class="rec-badge">출 ${ci} / 퇴 ${co}</span>`;
+        }
+
+        // 3. 지각
+        if (day.record && day.record.lateYn === 'Y') {
+            inner += `<span class="late-badge">지각 ${day.record.lateMin}분</span>`;
+        }
+
+        // 4. 근태신청 (연장, 연차, 반차 등)
         (day.requests || []).forEach(r => {
             const typeLabel = r.requestWorkCode || catLabel(r.requestCategory);
             let timeStr = '';
             if (r.startTime || r.endTime) {
                 const st = r.startTime || '--:--';
                 const et = r.endTime   || '--:--';
-                timeStr = `<span class="shift-time">${st}~${et}</span>`;
+                timeStr = `<span class="shift-time"> ${st}~${et}</span>`;
             }
             inner += `<span class="req-badge"><span class="${reqCls(r.status)}">${typeLabel} ${statusLabel(r.status)}</span>${timeStr}</span>`;
         });

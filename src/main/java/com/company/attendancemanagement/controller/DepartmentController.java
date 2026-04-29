@@ -121,6 +121,7 @@ public class DepartmentController {
                                 @RequestParam("currentDeptCode") String currentDeptCode,
                                 @RequestParam(value = "empCodes", required = false) List<String> empCodes,
                                 @RequestParam("targetDeptCode") String targetDeptCode,
+                                @RequestParam(value = "transferDate", required = false) String transferDate,
                                 HttpSession session,
                                 RedirectAttributes redirectAttributes) {
 
@@ -131,8 +132,10 @@ public class DepartmentController {
 
         if (empCodes == null || empCodes.isEmpty()) {
             redirectAttributes.addFlashAttribute("errorMessage", "사원을 선택해주세요.");
+        } else if (targetDeptCode == null || targetDeptCode.isBlank()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "이동할 부서를 선택해주세요.");
         } else {
-            departmentService.moveEmployeesToDept(company, empCodes, targetDeptCode);
+            departmentService.moveEmployeesToDept(company, empCodes, targetDeptCode, transferDate);
             redirectAttributes.addFlashAttribute("successMessage", "부서 변경에 성공했습니다.");
         }
 
@@ -200,7 +203,7 @@ public class DepartmentController {
             return "redirect:/departments/employees/unassigned?company=" + company + "&deptCode=" + deptCode;
         }
 
-        departmentService.moveEmployeesToDept(company, empCodes, deptCode);
+        departmentService.moveEmployeesToDept(company, empCodes, deptCode, null);
         redirectAttributes.addFlashAttribute("successMessage", "사원 추가에 성공했습니다.");
         return "redirect:/departments/employees?company=" + company + "&deptCode=" + deptCode;
     }
