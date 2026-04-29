@@ -31,12 +31,15 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
     @Override
     public Map<String, Object> getFormData(LoginUserDto loginUser) {
         Map<String, Object> data = new HashMap<>();
-        List<DepartmentDto> depts = requestMapper.findDeptListForDropdown(loginUser.getCompany());
-        List<ShiftCodeDto> shiftCodes = requestMapper.findShiftCodes(loginUser.getCompany());
         String deptLeader = requestMapper.findDeptLeader(loginUser.getCompany(), loginUser.getDeptCode());
         boolean isDeptLeader = loginUser.getEmpCode().equals(deptLeader);
         boolean isAdmin      = "ADMIN".equals(loginUser.getRoleCode());
         boolean canViewAll   = isAdmin || isDeptLeader;
+
+        List<DepartmentDto> depts = isAdmin
+                ? requestMapper.findAccessibleDepts(loginUser.getCompany(), loginUser.getDeptCode())
+                : requestMapper.findDeptListForDropdown(loginUser.getCompany());
+        List<ShiftCodeDto> shiftCodes = requestMapper.findShiftCodes(loginUser.getCompany());
 
         data.put("depts", depts);
         data.put("shiftCodes", shiftCodes);
@@ -60,6 +63,12 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
 
         if (!canViewAll) {
             search.setDeptCode(loginUser.getDeptCode());
+        } else if (isAdmin) {
+            List<DepartmentDto> accessible = requestMapper.findAccessibleDepts(
+                    loginUser.getCompany(), loginUser.getDeptCode());
+            boolean ok = accessible.stream()
+                    .anyMatch(d -> d.getDeptCode().equals(search.getDeptCode()));
+            if (!ok) search.setDeptCode(loginUser.getDeptCode());
         }
 
         return requestMapper.searchEmployees(search);

@@ -40,5 +40,7 @@ public interface AttendanceRequestMapper {
 
     List<DepartmentDto> findDeptListForDropdown(@Param("company") String company);
 
+    List<DepartmentDto> findAccessibleDepts(@Param("company") String company, @Param("deptCode") String deptCode);
+
     List<ShiftCodeDto> findShiftCodes(@Param("company") String company);
 }

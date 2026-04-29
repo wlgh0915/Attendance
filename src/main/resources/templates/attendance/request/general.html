@@ -23,7 +23,7 @@
     <div class="search-panel">
         <div class="search-group">
             <label>근무일</label>
-            <input type="date" id="workDate" th:value="${today}">
+            <input type="date" id="workDate" th:value="${today}" th:attr="min=${today}">
         </div>
         <div class="search-group">
             <label>부서</label>
@@ -52,6 +52,7 @@
                 <th style="width:75px;">성명</th>
                 <th style="width:100px;">부서</th>
                 <th style="width:90px;">근무계획</th>
+                <th style="width:80px;">예상근로시간</th>
                 <th style="width:120px;">신청근무</th>
                 <th style="width:120px;">사유</th>
                 <th style="width:200px;">사유상세</th>
@@ -62,7 +63,7 @@
             </tr>
             </thead>
             <tbody id="reqTableBody">
-                <tr><td colspan="12" class="no-data">조회 버튼을 클릭하세요.</td></tr>
+                <tr><td colspan="13" class="no-data">조회 버튼을 클릭하세요.</td></tr>
             </tbody>
         </table>
     </div>
@@ -76,6 +77,16 @@
     </div>
 </div>
 <div id="toast"></div>
+
+<!-- 시프트 코드 시간 데이터 (JS에서 참조) -->
+<div id="shiftTimesData" style="display:none">
+    <span th:each="sc : ${shiftCodes}"
+          th:data-code="${sc.shiftCode}"
+          th:data-name="${sc.shiftName}"
+          th:data-on="${sc.workOnHhmm}"
+          th:data-off="${sc.workOffHhmm}">
+    </span>
+</div>
 
 <script th:src="@{/js/request-general.js}"></script>
 </div><!-- /layout:fragment="content" -->

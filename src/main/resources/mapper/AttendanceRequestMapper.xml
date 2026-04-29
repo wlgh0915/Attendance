@@ -16,6 +16,9 @@
             ISNULL(s.SHIFT_CODE, '')                              AS workPlanCode,
             ISNULL(s.SHIFT_NAME, '미설정')                         AS workPlanName,
             ISNULL(s.WORK_DAY_TYPE, 'WORK')                       AS workDayType,
+            LEFT(CONVERT(VARCHAR(8), s.WORK_ON_HHMM,  108), 5)   AS shiftOnTime,
+            LEFT(CONVERT(VARCHAR(8), s.WORK_OFF_HHMM, 108), 5)   AS shiftOffTime,
+            weekly.weekWorkMin                                     AS shiftWorkMin,
             r.REQ_ID                                              AS requestId,
             CASE WHEN r.REQ_GROUP = 'OTHER' THEN o.CHANGE_SHIFT_CODE
                  ELSE r.REQ_TYPE END                              AS requestWorkCode,
@@ -33,15 +36,50 @@
                ON h.COMPANY = d.COMPANY AND h.DEPT_CODE = d.DEPT_CODE
         LEFT JOIN HRTWORKPATTERNMASTER01 pm
                ON d.COMPANY = pm.COMPANY AND d.WORK_PATTERN_CODE = pm.WORK_PATTERN_CODE
+        LEFT JOIN (
+            SELECT COMPANY, WORK_PATTERN_CODE, COUNT(*) AS CYCLE_LEN
+            FROM HRTWORKPATTERNDETAIL01
+            GROUP BY COMPANY, WORK_PATTERN_CODE
+        ) pdcount
+               ON pm.COMPANY = pdcount.COMPANY
+              AND pm.WORK_PATTERN_CODE = pdcount.WORK_PATTERN_CODE
         LEFT JOIN HRTWORKPATTERNDETAIL01 pd
                ON pm.COMPANY = pd.COMPANY
               AND pm.WORK_PATTERN_CODE = pd.WORK_PATTERN_CODE
               AND pd.SEQ = (
-                    (DATEDIFF(DAY, pm.START_DATE, CAST(#{workDate} AS DATE)) % pm.CYCLE_COUNT
-                      + pm.CYCLE_COUNT) % pm.CYCLE_COUNT + 1
+                    (DATEDIFF(DAY, pm.START_DATE, CAST(#{workDate} AS DATE)) % pdcount.CYCLE_LEN
+                      + pdcount.CYCLE_LEN) % pdcount.CYCLE_LEN + 1
                   )
         LEFT JOIN HRTSHIFTMASTER01 s
                ON pd.COMPANY = s.COMPANY AND pd.SHIFT_CODE = s.SHIFT_CODE
+        OUTER APPLY (
+            SELECT ISNULL(SUM(
+                CASE WHEN ws.WORK_ON_HHMM IS NOT NULL AND ws.WORK_OFF_HHMM IS NOT NULL
+                     THEN (CASE WHEN ws.WORK_OFF_HHMM >= ws.WORK_ON_HHMM
+                                THEN DATEDIFF(MINUTE, ws.WORK_ON_HHMM, ws.WORK_OFF_HHMM)
+                                ELSE 1440 + DATEDIFF(MINUTE, ws.WORK_ON_HHMM, ws.WORK_OFF_HHMM)
+                           END
+                           - ISNULL(DATEDIFF(MINUTE, ws.BREAK1_START_HHMM, ws.BREAK1_END_HHMM), 0)
+                           - ISNULL(DATEDIFF(MINUTE, ws.BREAK2_START_HHMM, ws.BREAK2_END_HHMM), 0))
+                     ELSE 0
+                END
+            ), NULL) AS weekWorkMin
+            FROM (VALUES(0),(1),(2),(3),(4),(5),(6)) AS days(n)
+            INNER JOIN HRTWORKPATTERNDETAIL01 wpd
+                    ON pm.COMPANY IS NOT NULL
+                   AND pdcount.CYCLE_LEN IS NOT NULL
+                   AND wpd.COMPANY = pm.COMPANY
+                   AND wpd.WORK_PATTERN_CODE = pm.WORK_PATTERN_CODE
+                   AND wpd.SEQ = (
+                         (DATEDIFF(DAY, pm.START_DATE,
+                             DATEADD(DAY, days.n,
+                                 DATEADD(DAY, 1 - DATEPART(WEEKDAY, CAST(#{workDate} AS DATE)),
+                                         CAST(#{workDate} AS DATE))))
+                          % pdcount.CYCLE_LEN + pdcount.CYCLE_LEN) % pdcount.CYCLE_LEN + 1
+                       )
+            INNER JOIN HRTSHIFTMASTER01 ws
+                    ON wpd.COMPANY = ws.COMPANY AND wpd.SHIFT_CODE = ws.SHIFT_CODE
+        ) weekly
         LEFT JOIN HRTATTENDANCEREQUEST01 r
                ON h.COMPANY = r.COMPANY
               AND h.EMP_CODE = r.TARGET_EMP_CODE
@@ -55,7 +93,7 @@
                       AND r.REQ_TYPE = '휴일근무'
                   </if>
                   <if test="'LEAVE'.equals(requestCategory)">
-                      AND r.REQ_TYPE IN ('조퇴', '외근', '외출', '전반차', '후반차')
+                      AND r.REQ_TYPE IN ('조퇴', '외근', '외출', '전반차', '후반차', '오전반차', '오후반차')
                   </if>
               </if>
               <if test="'OTHER'.equals(requestCategory)">
@@ -249,11 +287,34 @@
             resultType="com.company.attendancemanagement.dto.pattern.ShiftCodeDto">
         SELECT SHIFT_CODE AS shiftCode,
                SHIFT_NAME AS shiftName,
-               WORK_DAY_TYPE AS workDayType
+               WORK_DAY_TYPE AS workDayType,
+               CONVERT(VARCHAR(5), WORK_ON_HHMM,  108) AS workOnHhmm,
+               CONVERT(VARCHAR(5), WORK_OFF_HHMM, 108) AS workOffHhmm
         FROM HRTSHIFTMASTER01
         WHERE COMPANY = #{company}
           AND USE_YN = 'Y'
         ORDER BY SORT_SEQ, SHIFT_CODE
+    </select>
+
+    <select id="findAccessibleDepts"
+            resultType="com.company.attendancemanagement.dto.department.DepartmentDto">
+        WITH SubDepts AS (
+            SELECT DEPT_CODE, DEPT_NAME
+            FROM ORGDEPTMASTER01
+            WHERE COMPANY   = #{company}
+              AND DEPT_CODE = #{deptCode}
+              AND USE_YN    = 'Y'
+            UNION ALL
+            SELECT d.DEPT_CODE, d.DEPT_NAME
+            FROM ORGDEPTMASTER01 d
+            INNER JOIN SubDepts s ON d.PARENT_DEPT = s.DEPT_CODE
+            WHERE d.COMPANY = #{company}
+              AND d.USE_YN  = 'Y'
+        )
+        SELECT DEPT_CODE AS deptCode, DEPT_NAME AS deptName
+        FROM SubDepts
+        ORDER BY DEPT_CODE
+        OPTION (MAXRECURSION 20)
     </select>
 
 </mapper>

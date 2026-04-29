@@ -16,7 +16,7 @@
     <div class="search-panel">
         <div class="search-group">
             <label>근무일</label>
-            <input type="date" id="workDate" th:value="${today}">
+            <input type="date" id="workDate" th:value="${today}" th:attr="min=${today}">
         </div>
         <div class="search-group">
             <label>부서</label>
@@ -55,6 +55,7 @@
                 <th style="width:75px;">성명</th>
                 <th style="width:100px;">부서</th>
                 <th style="width:100px;">근무계획</th>
+                <th style="width:80px;">예상근로시간</th>
                 <th style="width:150px;">변경 근무계획</th>
                 <th style="width:120px;">사유</th>
                 <th style="width:200px;">사유상세</th>
@@ -63,7 +64,7 @@
             </tr>
             </thead>
             <tbody id="reqTableBody">
-                <tr><td colspan="10" class="no-data">조회 버튼을 클릭하세요.</td></tr>
+                <tr><td colspan="11" class="no-data">조회 버튼을 클릭하세요.</td></tr>
             </tbody>
         </table>
     </div>
