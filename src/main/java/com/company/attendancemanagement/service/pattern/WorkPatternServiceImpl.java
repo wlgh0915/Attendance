@@ -57,6 +57,9 @@ public class WorkPatternServiceImpl implements WorkPatternService {
 
         validateBusinessRules(request.getMaster(), request.getDetails(), shiftMap);
 
+        // CYCLE_COUNT는 detail 행 수로 자동 결정 (SEQ 모듈러 연산의 기준)
+        request.getMaster().setCycleCount(request.getDetails().size());
+
         if (workPatternMapper.existsPatternCode(company, patternCode) > 0) {
             workPatternMapper.updatePatternMaster(request.getMaster());
             workPatternMapper.deletePatternDetails(company, patternCode);

@@ -133,8 +133,12 @@ public class AttendanceRecordController {
             return ResponseEntity.status(403).body(fail("권한이 없습니다."));
 
         dto.setCompany(loginUser.getCompany());
-        recordService.upsert(dto);
-        return ResponseEntity.ok(Map.of("success", true, "message", "저장되었습니다."));
+        try {
+            recordService.upsert(dto);
+            return ResponseEntity.ok(Map.of("success", true, "message", "저장되었습니다."));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.ok(fail(e.getMessage()));
+        }
     }
 
     /* ───────── 실적 삭제 ───────── */

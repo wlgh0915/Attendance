@@ -256,4 +256,37 @@
         ORDER BY SORT_SEQ, SHIFT_CODE
     </select>
 
+    <!-- 날짜별 계획 근무 유형 조회 (휴일근무 validation용) -->
+    <select id="findPlannedWorkDayType" resultType="String">
+        <![CDATA[
+        SELECT CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+                   WHEN 'WEEKDAY' THEN 'WORK'
+                   WHEN 'ANYDAY'  THEN 'WORK'
+                   WHEN 'WEEKEND' THEN 'OFF'
+                   ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+               END
+        FROM HRIDEPTTRANSFER01 tr
+        JOIN ORGDEPTMASTER01 dept
+               ON dept.COMPANY   = #{company}
+              AND dept.DEPT_CODE = tr.DEPT_CODE
+        JOIN HRTWORKPATTERNMASTER01 pm
+               ON pm.COMPANY           = dept.COMPANY
+              AND pm.WORK_PATTERN_CODE = dept.WORK_PATTERN_CODE
+              AND pm.USE_YN            = 'Y'
+        JOIN HRTWORKPATTERNDETAIL01 pd
+               ON pd.COMPANY           = pm.COMPANY
+              AND pd.WORK_PATTERN_CODE = pm.WORK_PATTERN_CODE
+              AND pd.SEQ = (
+                  (DATEDIFF(DAY, pm.START_DATE, CAST(#{workDate} AS DATE)) % pm.CYCLE_COUNT
+                   + pm.CYCLE_COUNT) % pm.CYCLE_COUNT + 1
+              )
+        JOIN HRTSHIFTMASTER01 s
+               ON s.COMPANY = pd.COMPANY AND s.SHIFT_CODE = pd.SHIFT_CODE
+        WHERE tr.COMPANY    = #{company}
+          AND tr.EMP_CODE   = #{empCode}
+          AND tr.START_DATE <= CAST(#{workDate} AS DATE)
+          AND (tr.END_DATE IS NULL OR tr.END_DATE >= CAST(#{workDate} AS DATE))
+        ]]>
+    </select>
+
 </mapper>

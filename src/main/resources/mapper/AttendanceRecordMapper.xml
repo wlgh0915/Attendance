@@ -46,6 +46,69 @@
                     #{overnightYn}, GETDATE(), GETDATE());
     </update>
 
+    <!-- 날짜별 계획 시프트 조회 (HRIDEPTTRANSFER01 기반) -->
+    <select id="findPlannedShift" resultType="java.util.HashMap">
+        <![CDATA[
+        SELECT ISNULL(s.SHIFT_CODE, '')                       AS shiftCode,
+               CONVERT(VARCHAR(5), s.WORK_ON_HHMM,  108)     AS workOnHhmm,
+               CONVERT(VARCHAR(5), s.WORK_OFF_HHMM, 108)     AS workOffHhmm,
+               CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+                   WHEN 'WEEKDAY' THEN 'WORK'
+                   WHEN 'ANYDAY'  THEN 'WORK'
+                   WHEN 'WEEKEND' THEN 'OFF'
+                   ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+               END AS workDayType
+        FROM HRIDEPTTRANSFER01 tr
+        JOIN ORGDEPTMASTER01 dept
+               ON dept.COMPANY   = #{company}
+              AND dept.DEPT_CODE = tr.DEPT_CODE
+        JOIN HRTWORKPATTERNMASTER01 pm
+               ON pm.COMPANY            = dept.COMPANY
+              AND pm.WORK_PATTERN_CODE  = dept.WORK_PATTERN_CODE
+              AND pm.USE_YN             = 'Y'
+        JOIN HRTWORKPATTERNDETAIL01 pd
+               ON pd.COMPANY           = pm.COMPANY
+              AND pd.WORK_PATTERN_CODE = pm.WORK_PATTERN_CODE
+              AND pd.SEQ = (
+                  (DATEDIFF(DAY, pm.START_DATE, CAST(#{yyyymmdd} AS DATE)) % pm.CYCLE_COUNT
+                   + pm.CYCLE_COUNT) % pm.CYCLE_COUNT + 1
+              )
+        JOIN HRTSHIFTMASTER01 s
+               ON s.COMPANY = pd.COMPANY AND s.SHIFT_CODE = pd.SHIFT_CODE
+        WHERE tr.COMPANY    = #{company}
+          AND tr.EMP_CODE   = #{empCode}
+          AND tr.START_DATE <= CAST(#{yyyymmdd} AS DATE)
+          AND (tr.END_DATE IS NULL OR tr.END_DATE >= CAST(#{yyyymmdd} AS DATE))
+        ]]>
+    </select>
+
+    <!-- 해당 날짜 승인된 연장근무(조출연장 포함) 신청 조회 -->
+    <select id="findApprovedOvertimeRequests" resultType="java.util.HashMap">
+        <![CDATA[
+        SELECT r.REQ_TYPE AS reqType,
+               LEFT(CONVERT(VARCHAR(8), g.START_TIME, 108), 5) AS startTime,
+               LEFT(CONVERT(VARCHAR(8), g.END_TIME,   108), 5) AS endTime
+        FROM HRTATTENDANCEREQUEST01 r
+        LEFT JOIN HRTATTENDANCE_GENERAL01 g
+               ON r.COMPANY = g.COMPANY AND r.REQ_ID = g.REQ_ID
+        WHERE r.COMPANY         = #{company}
+          AND r.TARGET_EMP_CODE = #{empCode}
+          AND r.TARGET_DATE     = CAST(#{yyyymmdd} AS DATE)
+          AND r.STATUS          = 'APPROVED'
+          AND r.REQ_GROUP       = 'OVERTIME'
+        ]]>
+    </select>
+
+    <!-- 해당 주 총 근무 분 합산 (지정 날짜 제외) -->
+    <select id="sumWeekWorkMin" resultType="int">
+        SELECT ISNULL(SUM(WORK_MIN), 0)
+        FROM HRTDAILYATTENDANCE01
+        WHERE COMPANY  = #{company}
+          AND EMP_CODE = #{empCode}
+          AND YYYYMMDD BETWEEN #{weekStart} AND #{weekEnd}
+          AND YYYYMMDD != #{excludeYmd}
+    </select>
+
     <!-- 출퇴근 실적 삭제 -->
     <delete id="delete">
         DELETE FROM HRTDAILYATTENDANCE01

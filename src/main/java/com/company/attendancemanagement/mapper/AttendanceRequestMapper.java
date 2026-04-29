@@ -41,4 +41,9 @@ public interface AttendanceRequestMapper {
     List<DepartmentDto> findDeptListForDropdown(@Param("company") String company);
 
     List<ShiftCodeDto> findShiftCodes(@Param("company") String company);
+
+    /** 해당 날짜의 계획 근무 유형 조회 (WORK / OFF / HOLIDAY / "") */
+    String findPlannedWorkDayType(@Param("company")  String company,
+                                  @Param("empCode")  String empCode,
+                                  @Param("workDate") String workDate);
 }

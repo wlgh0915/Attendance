@@ -34,4 +34,13 @@ public interface DepartmentMapper {
     int updateEmployeesDept(@Param("company") String company,
                             @Param("empCodes") List<String> empCodes,
                             @Param("deptCode") String deptCode);
+
+    void closeCurrentTransfer(@Param("company") String company,
+                              @Param("empCode") String empCode,
+                              @Param("endDate") String endDate);
+
+    void insertTransferHistory(@Param("company") String company,
+                               @Param("empCode") String empCode,
+                               @Param("deptCode") String deptCode,
+                               @Param("startDate") String startDate);
 }

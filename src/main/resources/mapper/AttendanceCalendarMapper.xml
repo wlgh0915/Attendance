@@ -17,16 +17,25 @@
         SELECT
             CONVERT(VARCHAR(10), CAL.DT, 23)      AS workDate,
             DATEPART(WEEKDAY, CAL.DT)              AS dayOfWeekNum,
-            ISNULL(s.SHIFT_CODE, '')               AS shiftCode,
-            ISNULL(s.SHIFT_NAME, '')               AS shiftName,
-            s.WORK_ON_HHMM                         AS workOnHhmm,
-            s.WORK_OFF_HHMM                        AS workOffHhmm,
-            ISNULL(s.WORK_DAY_TYPE, '')            AS workDayType
+            ISNULL(s.SHIFT_CODE, '')                                    AS shiftCode,
+            ISNULL(s.SHIFT_NAME, '')                                    AS shiftName,
+            CONVERT(VARCHAR(5), s.WORK_ON_HHMM,  108)                  AS workOnHhmm,
+            CONVERT(VARCHAR(5), s.WORK_OFF_HHMM, 108)                  AS workOffHhmm,
+            CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+                WHEN 'WEEKDAY' THEN 'WORK'
+                WHEN 'ANYDAY'  THEN 'WORK'
+                WHEN 'WEEKEND' THEN 'OFF'
+                ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+            END                                                         AS workDayType
         FROM CAL
-        LEFT JOIN HRIMASTER01 h
-               ON h.COMPANY = #{company} AND h.EMP_CODE = #{empCode}
+        LEFT JOIN HRIDEPTTRANSFER01 tr
+               ON tr.COMPANY    = #{company}
+              AND tr.EMP_CODE   = #{empCode}
+              AND tr.START_DATE <= CAL.DT
+              AND (tr.END_DATE IS NULL OR tr.END_DATE >= CAL.DT)
         LEFT JOIN ORGDEPTMASTER01 dept
-               ON h.COMPANY = dept.COMPANY AND h.DEPT_CODE = dept.DEPT_CODE
+               ON dept.COMPANY   = #{company}
+              AND dept.DEPT_CODE = tr.DEPT_CODE
         LEFT JOIN HRTWORKPATTERNMASTER01 pm
                ON dept.COMPANY = pm.COMPANY
               AND dept.WORK_PATTERN_CODE = pm.WORK_PATTERN_CODE
@@ -85,7 +94,9 @@
                LEFT(CONVERT(VARCHAR(8), CHECK_IN,  108), 5) AS checkIn,
                LEFT(CONVERT(VARCHAR(8), CHECK_OUT, 108), 5) AS checkOut,
                WORK_MIN          AS workMin,
-               OVERNIGHT_YN      AS overnightYn
+               OVERNIGHT_YN      AS overnightYn,
+               LATE_YN           AS lateYn,
+               LATE_MIN          AS lateMin
         FROM HRTDAILYATTENDANCE01
         WHERE COMPANY  = #{company}
           AND EMP_CODE = #{empCode}
