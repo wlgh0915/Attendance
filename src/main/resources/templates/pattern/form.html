@@ -7,198 +7,429 @@
     <title>근태 패턴 등록</title>
     <link rel="stylesheet" th:href="@{/css/form-common.css}">
     <style>
-        /* 전체 wrapper: align-items:center 유지 → 사이드바 유무와 무관하게 나머지 공간의 중앙 */
-        .content-wrapper { padding: 28px 32px; }
-        .form-container  { max-width: 960px; width: 100%; }
+        .content-wrapper {
+            align-items: stretch;
+            padding: 28px 32px 36px;
+            background: #f5f7fa;
+        }
 
-        /* ── 2열 레이아웃 ── */
-        .form-layout {
-            display: flex;
-            gap: 28px;
-            align-items: flex-start;
+        .form-container {
+            max-width: 1180px;
             width: 100%;
+            margin: 0 auto;
         }
 
-        /* ── 두 카드 공통 높이 ── */
-        .form-left,
-        .form-right {
-            height: calc(100vh - 265px);
-            min-height: 420px;
+        .form-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 20px;
+            margin-bottom: 18px;
+            border-left: 0;
+            padding-left: 0;
         }
 
-        /* ── 왼쪽 카드 ── */
-        .form-left {
-            width: 360px;
+        .form-header h2 {
+            font-size: 1.6rem;
+            letter-spacing: 0;
+        }
+
+        .form-subtitle {
+            margin: 6px 0 0;
+            color: #6c7a89;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
             flex-shrink: 0;
+        }
+
+        .btn-outline {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 36px;
+            padding: 8px 14px;
+            border: 1px solid #c7d0d9;
+            border-radius: 6px;
+            background: #fff;
+            color: #34495e;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .btn-outline:hover {
+            border-color: #2c3e50;
+            color: #2c3e50;
+        }
+
+        .pattern-form {
             display: flex;
             flex-direction: column;
-            gap: 14px;
-            background: #fff;
-            border: 1px solid #dde1e6;
-            border-radius: 8px;
-            padding: 20px 24px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-            overflow-y: auto;
+            gap: 16px;
         }
 
-        /* 카드 안 입력 필드: max-width 해제, 패딩 정리 */
+        .form-layout {
+            display: grid;
+            grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+            gap: 18px;
+            align-items: stretch;
+        }
+
+        .panel {
+            background: #fff;
+            border: 1px solid #dfe5eb;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(30, 45, 62, 0.05);
+        }
+
+        .form-left {
+            padding: 20px;
+        }
+
+        .form-right {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            min-height: 620px;
+            overflow: hidden;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #edf0f3;
+        }
+
+        .section-title h3 {
+            margin: 0;
+            color: #263849;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .section-title span {
+            color: #7f8c8d;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .field-grid {
+            display: grid;
+            gap: 14px;
+        }
+
+        .field-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
         .form-left .form-group input,
         .form-left .form-group select {
             max-width: none;
-            padding: 9px 12px;
-            font-size: 14px;
-            border-radius: 4px;
-        }
-
-        /* ── 오른쪽 카드 ── */
-        .form-right {
-            flex: 1;
-            min-width: 0;
-            display: flex;
-            flex-direction: column;
+            min-height: 40px;
+            padding: 9px 11px;
+            border-radius: 6px;
             background: #fff;
-            border: 1px solid #dde1e6;
-            border-radius: 8px;
-            padding: 20px 20px 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            font-size: 14px;
         }
 
-        /* 공통 패널 헤더 (왼/오른쪽 카드 모두 사용) */
-        .detail-panel-header {
+        .form-left .form-group input:focus,
+        .form-left .form-group select:focus {
+            border-color: #2c3e50;
+            box-shadow: 0 0 0 3px rgba(44, 62, 80, 0.08);
+        }
+
+        .input-help {
+            margin-top: 5px;
+            color: #8b98a5;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .detail-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            margin-bottom: 14px;
-            flex-shrink: 0;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 18px 20px 14px;
+            border-bottom: 1px solid #edf0f3;
         }
 
-        .detail-section-header {
-            font-size: 14px;
+        .detail-header h3 {
+            margin: 0;
+            color: #263849;
+            font-size: 16px;
             font-weight: 700;
-            color: #2c3e50;
-            padding: 7px 14px;
-            border-left: 4px solid #2c3e50;
-            background: #f1f3f5;
-            border-radius: 0 4px 4px 0;
-            flex: 1;
         }
 
         .detail-hint {
+            margin: 6px 0 0;
+            color: #6f7f8f;
             font-size: 12px;
-            color: #95a5a6;
-            margin: 0 0 10px;
+            line-height: 1.5;
+        }
+
+        .btn-filter-group {
+            display: flex;
+            gap: 8px;
             flex-shrink: 0;
         }
 
-        /* 독립 스크롤 영역: 남은 높이를 모두 채움 */
-        .detail-scroll-area {
-            flex: 1;
-            overflow-y: auto;
-            border: 1px solid #e0e4e8;
+        .btn-filter-toggle {
+            min-height: 34px;
+            padding: 7px 12px;
+            border: 1px solid #c7d0d9;
             border-radius: 6px;
-            min-height: 0;          /* flex child가 축소될 수 있도록 */
+            background: #fff;
+            color: #34495e;
+            font-family: 'Malgun Gothic', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
         }
 
-        /* ── 테이블 ── */
+        .btn-filter-toggle:hover {
+            border-color: #2c3e50;
+            color: #2c3e50;
+        }
+
+        .btn-filter-toggle.primary,
+        .btn-filter-toggle.active {
+            border-color: #2c3e50;
+            background: #2c3e50;
+            color: #fff;
+        }
+
+        .summary-bar {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            padding: 14px 20px;
+            background: #f8fafc;
+            border-bottom: 1px solid #edf0f3;
+        }
+
+        .summary-item {
+            min-width: 0;
+            padding: 10px 12px;
+            border: 1px solid #e2e8ee;
+            border-radius: 6px;
+            background: #fff;
+        }
+
+        .summary-label {
+            display: block;
+            margin-bottom: 4px;
+            color: #7c8a98;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .summary-value {
+            display: block;
+            color: #263849;
+            font-size: 14px;
+            font-weight: 700;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .detail-scroll-area {
+            flex: 1;
+            min-height: 0;
+            overflow: auto;
+        }
+
         .detail-table {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
             font-size: 13px;
         }
 
         .detail-table thead th {
-            background: #2c3e50;
-            color: #fff;
-            padding: 10px 14px;
-            text-align: center;
-            border-right: 1px solid #3d5166;
             position: sticky;
             top: 0;
-            z-index: 1;
+            z-index: 2;
+            padding: 11px 12px;
+            background: #2c3e50;
+            color: #fff;
+            border-right: 1px solid #3d5166;
+            text-align: center;
+            font-weight: 700;
         }
-        .detail-table thead th:last-child { border-right: none; }
+
+        .detail-table thead th:last-child {
+            border-right: 0;
+        }
 
         .detail-table tr.week-header-row td {
-            background: #ecf0f1;
-            font-weight: 700;
-            font-size: 12px;
+            position: sticky;
+            top: 40px;
+            z-index: 1;
+            padding: 7px 14px;
+            background: #eef3f7;
+            border-top: 1px solid #d8e0e7;
+            border-bottom: 1px solid #d8e0e7;
             color: #2c3e50;
-            padding: 5px 14px;
-            border-top: 2px solid #bdc3c7;
+            font-size: 12px;
+            font-weight: 700;
         }
 
         .detail-table tr.day-row td {
-            padding: 5px 10px;
-            border-bottom: 1px solid #e8eaed;
-            border-right: 1px solid #e8eaed;
+            padding: 8px 10px;
+            border-bottom: 1px solid #edf0f3;
+            border-right: 1px solid #edf0f3;
             text-align: center;
             vertical-align: middle;
+            background: #fff;
         }
-        .detail-table tr.day-row td:last-child { border-right: none; }
 
-        .detail-table tr.row-saturday td { background: #ebf5fb; }
-        .detail-table tr.row-sunday   td { background: #fdf2f2; }
+        .detail-table tr.day-row td:last-child {
+            border-right: 0;
+        }
 
-        .day-text { font-weight: 600; }
-        .day-sat  { color: #2980b9; }
-        .day-sun  { color: #e74c3c; }
+        .detail-table tr.row-saturday td {
+            background: #f0f7fc;
+        }
+
+        .detail-table tr.row-sunday td {
+            background: #fff5f5;
+        }
+
+        .day-index {
+            color: #2c3e50;
+            font-weight: 700;
+        }
+
+        .day-text {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 30px;
+            min-height: 24px;
+            border-radius: 999px;
+            background: #f1f4f7;
+            color: #536475;
+            font-weight: 700;
+        }
+
+        .day-sat {
+            background: #dceefb;
+            color: #2471a3;
+        }
+
+        .day-sun {
+            background: #fde4e4;
+            color: #c0392b;
+        }
 
         .detail-table select {
             width: 100%;
-            padding: 5px 8px;
-            border: 1px solid #ced4da;
-            border-radius: 3px;
+            min-height: 36px;
+            padding: 7px 9px;
+            border: 1px solid #ced7df;
+            border-radius: 6px;
+            background: #fff;
+            color: #263849;
+            font-family: 'Malgun Gothic', sans-serif;
             font-size: 13px;
-            font-family: 'Malgun Gothic', sans-serif;
-            background: #fff;
         }
-        .detail-table select:focus { border-color: #2c3e50; outline: none; }
 
-        /* ── 필터 버튼 ── */
-        .btn-filter-toggle {
-            padding: 5px 14px;
-            border: 1px solid #2c3e50;
-            border-radius: 4px;
-            background: #fff;
-            color: #2c3e50;
-            font-size: 12px;
-            font-family: 'Malgun Gothic', sans-serif;
-            cursor: pointer;
-            font-weight: 600;
-            white-space: nowrap;
+        .detail-table select:focus {
+            border-color: #2c3e50;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(44, 62, 80, 0.08);
         }
-        .btn-filter-toggle.active { background: #2c3e50; color: #fff; }
-        .btn-filter-group { display: flex; gap: 8px; }
 
-        /* ── 저장 / 목록으로 버튼: 두 카드 바깥 아래, 오른쪽 카드 하단 정렬 ── */
         .form-actions {
             display: flex;
-            gap: 10px;
+            justify-content: flex-end;
             align-items: center;
-            margin-left: calc(360px + 28px); /* 왼쪽 카드 너비 + gap */
-            padding-top: 14px;
-        }
-        .form-actions .btn-submit {
+            gap: 10px;
             margin-top: 0;
-            padding: 11px 32px;
-            font-size: 14px;
+            padding: 14px 0 0;
         }
-        /* btn-cancel: btn-submit과 동일한 외형, 슬레이트 그레이 */
-        .btn-cancel {
-            background-color: #546e7a;
-            color: #fff;
-            padding: 11px 24px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
+
+        .form-actions .btn-submit,
+        .form-actions .btn-cancel {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 110px;
+            min-height: 42px;
+            margin-top: 0;
+            border-radius: 6px;
             font-size: 14px;
-            font-weight: 600;
-            font-family: 'Malgun Gothic', sans-serif;
-            text-decoration: none;
-            display: inline-block;
-            transition: background 0.3s;
+            font-weight: 700;
         }
-        .btn-cancel:hover { background-color: #455a64; color: #fff; }
+
+        .form-actions .btn-cancel {
+            background: #fff;
+            color: #596978;
+            border: 1px solid #c7d0d9;
+        }
+
+        .form-actions .btn-cancel:hover {
+            border-color: #2c3e50;
+            color: #2c3e50;
+        }
+
+        @media (max-width: 980px) {
+            .content-wrapper {
+                padding: 20px 16px 28px;
+            }
+
+            .form-header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .form-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .form-right {
+                min-height: 560px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .field-row,
+            .summary-bar {
+                grid-template-columns: 1fr;
+            }
+
+            .detail-header {
+                flex-direction: column;
+            }
+
+            .btn-filter-group,
+            .header-actions,
+            .form-actions {
+                width: 100%;
+                flex-wrap: wrap;
+            }
+
+            .btn-filter-toggle,
+            .btn-outline,
+            .form-actions .btn-submit,
+            .form-actions .btn-cancel {
+                flex: 1 1 auto;
+            }
+        }
     </style>
 </head>
 <body>
@@ -207,110 +438,138 @@
         <div class="form-container">
 
             <div class="form-header">
-                <h2 th:text="${isEdit} ? '근태 패턴 수정' : '근태 패턴 등록'">근태 패턴 등록</h2>
+                <div>
+                    <h2 th:text="${isEdit} ? '근태 패턴 수정' : '근태 패턴 등록'">근태 패턴 등록</h2>
+                    <p class="form-subtitle">패턴 기본정보를 입력하고, 일차별 근태코드를 지정하세요.</p>
+                </div>
+                <div class="header-actions">
+                    <a th:href="@{/pattern/calendar}" class="btn-outline">캘린더로 이동</a>
+                </div>
             </div>
 
             <div th:if="${errorMessage}" class="global-error" th:text="${errorMessage}"></div>
 
-            <form th:action="@{/pattern/save}" method="post" th:object="${pattern}" class="dept-form">
+            <form th:action="@{/pattern/save}" method="post" th:object="${pattern}" class="pattern-form">
                 <div class="form-layout">
 
-                    <!-- ── 왼쪽: 입력 필드 ── -->
-                    <div class="form-left">
-
-                        <div class="detail-panel-header">
-                            <div class="detail-section-header">패턴 기본 정보</div>
+                    <section class="form-left panel" aria-labelledby="patternBasicTitle">
+                        <div class="section-title">
+                            <h3 id="patternBasicTitle">기본정보</h3>
+                            <span>필수 항목 *</span>
                         </div>
 
-                        <div class="form-group">
-                            <label class="required">패턴코드</label>
-                            <input type="text" th:field="*{master.workPatternCode}"
-                                   th:readonly="${isEdit}"
-                                   placeholder="예: WD, 3S2">
+                        <div class="field-grid">
+                            <div class="form-group">
+                                <label class="required" for="master_workPatternCode">패턴코드</label>
+                                <input type="text" th:field="*{master.workPatternCode}"
+                                       th:readonly="${isEdit}"
+                                       placeholder="예: WD, 3S2">
+                                <span class="input-help">수정 화면에서는 패턴코드를 변경할 수 없습니다.</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="required" for="master_workPatternName">패턴명</label>
+                                <input type="text" th:field="*{master.workPatternName}"
+                                       placeholder="예: 주간근무, 3조 2교대">
+                            </div>
+
+                            <div class="field-row">
+                                <div class="form-group">
+                                    <label for="master_patternType">패턴유형</label>
+                                    <select th:field="*{master.patternType}" data-field="patternType">
+                                        <option value="">선택하세요</option>
+                                        <option value="FIXED">고정형</option>
+                                        <option value="ROTATE">교대형</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="master_useYn">사용여부</label>
+                                    <select th:field="*{master.useYn}">
+                                        <option value="Y">사용</option>
+                                        <option value="N">미사용</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="field-row">
+                                <div class="form-group">
+                                    <label for="master_cycleUnit">주기단위</label>
+                                    <select th:field="*{master.cycleUnit}" data-field="cycleUnit">
+                                        <option value="">선택하세요</option>
+                                        <option value="W">주</option>
+                                        <option value="D">일</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="master_cycleCount">주기횟수</label>
+                                    <input type="number" th:field="*{master.cycleCount}" data-field="cycleCount"
+                                           min="1" max="31" placeholder="예: 1">
+                                </div>
+                            </div>
+
+                            <div class="field-row">
+                                <div class="form-group">
+                                    <label class="required" for="master_startDate">시작일</label>
+                                    <input type="date"
+                                           id="master_startDate"
+                                           name="master.startDate"
+                                           th:value="${pattern.master.startDate != null ? #temporals.format(pattern.master.startDate, 'yyyy-MM-dd') : ''}"
+                                           data-role="startDate">
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="master_endDate">종료일</label>
+                                    <input type="date"
+                                           id="master_endDate"
+                                           name="master.endDate"
+                                           th:value="${pattern.master.endDate != null ? #temporals.format(pattern.master.endDate, 'yyyy-MM-dd') : ''}">
+                                </div>
+                            </div>
                         </div>
+                    </section>
 
-                        <div class="form-group">
-                            <label class="required">패턴명</label>
-                            <input type="text" th:field="*{master.workPatternName}"
-                                   placeholder="예: 주간조, 3조2교대">
-                        </div>
-
-                        <div class="form-group">
-                            <label>패턴유형</label>
-                            <select th:field="*{master.patternType}" data-field="patternType">
-                                <option value="">선택하세요</option>
-                                <option value="FIXED">고정형</option>
-                                <option value="ROTATE">교대형</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label>주기단위</label>
-                            <select th:field="*{master.cycleUnit}" data-field="cycleUnit">
-                                <option value="">선택하세요</option>
-                                <option value="W">주(W)</option>
-                                <option value="D">일(D)</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label>주기횟수</label>
-                            <input type="number" th:field="*{master.cycleCount}" data-field="cycleCount"
-                                   min="1" max="31" placeholder="예: 1">
-                        </div>
-
-                        <div class="form-group">
-                            <label class="required">시작일</label>
-                            <input type="date"
-                                   id="master_startDate"
-                                   name="master.startDate"
-                                   th:value="${pattern.master.startDate != null ? #temporals.format(pattern.master.startDate, 'yyyy-MM-dd') : ''}"
-                                   data-role="startDate">
-                        </div>
-
-                        <div class="form-group">
-                            <label>종료일</label>
-                            <input type="date"
-                                   id="master_endDate"
-                                   name="master.endDate"
-                                   th:value="${pattern.master.endDate != null ? #temporals.format(pattern.master.endDate, 'yyyy-MM-dd') : ''}">
-                        </div>
-
-                        <div class="form-group">
-                            <label>사용여부</label>
-                            <select th:field="*{master.useYn}">
-                                <option value="Y">Y - 사용</option>
-                                <option value="N">N - 미사용</option>
-                            </select>
-                        </div>
-
-                    </div><!-- /form-left -->
-
-                    <!-- ── 오른쪽: 일별 근태코드 ── -->
-                    <div class="form-right">
-
-                        <div class="detail-panel-header">
-                            <div class="detail-section-header">일별 근태코드 설정</div>
+                    <section class="form-right panel" aria-labelledby="patternDetailTitle">
+                        <div class="detail-header">
+                            <div>
+                                <h3 id="patternDetailTitle">일차별 근태코드</h3>
+                                <p class="detail-hint">시작일 기준 요일이 자동 표시됩니다. 첫 주기를 입력한 뒤 복사하면 반복 패턴을 빠르게 채울 수 있습니다.</p>
+                            </div>
                             <div class="btn-filter-group">
-                                <button type="button" class="btn-filter-toggle" onclick="copyFirstCycle()">첫 주기 복사</button>
+                                <button type="button" class="btn-filter-toggle primary" onclick="copyFirstCycle()">첫 주기 복사</button>
                                 <button type="button" id="filterToggleBtn" class="btn-filter-toggle" onclick="toggleWorkDayFilter()">근무일만 표시</button>
                             </div>
                         </div>
-                        <p class="detail-hint">시작일 입력 시 요일이 자동 표시됩니다. 주 52시간 규칙에 맞게 설정하세요.</p>
+
+                        <div class="summary-bar">
+                            <div class="summary-item">
+                                <span class="summary-label">표시 일수</span>
+                                <span id="summaryDays" class="summary-value">-</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">반복 기준</span>
+                                <span id="summaryCycle" class="summary-value">-</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">시작 요일</span>
+                                <span id="summaryStartDay" class="summary-value">-</span>
+                            </div>
+                        </div>
 
                         <div class="detail-scroll-area">
                             <table id="detailTable" class="detail-table">
                                 <thead>
                                 <tr>
-                                    <th style="width:55px;">일차</th>
-                                    <th style="width:50px;">요일</th>
+                                    <th style="width:70px;">일차</th>
+                                    <th style="width:70px;">요일</th>
                                     <th>근태코드</th>
                                 </tr>
                                 </thead>
                                 <tbody>
                                 <tr th:each="detail, stat : *{details}" class="day-row">
                                     <td>
-                                        <span th:text="${detail.seq}"></span>
+                                        <span class="day-index" th:text="${detail.seq}"></span>
                                         <input type="hidden" th:field="*{details[__${stat.index}__].seq}">
                                     </td>
                                     <td><span class="day-text">-</span></td>
@@ -327,18 +586,15 @@
                                 </tr>
                                 </tbody>
                             </table>
-                        </div><!-- /detail-scroll-area -->
+                        </div>
+                    </section>
 
-                    </div><!-- /form-right -->
-
-                </div><!-- /form-layout -->
-
-                <!-- ── 버튼: 두 카드 바깥, 오른쪽 카드 하단 정렬 ── -->
-                <div class="form-actions">
-                    <button type="submit" class="btn-submit">저장</button>
-                    <a th:href="@{/pattern/calendar}" class="btn-cancel">목록으로</a>
                 </div>
 
+                <div class="form-actions">
+                    <a th:href="@{/pattern/calendar}" class="btn-cancel">취소</a>
+                    <button type="submit" class="btn-submit" th:text="${isEdit} ? '수정 저장' : '등록'">등록</button>
+                </div>
             </form>
         </div>
     </div>
@@ -380,6 +636,14 @@
         return unit === 'W' ? 7 : count;
     }
 
+    function getCycleText() {
+        const unitEl  = document.querySelector('[data-field="cycleUnit"]');
+        const countEl = document.querySelector('[data-field="cycleCount"]');
+        const unit  = unitEl  ? unitEl.value  : 'W';
+        const count = Math.max(1, parseInt(countEl ? countEl.value : '1') || 1);
+        return unit === 'W' ? count + '주 단위' : count + '일 단위';
+    }
+
     function insertWeekHeaders() {
         const tbody = document.querySelector('#detailTable tbody');
         if (!tbody) return;
@@ -388,13 +652,13 @@
         const cycleSize = getCycleSize();
         const unitEl = document.querySelector('[data-field="cycleUnit"]');
         const unit = unitEl ? unitEl.value : 'W';
-        const cycleLabel = unit === 'W' ? '주' : '회차';
+        const cycleLabel = unit === 'W' ? '주기' : '회차';
         if (rows.length <= cycleSize) return;
         rows.forEach(function(row, index) {
             if (index % cycleSize === 0) {
                 const headerRow = document.createElement('tr');
                 headerRow.className = 'week-header-row';
-                headerRow.innerHTML = '<td colspan="3">▶ ' + (Math.floor(index / cycleSize) + 1) + cycleLabel + '</td>';
+                headerRow.innerHTML = '<td colspan="3">' + (Math.floor(index / cycleSize) + 1) + cycleLabel + '</td>';
                 row.parentNode.insertBefore(headerRow, row);
             }
         });
@@ -406,21 +670,37 @@
         document.querySelectorAll('#detailTable tbody tr.day-row').forEach(function(row, index) {
             const label = row.querySelector('.day-text');
             if (!label) return;
-            if (!startDate) { label.textContent = '-'; label.className = 'day-text'; return; }
+            row.classList.remove('row-saturday', 'row-sunday');
+            if (!startDate) {
+                label.textContent = '-';
+                label.className = 'day-text';
+                return;
+            }
             const d = new Date(startDate);
             d.setDate(d.getDate() + (index % cycleSize));
             const dow = d.getDay();
             label.textContent = DAY_NAMES[dow];
             label.className = 'day-text' + (dow === 6 ? ' day-sat' : dow === 0 ? ' day-sun' : '');
-            row.classList.remove('row-saturday', 'row-sunday');
             if (dow === 6) row.classList.add('row-saturday');
             if (dow === 0) row.classList.add('row-sunday');
         });
     }
 
+    function updateSummary() {
+        const rows = document.querySelectorAll('#detailTable tbody tr.day-row').length;
+        const startDate = getStartDate();
+        const daysEl = document.getElementById('summaryDays');
+        const cycleEl = document.getElementById('summaryCycle');
+        const startEl = document.getElementById('summaryStartDay');
+        if (daysEl) daysEl.textContent = rows + '일';
+        if (cycleEl) cycleEl.textContent = getCycleText();
+        if (startEl) startEl.textContent = startDate ? DAY_NAMES[startDate.getDay()] + '요일 시작' : '-';
+    }
+
     function updateTable() {
         insertWeekHeaders();
         updateDayLabels();
+        updateSummary();
         applyWorkDayFilter();
     }
 
@@ -446,12 +726,18 @@
         const tbody = document.querySelector('#detailTable tbody');
         const dayRows = Array.from(tbody.querySelectorAll('tr.day-row'));
         const cycleSize = getCycleSize();
-        if (dayRows.length <= cycleSize) { alert('표시된 행이 1주기뿐입니다.'); return; }
+        if (dayRows.length <= cycleSize) {
+            alert('복사할 다음 주기가 없습니다.');
+            return;
+        }
         const hasCode = dayRows.slice(0, cycleSize).some(function(row) {
             const sel = row.querySelector('select');
             return sel && sel.value;
         });
-        if (!hasCode) { alert('첫 주기의 근태코드를 먼저 입력해주세요.'); return; }
+        if (!hasCode) {
+            alert('첫 주기에 근태코드를 먼저 입력해 주세요.');
+            return;
+        }
         for (let i = cycleSize; i < dayRows.length; i++) {
             const sourceSel = dayRows[i % cycleSize].querySelector('select');
             const targetSel = dayRows[i].querySelector('select');
@@ -493,7 +779,7 @@
             tr.className = 'day-row';
 
             const td1 = document.createElement('td');
-            td1.innerHTML = '<span>' + (i + 1) + '</span>' +
+            td1.innerHTML = '<span class="day-index">' + (i + 1) + '</span>' +
                 '<input type="hidden" name="details[' + i + '].seq" value="' + (i + 1) + '">';
 
             const td2 = document.createElement('td');
@@ -539,10 +825,10 @@
                 rebuildDetailRows(getPatternDays());
             });
         }
-        if (unitEl)  unitEl.addEventListener('change',  function() { rebuildDetailRows(getPatternDays()); });
+        if (unitEl) unitEl.addEventListener('change', function() { rebuildDetailRows(getPatternDays()); });
         if (countEl) {
             countEl.addEventListener('change', function() { rebuildDetailRows(getPatternDays()); });
-            countEl.addEventListener('input',  function() { rebuildDetailRows(getPatternDays()); });
+            countEl.addEventListener('input', function() { rebuildDetailRows(getPatternDays()); });
         }
     });
 </script>
