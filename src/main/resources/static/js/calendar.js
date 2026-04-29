@@ -17,14 +17,14 @@ function shiftCls(wdt) {
     return wdt ? 'badge b-work' : '';
 }
 function reqCls(s) {
-    const m = {DRAFT:'b-draft', SUBMITTED:'b-submit', APPROVED:'b-approved', REJECTED:'b-rejected'};
+    const m = {DRAFT:'b-draft', SUBMITTED:'b-submit', APPROVED:'b-approved', REJECTED:'b-rejected', CANCELED:'b-rejected'};
     return 'badge ' + (m[s] || 'b-draft');
 }
 function catLabel(c) {
     return {OVERTIME:'연장', HOLIDAY:'휴일', LEAVE:'휴가/조퇴', OTHER:'기타'}[c] || c;
 }
 function statusLabel(s) {
-    return {DRAFT:'미상신', SUBMITTED:'승인중', APPROVED:'승인', REJECTED:'반려'}[s] || s;
+    return {DRAFT:'미상신', SUBMITTED:'승인중', APPROVED:'승인', REJECTED:'반려', CANCELED:'취소'}[s] || s;
 }
 
 function renderCalendar() {

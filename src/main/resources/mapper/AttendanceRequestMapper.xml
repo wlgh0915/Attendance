@@ -84,6 +84,7 @@
                ON h.COMPANY = r.COMPANY
               AND h.EMP_CODE = r.TARGET_EMP_CODE
               AND r.TARGET_DATE = CAST(#{workDate} AS DATE)
+              AND r.STATUS &lt;&gt; 'CANCELED'
               <if test="!'OTHER'.equals(requestCategory)">
                   AND r.REQ_GROUP = 'GENERAL'
                   <if test="'OVERTIME'.equals(requestCategory)">
@@ -150,6 +151,32 @@
         LEFT JOIN HRTATTENDANCE_GENERAL01 g ON r.COMPANY = g.COMPANY AND r.REQ_ID = g.REQ_ID
         LEFT JOIN HRTATTENDANCE_OTHER01 o   ON r.COMPANY = o.COMPANY AND r.REQ_ID = o.REQ_ID
         WHERE r.REQ_ID = #{requestId}
+    </select>
+
+    <select id="countActiveSameWorkRequest"
+            parameterType="com.company.attendancemanagement.dto.request.AttendanceRequestDto"
+            resultType="int">
+        SELECT COUNT(*)
+        FROM HRTATTENDANCEREQUEST01 r
+        LEFT JOIN HRTATTENDANCE_OTHER01 o
+               ON r.COMPANY = o.COMPANY AND r.REQ_ID = o.REQ_ID
+        WHERE r.COMPANY = #{company}
+          AND r.TARGET_EMP_CODE = #{empCode}
+          AND r.TARGET_DATE = CAST(#{workDate} AS DATE)
+          AND r.STATUS IN ('DRAFT', 'SUBMITTED', 'APPROVED')
+          <if test="requestId != null and requestId != ''">
+              AND r.REQ_ID &lt;&gt; #{requestId}
+          </if>
+          <choose>
+              <when test="'OTHER'.equals(requestCategory)">
+                  AND r.REQ_GROUP = 'OTHER'
+                  AND o.CHANGE_SHIFT_CODE = #{requestWorkCode}
+              </when>
+              <otherwise>
+                  AND r.REQ_GROUP = 'GENERAL'
+                  AND r.REQ_TYPE = #{requestWorkCode}
+              </otherwise>
+          </choose>
     </select>
 
     <!-- 헤더(공통) INSERT -->

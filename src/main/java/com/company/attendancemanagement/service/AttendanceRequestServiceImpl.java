@@ -15,6 +15,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -71,7 +72,37 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             if (!ok) search.setDeptCode(loginUser.getDeptCode());
         }
 
-        return requestMapper.searchEmployees(search);
+        return mergeRequestsByEmployee(requestMapper.searchEmployees(search));
+    }
+
+    private List<AttendanceEmpRowDto> mergeRequestsByEmployee(List<AttendanceEmpRowDto> rows) {
+        Map<String, AttendanceEmpRowDto> merged = new LinkedHashMap<>();
+        for (AttendanceEmpRowDto row : rows) {
+            AttendanceEmpRowDto base = merged.computeIfAbsent(row.getEmpCode(), empCode -> {
+                row.setRequestsByWorkCode(new LinkedHashMap<>());
+                return row;
+            });
+            if (row.getRequestWorkCode() != null && !row.getRequestWorkCode().isBlank()) {
+                base.getRequestsByWorkCode().put(row.getRequestWorkCode(), copyRequestInfo(row));
+            }
+        }
+        return new ArrayList<>(merged.values());
+    }
+
+    private AttendanceEmpRowDto copyRequestInfo(AttendanceEmpRowDto source) {
+        AttendanceEmpRowDto copy = new AttendanceEmpRowDto();
+        copy.setRequestId(source.getRequestId());
+        copy.setRequestWorkCode(source.getRequestWorkCode());
+        copy.setReason(source.getReason());
+        copy.setReasonDetail(source.getReasonDetail());
+        copy.setStartTime(source.getStartTime());
+        copy.setStartTimeType(source.getStartTimeType());
+        copy.setEndTime(source.getEndTime());
+        copy.setEndTimeType(source.getEndTimeType());
+        copy.setStatus(source.getStatus());
+        copy.setRequesterCode(source.getRequesterCode());
+        copy.setRequesterName(source.getRequesterName());
+        return copy;
     }
 
     @Override
@@ -91,6 +122,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             if ("SUBMITTED".equals(existing.getStatus()) || "APPROVED".equals(existing.getStatus())) {
                 throw new IllegalArgumentException("상신 또는 승인된 건은 수정할 수 없습니다.");
             }
+            validateNoActiveSameWorkRequest(dto);
             dto.setStatus("DRAFT");
             requestMapper.updateRequestHeader(dto);
             if (isOther) {
@@ -101,6 +133,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         } else {
             dto.setRequestId(LocalDateTime.now().format(REQ_ID_FORMAT));
             dto.setStatus("DRAFT");
+            validateNoActiveSameWorkRequest(dto);
             requestMapper.insertRequestHeader(dto);
             if (isOther) {
                 requestMapper.insertOtherDetail(dto);
@@ -109,6 +142,16 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             }
         }
         return dto;
+    }
+
+    private void validateNoActiveSameWorkRequest(AttendanceRequestDto dto) {
+        if (dto.getRequestWorkCode() == null || dto.getRequestWorkCode().isBlank()) {
+            return;
+        }
+        int duplicateCount = requestMapper.countActiveSameWorkRequest(dto);
+        if (duplicateCount > 0) {
+            throw new IllegalArgumentException("같은 일자에 같은 근무 신청이 이미 있습니다.");
+        }
     }
 
     @Override
@@ -214,17 +257,19 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
     public void cancelSubmit(String requestId, LoginUserDto loginUser) {
         AttendanceRequestDto existing = requestMapper.findByRequestId(requestId);
         if (existing == null) throw new IllegalArgumentException("존재하지 않는 근태신청입니다.");
-        if (!"SUBMITTED".equals(existing.getStatus())) {
-            throw new IllegalArgumentException("상신 상태의 신청만 취소할 수 있습니다.");
-        }
         if (!loginUser.getEmpCode().equals(existing.getRequesterCode())) {
-            throw new IllegalArgumentException("상신자만 상신취소할 수 있습니다.");
+            throw new IllegalArgumentException("신청자만 취소할 수 있습니다.");
         }
-        int approved = approvalMapper.countApprovedByApprover(requestId);
-        if (approved > 0) {
-            throw new IllegalArgumentException("이미 승인된 건은 상신취소할 수 없습니다.");
+        if ("SUBMITTED".equals(existing.getStatus()) || "APPROVED".equals(existing.getStatus())) {
+            int approvedCount = approvalMapper.countApprovedByApprover(requestId);
+            if ("SUBMITTED".equals(existing.getStatus()) && approvedCount == 0) {
+                approvalMapper.deleteByRequestId(requestId);
+                requestMapper.updateStatus(requestId, "DRAFT");
+                return;
+            }
+            requestMapper.updateStatus(requestId, "CANCELED");
+            return;
         }
-        approvalMapper.deleteByRequestId(requestId);
-        requestMapper.updateStatus(requestId, "DRAFT");
+        throw new IllegalArgumentException("승인중 또는 승인완료 상태의 신청만 취소할 수 있습니다.");
     }
 }

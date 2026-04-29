@@ -32,8 +32,8 @@ function toggleActionBar() {
 }
 
 function reqStatusBadge(status) {
-    const map = { DRAFT:'badge-draft', SUBMITTED:'badge-submitted', APPROVED:'badge-approved', REJECTED:'badge-rejected' };
-    const lbl = { DRAFT:'미상신', SUBMITTED:'승인중', APPROVED:'승인완료', REJECTED:'반려' };
+    const map = { DRAFT:'badge-draft', SUBMITTED:'badge-submitted', APPROVED:'badge-approved', REJECTED:'badge-rejected', CANCELED:'badge-rejected' };
+    const lbl = { DRAFT:'미상신', SUBMITTED:'승인중', APPROVED:'승인완료', REJECTED:'반려', CANCELED:'취소' };
     const s = status || 'DRAFT';
     return '<span class="badge '+(map[s]||'badge-draft')+'">'+(lbl[s]||s)+'</span>';
 }
@@ -234,7 +234,7 @@ async function openDetail(requestId) {
 
     const reqTypeName = escapeHtml(d.reqType || '-');
     const groupName = d.reqGroup === 'OTHER' ? '기타근태' : '일반근태';
-    const statusLabel = { DRAFT:'미상신', SUBMITTED:'승인중', APPROVED:'승인완료', REJECTED:'반려' };
+    const statusLabel = { DRAFT:'미상신', SUBMITTED:'승인중', APPROVED:'승인완료', REJECTED:'반려', CANCELED:'취소' };
 
     let timeInfo = '';
     if (d.reqGroup === 'GENERAL') {

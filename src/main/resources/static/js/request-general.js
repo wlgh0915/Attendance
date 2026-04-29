@@ -49,10 +49,20 @@ function buildWorkCodeOptions(category, selected) {
 }
 
 function statusBadge(status) {
-    const map = {DRAFT:'badge-draft',SUBMITTED:'badge-submit',APPROVED:'badge-approved',REJECTED:'badge-rejected'};
+    const map = {DRAFT:'badge-draft',SUBMITTED:'badge-submit',APPROVED:'badge-approved',REJECTED:'badge-rejected',CANCELED:'badge-rejected'};
     const lbl = {DRAFT:'미상신',SUBMITTED:'승인중',APPROVED:'승인완료',REJECTED:'반려'};
     const s = status||'DRAFT';
+    if (s === 'CANCELED') return '<span class="badge badge-rejected">취소</span>';
     return '<span class="badge '+(map[s]||'badge-draft')+'">'+(lbl[s]||s)+'</span>';
+}
+
+function existingRequestFor(row, workCode) {
+    return (row.requestsByWorkCode && workCode) ? row.requestsByWorkCode[workCode] : null;
+}
+
+function currentRequestForRow(tr, row) {
+    const workCode = tr.querySelector('[data-field="requestWorkCode"]').value;
+    return existingRequestFor(row, workCode);
 }
 
 function isEndAfterStart(startType, startTime, endType, endTime) {
@@ -114,23 +124,25 @@ function renderTable(rows) {
     }
     tableData = rows;
     tbody.innerHTML = rows.map((r, idx) => {
-        const locked = (r.status === 'SUBMITTED' || r.status === 'APPROVED');
+        const selectedWorkCode = r.requestWorkCode || '';
+        const existing = existingRequestFor(r, selectedWorkCode) || r;
+        const locked = (existing.status === 'SUBMITTED' || existing.status === 'APPROVED');
         const disFull = locked ? 'disabled' : '';
 
         // 잠긴 행은 저장된 값 그대로, 아닌 경우 근무코드 규칙 적용
         const ts = locked
             ? { startTypeDis:false, startDis:false, endTypeDis:false, endDis:false,
-                startType: r.startTimeType||'N0', endType: r.endTimeType||'N0',
-                startTime: r.startTime||'', endTime: r.endTime||'' }
-            : computeTimeState(currentCategory, r.requestWorkCode, r);
+                startType: existing.startTimeType||'N0', endType: existing.endTimeType||'N0',
+                startTime: existing.startTime||'', endTime: existing.endTime||'' }
+            : computeTimeState(currentCategory, selectedWorkCode, {...r, ...existing});
 
         const startTypeDis = locked || ts.startTypeDis ? 'disabled' : '';
         const startDis     = locked || ts.startDis     ? 'disabled' : '';
         const endTypeDis   = locked || ts.endTypeDis   ? 'disabled' : '';
         const endDis       = locked || ts.endDis       ? 'disabled' : '';
 
-        const reasonVal       = (r.reason||'').replace(/"/g,'&quot;');
-        const reasonDetailVal = (r.reasonDetail||'').replace(/"/g,'&quot;');
+        const reasonVal       = (existing.reason||'').replace(/"/g,'&quot;');
+        const reasonDetailVal = (existing.reasonDetail||'').replace(/"/g,'&quot;');
 
         return '<tr data-idx="'+idx+'">'
             + '<td class="td-check" onclick="clickCheckCell(this)"><input type="checkbox" onclick="event.stopPropagation();toggleCheck(this,'+idx+')"></td>'
@@ -139,7 +151,7 @@ function renderTable(rows) {
             + '<td>'+(r.deptName||'')+'</td>'
             + '<td>'+(r.workPlanName||'-')+'</td>'
             + '<td>'+formatWorkMin(r.shiftWorkMin)+'</td>'
-            + '<td><select data-field="requestWorkCode" '+disFull+' onchange="onWorkCodeChange(this,'+idx+')">'+buildWorkCodeOptions(currentCategory,r.requestWorkCode)+'</select></td>'
+            + '<td><select data-field="requestWorkCode" onchange="onWorkCodeChange(this,'+idx+')">'+buildWorkCodeOptions(currentCategory,selectedWorkCode)+'</select></td>'
             + '<td><input type="text" data-field="reason" value="'+reasonVal+'" placeholder="사유" '+disFull+'></td>'
             + '<td><input type="text" data-field="reasonDetail" value="'+reasonDetailVal+'" placeholder="사유 상세 입력" '+disFull+'></td>'
             + '<td><div style="display:flex;gap:3px;">'
@@ -150,8 +162,8 @@ function renderTable(rows) {
             + '<select data-field="endTimeType" style="width:52px;" '+endTypeDis+'>'+buildDayTypeOptions(ts.endType)+'</select>'
             + '<select data-field="endTime" style="flex:1;" '+endDis+'>'+buildTimeOptions(ts.endTime)+'</select>'
             + '</div></td>'
-            + '<td>'+statusBadge(r.status)+'</td>'
-            + '<td>'+(r.requesterName||'')+'</td>'
+            + '<td data-field="status">'+statusBadge(existing.status)+'</td>'
+            + '<td data-field="requesterName">'+(existing.requesterName||'')+'</td>'
             + '</tr>';
     }).join('');
 }
@@ -160,22 +172,41 @@ function renderTable(rows) {
 function onWorkCodeChange(select, idx) {
     const tr = select.closest('tr');
     const r  = tableData[idx];
-    const ts = computeTimeState(currentCategory, select.value, r);
+    applyRequestState(tr, r, select.value);
+}
+
+function applyRequestState(tr, r, workCode) {
+    const existing = existingRequestFor(r, workCode);
+    const state = existing || {};
+    const locked = (state.status === 'SUBMITTED' || state.status === 'APPROVED');
+    const ts = locked
+        ? { startTypeDis:false, startDis:false, endTypeDis:false, endDis:false,
+            startType: state.startTimeType||'N0', endType: state.endTimeType||'N0',
+            startTime: state.startTime||'', endTime: state.endTime||'' }
+        : computeTimeState(currentCategory, workCode, {...r, ...state});
 
     const startTypeEl = tr.querySelector('[data-field="startTimeType"]');
     const startEl     = tr.querySelector('[data-field="startTime"]');
     const endTypeEl   = tr.querySelector('[data-field="endTimeType"]');
     const endEl       = tr.querySelector('[data-field="endTime"]');
+    const reasonEl    = tr.querySelector('[data-field="reason"]');
+    const detailEl    = tr.querySelector('[data-field="reasonDetail"]');
 
-    startTypeEl.disabled = ts.startTypeDis;
-    startEl.disabled     = ts.startDis;
-    endTypeEl.disabled   = ts.endTypeDis;
-    endEl.disabled       = ts.endDis;
+    reasonEl.value = state.reason || '';
+    detailEl.value = state.reasonDetail || '';
+    reasonEl.disabled = locked;
+    detailEl.disabled = locked;
+    startTypeEl.disabled = locked || ts.startTypeDis;
+    startEl.disabled     = locked || ts.startDis;
+    endTypeEl.disabled   = locked || ts.endTypeDis;
+    endEl.disabled       = locked || ts.endDis;
 
-    if (ts.startTypeDis) startTypeEl.value = ts.startType;
-    if (ts.startDis)     startEl.value     = ts.startTime;
-    if (ts.endTypeDis)   endTypeEl.value   = ts.endType;
-    if (ts.endDis)       endEl.value       = ts.endTime;
+    startTypeEl.value = ts.startType;
+    startEl.value     = ts.startTime;
+    endTypeEl.value   = ts.endType;
+    endEl.value       = ts.endTime;
+    tr.querySelector('[data-field="status"]').innerHTML = statusBadge(state.status);
+    tr.querySelector('[data-field="requesterName"]').textContent = state.requesterName || '';
 }
 
 function clickCheckAllCell() {
@@ -220,13 +251,15 @@ function getSelectedRows() {
 function rowToDto(tr) {
     const idx = parseInt(tr.dataset.idx);
     const d = tableData[idx];
+    const requestWorkCode = tr.querySelector('[data-field="requestWorkCode"]').value;
+    const existing = currentRequestForRow(tr, d);
     return {
-        requestId:       d.requestId||null,
+        requestId:       existing ? existing.requestId : null,
         empCode:         d.empCode,
         deptCode:        d.deptCode,
         workDate:        document.getElementById('workDate').value,
         requestCategory: currentCategory,
-        requestWorkCode: tr.querySelector('[data-field="requestWorkCode"]').value,
+        requestWorkCode: requestWorkCode,
         reason:          tr.querySelector('[data-field="reason"]').value,
         reasonDetail:    tr.querySelector('[data-field="reasonDetail"]').value,
         startTimeType:   tr.querySelector('[data-field="startTimeType"]').value,
@@ -277,7 +310,7 @@ async function doDelete() {
     if (selected.length === 0) { showToast('선택된 행이 없습니다.','error'); return; }
     if (!confirm('선택한 근태신청을 삭제하시겠습니까?')) return;
     for (const tr of selected) {
-        const requestId = tableData[parseInt(tr.dataset.idx)].requestId;
+        const requestId = rowToDto(tr).requestId;
         if (!requestId) { showToast('저장되지 않은 행은 삭제할 수 없습니다.','error'); return; }
         const res = await fetch('/attendance/request/delete', {
             method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({requestId})
@@ -294,8 +327,8 @@ async function doSubmit() {
     if (selected.length === 0) { showToast('선택된 행이 없습니다.','error'); return; }
     for (const tr of selected) {
         const idx = parseInt(tr.dataset.idx);
-        let requestId = tableData[idx].requestId;
         const dto = rowToDto(tr);
+        let requestId = dto.requestId;
         if (!dto.requestWorkCode) { showToast('신청근무를 선택하세요.','error'); return; }
         if (!dto.startTime || !dto.endTime) { showToast('시작/종료 시간을 선택하세요.','error'); return; }
         if (!isEndAfterStart(dto.startTimeType, dto.startTime, dto.endTimeType, dto.endTime)) {
@@ -325,7 +358,7 @@ async function doCancelSubmit() {
     if (selected.length === 0) { showToast('선택된 행이 없습니다.','error'); return; }
     if (!confirm('상신을 취소하시겠습니까?')) return;
     for (const tr of selected) {
-        const requestId = tableData[parseInt(tr.dataset.idx)].requestId;
+        const requestId = rowToDto(tr).requestId;
         if (!requestId) { showToast('저장된 신청건만 상신취소할 수 있습니다.','error'); return; }
         const res = await fetch('/attendance/request/cancel-submit', {
             method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({requestId})

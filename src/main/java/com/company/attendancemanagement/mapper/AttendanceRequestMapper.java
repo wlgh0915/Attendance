@@ -16,6 +16,8 @@ public interface AttendanceRequestMapper {
 
     AttendanceRequestDto findByRequestId(@Param("requestId") String requestId);
 
+    int countActiveSameWorkRequest(AttendanceRequestDto dto);
+
     int insertRequestHeader(AttendanceRequestDto dto);
 
     int insertGeneralDetail(AttendanceRequestDto dto);
