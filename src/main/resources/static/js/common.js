@@ -27,6 +27,33 @@ function closeToast(btn) {
     card.addEventListener('animationend', function () { card.remove(); });
 }
 
+function setPendingApprovalCount(count) {
+    const badge = document.getElementById('pendingApprovalBadge');
+    if (!badge) return;
+
+    const alert = badge.closest('.approval-alert');
+    const value = Number(count) || 0;
+
+    badge.dataset.count = value;
+    badge.textContent = value > 99 ? '99+' : String(value);
+    badge.classList.toggle('hidden', value <= 0);
+    if (alert) alert.classList.toggle('has-alert', value > 0);
+}
+
+async function refreshPendingApprovalCount() {
+    const badge = document.getElementById('pendingApprovalBadge');
+    if (!badge) return;
+
+    try {
+        const res = await fetch('/attendance/approval/pending-count');
+        if (!res.ok) return;
+        const data = await res.json();
+        setPendingApprovalCount(data.count);
+    } catch (e) {
+        // Header notification is non-critical; keep the server-rendered value.
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     /* 사이드바 상태 복원 */
     if (localStorage.getItem('sidebarCollapsed') === 'true') {
@@ -39,4 +66,6 @@ document.addEventListener('DOMContentLoaded', function () {
         var type = el.getAttribute('data-type') || 'success';
         if (msg) showToast(msg, type);
     });
+
+    refreshPendingApprovalCount();
 });

@@ -12,6 +12,9 @@ public interface AttendanceApprovalMapper {
 
     List<ApprovalItemDto> searchApprovals(ApprovalSearchDto search);
 
+    int countPendingApprovals(@Param("company") String company,
+                              @Param("approverEmpCode") String approverEmpCode);
+
     ApprovalDetailDto findDetail(@Param("requestId") String requestId,
                                  @Param("company") String company,
                                  @Param("approverEmpCode") String approverEmpCode);

@@ -11,6 +11,8 @@ public interface AttendanceApprovalService {
 
     List<ApprovalItemDto> searchApprovals(ApprovalSearchDto search, LoginUserDto loginUser);
 
+    int countPendingApprovals(LoginUserDto loginUser);
+
     ApprovalDetailDto getDetail(String requestId, LoginUserDto loginUser);
 
     void approveRequest(String requestId, LoginUserDto loginUser);

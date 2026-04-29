@@ -31,6 +31,11 @@ public class AttendanceApprovalServiceImpl implements AttendanceApprovalService 
     }
 
     @Override
+    public int countPendingApprovals(LoginUserDto loginUser) {
+        return approvalMapper.countPendingApprovals(loginUser.getCompany(), loginUser.getEmpCode());
+    }
+
+    @Override
     public ApprovalDetailDto getDetail(String requestId, LoginUserDto loginUser) {
         ApprovalDetailDto detail = approvalMapper.findDetail(requestId, loginUser.getCompany(), loginUser.getEmpCode());
         if (detail == null) throw new IllegalArgumentException("조회할 수 없는 근태신청입니다.");

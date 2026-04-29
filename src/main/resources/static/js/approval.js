@@ -185,6 +185,7 @@ async function doBulkApprove() {
         return;
     }
     showToast('승인되었습니다.', 'success');
+    if (window.refreshPendingApprovalCount) refreshPendingApprovalCount();
     doSearch();
 }
 
@@ -221,6 +222,7 @@ async function doBulkReject() {
         return;
     }
     showToast('반려되었습니다.', 'success');
+    if (window.refreshPendingApprovalCount) refreshPendingApprovalCount();
     doSearch();
 }
 

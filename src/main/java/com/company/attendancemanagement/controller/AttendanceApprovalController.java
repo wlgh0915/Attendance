@@ -42,6 +42,14 @@ public class AttendanceApprovalController {
         }
     }
 
+    @GetMapping("/pending-count")
+    @ResponseBody
+    public ResponseEntity<?> pendingCount(HttpSession session) {
+        LoginUserDto loginUser = getLoginUser(session);
+        if (loginUser == null) return ResponseEntity.status(401).build();
+        return ResponseEntity.ok(Map.of("count", approvalService.countPendingApprovals(loginUser)));
+    }
+
     @GetMapping("/detail")
     @ResponseBody
     public ResponseEntity<?> detail(@RequestParam String requestId, HttpSession session) {

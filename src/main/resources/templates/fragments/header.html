@@ -9,12 +9,24 @@
             </a>
         </div>
         <div class="header-right">
+            <a th:href="@{/attendance/approval}"
+               class="approval-alert"
+               th:classappend="${pendingApprovalCount > 0} ? ' has-alert' : ''"
+               aria-label="결재할 근태 승인">
+                <span class="approval-alert-icon">!</span>
+                <span class="approval-alert-text">근태 승인</span>
+                <span id="pendingApprovalBadge"
+                      class="approval-alert-badge"
+                      th:classappend="${pendingApprovalCount > 0} ? '' : ' hidden'"
+                      th:text="${pendingApprovalCount > 99} ? '99+' : ${pendingApprovalCount}"
+                      th:data-count="${pendingApprovalCount}">0</span>
+            </a>
             <span class="user-info">
-                <span th:text="${session.loginUser.empName} + ' 님 접속 중'"></span>
+                <span th:text="${session.loginUser.empName} + ' 접속 중'"></span>
             </span>
             <form th:action="@{/logout}" method="post" onsubmit="return confirm('로그아웃 하시겠습니까?');" style="margin: 0;">
                 <button type="submit" class="logout-btn">
-                    <span>⊘</span> 로그아웃
+                    <span>↪</span> 로그아웃
                 </button>
             </form>
         </div>

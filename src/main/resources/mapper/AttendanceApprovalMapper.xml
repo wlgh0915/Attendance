@@ -83,6 +83,27 @@
     </select>
 
     <!-- 상세 조회 (팝업용) -->
+    <select id="countPendingApprovals" resultType="int">
+        SELECT COUNT(*)
+        FROM HRTATTENDANCE_APPROVAL01 a
+        JOIN HRTATTENDANCEREQUEST01 r
+          ON a.COMPANY = r.COMPANY AND a.REQ_ID = r.REQ_ID
+        WHERE a.COMPANY           = #{company}
+          AND a.APPROVER_EMP_CODE = #{approverEmpCode}
+          AND a.STEP_TYPE         = 'APPROVE'
+          AND a.STATUS            = 'PENDING'
+          AND r.STATUS            = 'SUBMITTED'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM HRTATTENDANCE_APPROVAL01 prev
+              WHERE prev.COMPANY = a.COMPANY
+                AND prev.REQ_ID = a.REQ_ID
+                AND prev.STEP_TYPE = 'APPROVE'
+                AND prev.STEP_NO &lt; a.STEP_NO
+                AND prev.STATUS &lt;&gt; 'APPROVED'
+          )
+    </select>
+
     <select id="findDetail"
             resultType="com.company.attendancemanagement.dto.approval.ApprovalDetailDto">
         SELECT

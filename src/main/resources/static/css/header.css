@@ -51,6 +51,69 @@
     gap: 16px;
 }
 
+.approval-alert {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 34px;
+    padding: 7px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #ecf0f1;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.approval-alert:hover {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.approval-alert.has-alert {
+    border-color: rgba(255, 213, 79, 0.8);
+    background: rgba(255, 213, 79, 0.16);
+    color: #fff7d6;
+}
+
+.approval-alert-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.18);
+    font-size: 12px;
+    line-height: 1;
+}
+
+.approval-alert.has-alert .approval-alert-icon {
+    background: #ffd54f;
+    color: #2c3e50;
+}
+
+.approval-alert-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #e74c3c;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.approval-alert-badge.hidden {
+    display: none;
+}
+
 .user-info {
     display: flex;
     align-items: center;
@@ -102,4 +165,15 @@
 .header-logo-link:hover {
     transform: scale(1.05);
     background: rgba(255, 255, 255, 0.15);
+}
+
+@media (max-width: 820px) {
+    .approval-alert-text,
+    .user-info {
+        display: none;
+    }
+
+    .header-right {
+        gap: 8px;
+    }
 }
