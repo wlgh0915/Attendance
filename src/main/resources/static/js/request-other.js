@@ -79,7 +79,7 @@ function renderTable(rows) {
     if (checkAll) checkAll.checked = false;
     const tbody = document.getElementById('reqTableBody');
     if (!rows || rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" class="no-data">조회된 인원이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="no-data">조회된 인원이 없습니다.</td></tr>';
         tableData = [];
         return;
     }
@@ -97,7 +97,6 @@ function renderTable(rows) {
             + '<td>'+(r.empName||'')+'</td>'
             + '<td>'+(r.deptName||'')+'</td>'
             + '<td>'+(r.workPlanName||'-')+'</td>'
-            + '<td data-field="shiftWorkMin">'+formatWorkMin(cumulativeEstimatedWorkMin(r, selectedWorkCode))+'</td>'
             + '<td><select data-field="requestWorkCode" onchange="onWorkCodeChange(this,'+idx+')">'+buildShiftOptions(selectedWorkCode)+'</select></td>'
             + '<td><input type="text" data-field="reason" value="'+reasonVal+'" placeholder="사유" '+dis+'></td>'
             + '<td><input type="text" data-field="reasonDetail" value="'+reasonDetailVal+'" placeholder="사유 상세 입력" '+dis+'></td>'
@@ -119,7 +118,6 @@ function onWorkCodeChange(select, idx) {
     detailEl.value = state.reasonDetail || '';
     reasonEl.disabled = locked;
     detailEl.disabled = locked;
-    tr.querySelector('[data-field="shiftWorkMin"]').textContent = formatWorkMin(cumulativeEstimatedWorkMin(r, select.value));
     tr.querySelector('[data-field="status"]').innerHTML = statusBadge(state.status);
     tr.querySelector('[data-field="requesterName"]').textContent = state.requesterName || '';
 }
