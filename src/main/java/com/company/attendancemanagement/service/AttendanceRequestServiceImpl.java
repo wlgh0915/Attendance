@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalTime;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
     private final ApprovalMapper approvalMapper;
 
     private static final DateTimeFormatter REQ_ID_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
+    private static final int MAX_WEEK_MIN = 3120;
 
     @Override
     public Map<String, Object> getFormData(LoginUserDto loginUser) {
@@ -202,39 +204,23 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             throw new IllegalArgumentException("출근 기록이 없으면 일반 근태를 신청할 수 없습니다.");
         }
 
+        int requestWorkMin = 0;
+        if (!isOther) {
+            requestWorkMin = validateRequestTimeRange(dto);
+        }
+
         // 조출연장: 시작시간 09:00 이전, 연장: 종료시간 18:00 이후
         if ("조출연장".equals(dto.getRequestWorkCode())
-                && dto.getStartTime() != null && !dto.getStartTime().isBlank()
-                && dto.getStartTime().compareTo("09:00") >= 0) {
+                && absoluteMinute(dto.getStartTimeType(), dto.getStartTime()) >= toMinute("09:00")) {
             throw new IllegalArgumentException("조출연장은 시작시간이 09:00 이전이어야 합니다.");
         }
         if ("연장".equals(dto.getRequestWorkCode())
-                && isSameDay(dto.getEndTimeType())
-                && dto.getEndTime() != null && !dto.getEndTime().isBlank()
-                && dto.getEndTime().compareTo("18:00") <= 0) {
+                && absoluteMinute(dto.getEndTimeType(), dto.getEndTime()) <= toMinute("18:00")) {
             throw new IllegalArgumentException("연장근무는 종료시간이 18:00 이후여야 합니다.");
         }
 
-        // 조퇴·외출은 근무 시작/종료 시간 내에서만 신청 가능
-        if ("조퇴".equals(dto.getRequestWorkCode()) || "외출".equals(dto.getRequestWorkCode())) {
-            Map<String, Object> shiftInfo = requestMapper.findPlannedShiftInfo(
-                    dto.getCompany(), dto.getEmpCode(), dto.getWorkDate());
-            if (shiftInfo != null) {
-                String workOn  = (String) shiftInfo.get("workOnHhmm");
-                String workOff = (String) shiftInfo.get("workOffHhmm");
-                if (workOn != null && isSameDay(dto.getStartTimeType())
-                        && dto.getStartTime() != null && !dto.getStartTime().isBlank()
-                        && dto.getStartTime().compareTo(workOn) < 0) {
-                    throw new IllegalArgumentException(
-                            "시작 시간이 근무 시작 시간(" + workOn + ") 이전입니다.");
-                }
-                if (workOff != null && isSameDay(dto.getEndTimeType())
-                        && dto.getEndTime() != null && !dto.getEndTime().isBlank()
-                        && dto.getEndTime().compareTo(workOff) > 0) {
-                    throw new IllegalArgumentException(
-                            "종료 시간이 근무 종료 시간(" + workOff + ") 이후입니다.");
-                }
-            }
+        if (isBoundedLeaveRequest(dto.getRequestWorkCode())) {
+            validateWithinEffectiveWorkTime(dto);
         }
 
         // 휴일근무는 계획 근무유형이 OFF/HOLIDAY인 날에만 신청 가능
@@ -244,6 +230,11 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             if (wdt == null || (!wdt.equals("OFF") && !wdt.equals("HOLIDAY"))) {
                 throw new IllegalArgumentException("휴일근무는 휴일(OFF/HOLIDAY)에만 신청할 수 있습니다.");
             }
+        }
+
+        if (!isOther) {
+            validateNoOverlappingRequest(dto);
+            validateWeeklyWorkLimit(dto, requestWorkMin);
         }
 
         if (dto.getRequestId() != null && !dto.getRequestId().isBlank()) {
@@ -274,8 +265,93 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         return dto;
     }
 
+    private int validateRequestTimeRange(AttendanceRequestDto dto) {
+        if (dto.getStartTime() == null || dto.getStartTime().isBlank()
+                || dto.getEndTime() == null || dto.getEndTime().isBlank()) {
+            throw new IllegalArgumentException("시작/종료 시간을 선택하세요.");
+        }
+        int start = absoluteMinute(dto.getStartTimeType(), dto.getStartTime());
+        int end = absoluteMinute(dto.getEndTimeType(), dto.getEndTime());
+        if (end <= start) {
+            throw new IllegalArgumentException("종료 시간이 시작 시간보다 늦어야 합니다.");
+        }
+        return end - start;
+    }
+
     private boolean isSameDay(String timeType) {
         return timeType == null || timeType.isBlank() || "N0".equals(timeType);
+    }
+
+    private int absoluteMinute(String timeType, String hhmm) {
+        return ("N1".equals(timeType) ? 1440 : 0) + toMinute(hhmm);
+    }
+
+    private int toMinute(String hhmm) {
+        LocalTime time = LocalTime.parse(hhmm);
+        return time.getHour() * 60 + time.getMinute();
+    }
+
+    private void validateWeeklyWorkLimit(AttendanceRequestDto dto, int requestWorkMin) {
+        int effectMin = requestEffectMin(dto.getRequestCategory(), dto.getRequestWorkCode(), requestWorkMin);
+        if (effectMin <= 0) {
+            return;
+        }
+        int plannedMin = requestMapper.findWeeklyPlannedWorkMin(
+                dto.getCompany(), dto.getEmpCode(), dto.getWorkDate());
+        int activeRequestMin = requestMapper.sumActiveWeeklyRequestEffectMin(dto);
+        int totalMin = plannedMin + activeRequestMin + effectMin;
+        if (totalMin > MAX_WEEK_MIN) {
+            int overMin = totalMin - MAX_WEEK_MIN;
+            throw new IllegalArgumentException(String.format(
+                    "주 52시간을 초과하여 신청할 수 없습니다. 초과 시간: %d시간 %d분",
+                    overMin / 60, overMin % 60));
+        }
+    }
+
+    private int requestEffectMin(String category, String workCode, int workMin) {
+        if ("OVERTIME".equals(category) || "HOLIDAY".equals(category)
+                || "연장".equals(workCode) || "조출연장".equals(workCode) || "휴일근무".equals(workCode)) {
+            return workMin;
+        }
+        if ("LEAVE".equals(category)) {
+            return -workMin;
+        }
+        return 0;
+    }
+
+    private void validateNoOverlappingRequest(AttendanceRequestDto dto) {
+        if (requestMapper.countActiveOverlappingRequest(dto) > 0) {
+            throw new IllegalArgumentException("같은 시간대에 이미 다른 근태 신청이 있습니다.");
+        }
+    }
+
+    private boolean isBoundedLeaveRequest(String workCode) {
+        return "조퇴".equals(workCode)
+                || "외출".equals(workCode)
+                || "전반차".equals(workCode)
+                || "후반차".equals(workCode)
+                || "오전반차".equals(workCode)
+                || "오후반차".equals(workCode);
+    }
+
+    private void validateWithinEffectiveWorkTime(AttendanceRequestDto dto) {
+        Map<String, Object> timeInfo = requestMapper.findEffectiveWorkTimeInfo(dto);
+        if (timeInfo == null
+                || timeInfo.get("effectiveStartMin") == null
+                || timeInfo.get("effectiveEndMin") == null) {
+            return;
+        }
+        int start = absoluteMinute(dto.getStartTimeType(), dto.getStartTime());
+        int end = absoluteMinute(dto.getEndTimeType(), dto.getEndTime());
+        int effectiveStart = ((Number) timeInfo.get("effectiveStartMin")).intValue();
+        int effectiveEnd = ((Number) timeInfo.get("effectiveEndMin")).intValue();
+
+        if (start < effectiveStart) {
+            throw new IllegalArgumentException("시작 시간이 유효 근무 시작 시간 이전입니다.");
+        }
+        if (end > effectiveEnd) {
+            throw new IllegalArgumentException("종료 시간이 유효 근무 종료 시간 이후입니다.");
+        }
     }
 
     private void validateNoActiveSameWorkRequest(AttendanceRequestDto dto) {
@@ -285,19 +361,6 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         int duplicateCount = requestMapper.countActiveSameWorkRequest(dto);
         if (duplicateCount > 0) {
             throw new IllegalArgumentException("같은 일자에 같은 근무 신청이 이미 있습니다.");
-        }
-
-        boolean isOvertime  = "연장".equals(dto.getRequestWorkCode()) || "조출연장".equals(dto.getRequestWorkCode());
-        boolean isLeaveEarly = "조퇴".equals(dto.getRequestWorkCode());
-        if (isOvertime || isLeaveEarly) {
-            int conflictCount = requestMapper.countActiveConflictingRequest(dto);
-            if (conflictCount > 0) {
-                if (isOvertime) {
-                    throw new IllegalArgumentException("조퇴 신청이 있는 날에는 연장근무를 신청할 수 없습니다.");
-                } else {
-                    throw new IllegalArgumentException("연장근무 신청이 있는 날에는 조퇴를 신청할 수 없습니다.");
-                }
-            }
         }
     }
 

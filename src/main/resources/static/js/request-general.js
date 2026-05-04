@@ -103,6 +103,12 @@ function minutesBetween(startType, startTime, endType, endTime) {
     return Math.max(endMin - startMin, 0);
 }
 
+function absoluteMinute(timeType, time) {
+    if (!time) return null;
+    const [h, m] = time.split(':').map(Number);
+    return (timeType === 'N1' ? 1440 : 0) + h * 60 + m;
+}
+
 function selectedWorkMin(tr, state) {
     if (state && state.requestWorkMin != null && state.status !== 'DRAFT') return state.requestWorkMin;
     return minutesBetween(
@@ -121,15 +127,66 @@ function hasActiveRequest(row, ...codes) {
     return codes.some(code => isActiveRequest(row.requestsByWorkCode && row.requestsByWorkCode[code]));
 }
 
+function hasOverlappingRequest(dto, row) {
+    const start = absoluteMinute(dto.startTimeType, dto.startTime);
+    const end = absoluteMinute(dto.endTimeType, dto.endTime);
+    if (start == null || end == null) return false;
+    return Object.values(row.requestsByWorkCode || {}).some(req => {
+        if (!isActiveRequest(req) || req.requestWorkCode === dto.requestWorkCode) return false;
+        if (requestEffectSign(dto.requestWorkCode) !== requestEffectSign(req.requestWorkCode)) return false;
+        const reqStart = absoluteMinute(req.startTimeType || 'N0', req.startTime);
+        const reqEnd = absoluteMinute(req.endTimeType || 'N0', req.endTime);
+        if (reqStart == null || reqEnd == null) return false;
+        return reqStart < end && start < reqEnd;
+    });
+}
+
 function checkOvertimeLeaveConflict(dto, row) {
-    const isOvertime  = dto.requestWorkCode === '연장' || dto.requestWorkCode === '조출연장';
-    const isLeaveEarly = dto.requestWorkCode === '조퇴';
-    if (isOvertime && hasActiveRequest(row, '조퇴')) {
-        showToast('조퇴 신청이 있는 날에는 연장근무를 신청할 수 없습니다.', 'error');
+    return true;
+}
+
+function requestEffectSign(workCode) {
+    if (workCode === '연장' || workCode === '조출연장' || workCode === '휴일근무') return 1;
+    if (['조퇴', '외근', '외출', '전반차', '후반차', '오전반차', '오후반차'].includes(workCode)) return -1;
+    return 0;
+}
+
+function isBoundedLeaveCode(workCode) {
+    return ['조퇴', '외출', '전반차', '후반차', '오전반차', '오후반차'].includes(workCode);
+}
+
+function effectiveWorkRange(row) {
+    const baseStart = absoluteMinute('N0', row.shiftOnTime);
+    const baseEndTime = absoluteMinute('N0', row.shiftOffTime);
+    if (baseStart == null || baseEndTime == null) return null;
+    let start = baseStart;
+    let end = baseEndTime <= baseStart ? baseEndTime + 1440 : baseEndTime;
+    Object.values(row.requestsByWorkCode || {}).forEach(req => {
+        if (!isActiveRequest(req)) return;
+        if (req.requestWorkCode === '조출연장') {
+            const reqStart = absoluteMinute(req.startTimeType || 'N0', req.startTime);
+            if (reqStart != null && reqStart < start) start = reqStart;
+        }
+        if (req.requestWorkCode === '연장') {
+            const reqEnd = absoluteMinute(req.endTimeType || 'N0', req.endTime);
+            if (reqEnd != null && reqEnd > end) end = reqEnd;
+        }
+    });
+    return {start, end};
+}
+
+function validateWithinEffectiveWorkTime(dto, row) {
+    if (!isBoundedLeaveCode(dto.requestWorkCode)) return true;
+    const range = effectiveWorkRange(row);
+    if (!range) return true;
+    const start = absoluteMinute(dto.startTimeType, dto.startTime);
+    const end = absoluteMinute(dto.endTimeType, dto.endTime);
+    if (start < range.start) {
+        showToast('시작 시간이 유효 근무 시작 시간 이전입니다.', 'error');
         return false;
     }
-    if (isLeaveEarly && hasActiveRequest(row, '연장', '조출연장')) {
-        showToast('연장근무 신청이 있는 날에는 조퇴를 신청할 수 없습니다.', 'error');
+    if (end > range.end) {
+        showToast('종료 시간이 유효 근무 종료 시간 이후입니다.', 'error');
         return false;
     }
     return true;
@@ -164,6 +221,17 @@ function cumulativeEstimatedWorkMin(row, tr, currentState) {
 function refreshEstimatedWorkMin(tr, row, state) {
     const cell = tr.querySelector('[data-field="shiftWorkMin"]');
     if (cell) cell.textContent = formatWorkMin(cumulativeEstimatedWorkMin(row, tr, state));
+}
+
+function validateWeeklyWorkLimit(tr, row, state) {
+    const total = cumulativeEstimatedWorkMin(row, tr, state);
+    if ((currentCategory === 'OVERTIME' || currentCategory === 'HOLIDAY') && total > 3120) {
+        const over = total - 3120;
+        showToast('주 52시간을 초과하여 신청할 수 없습니다. 초과 시간: '
+            + Math.floor(over / 60) + '시간 ' + (over % 60) + '분', 'error');
+        return false;
+    }
+    return true;
 }
 
 function savedEstimatedWorkMin(row, state, selectedWorkCode) {
@@ -402,16 +470,12 @@ async function doSave() {
         if (dto.requestWorkCode === '연장' && isSameDay(dto.endTimeType) && dto.endTime <= '18:00') {
             showToast('연장근무는 종료시간이 18:00 이후여야 합니다.','error'); return;
         }
-        if (dto.requestWorkCode === '조퇴' || dto.requestWorkCode === '외출') {
-            const row = tableData[parseInt(tr.dataset.idx)];
-            if (row.shiftOnTime && isSameDay(dto.startTimeType) && dto.startTime && dto.startTime < row.shiftOnTime) {
-                showToast('시작 시간이 근무 시작 시간(' + row.shiftOnTime + ') 이전입니다.', 'error'); return;
-            }
-            if (row.shiftOffTime && isSameDay(dto.endTimeType) && dto.endTime && dto.endTime > row.shiftOffTime) {
-                showToast('종료 시간이 근무 종료 시간(' + row.shiftOffTime + ') 이후입니다.', 'error'); return;
-            }
-        }
+        if (!validateWithinEffectiveWorkTime(dto, tableData[parseInt(tr.dataset.idx)])) return;
         if (!checkOvertimeLeaveConflict(dto, tableData[parseInt(tr.dataset.idx)])) return;
+        if (hasOverlappingRequest(dto, tableData[parseInt(tr.dataset.idx)])) {
+            showToast('같은 시간대에 이미 다른 근태 신청이 있습니다.', 'error'); return;
+        }
+        if (!validateWeeklyWorkLimit(tr, tableData[parseInt(tr.dataset.idx)], currentRequestForRow(tr, tableData[parseInt(tr.dataset.idx)]))) return;
         if (!isEndAfterStart(dto.startTimeType, dto.startTime, dto.endTimeType, dto.endTime)) {
             showToast('종료 시간이 시작 시간보다 앞설 수 없습니다.','error'); return;
         }
@@ -460,16 +524,12 @@ async function doSubmit() {
         if (dto.requestWorkCode === '연장' && isSameDay(dto.endTimeType) && dto.endTime <= '18:00') {
             showToast('연장근무는 종료시간이 18:00 이후여야 합니다.','error'); return;
         }
-        if (dto.requestWorkCode === '조퇴' || dto.requestWorkCode === '외출') {
-            const row = tableData[parseInt(tr.dataset.idx)];
-            if (row.shiftOnTime && isSameDay(dto.startTimeType) && dto.startTime && dto.startTime < row.shiftOnTime) {
-                showToast('시작 시간이 근무 시작 시간(' + row.shiftOnTime + ') 이전입니다.', 'error'); return;
-            }
-            if (row.shiftOffTime && isSameDay(dto.endTimeType) && dto.endTime && dto.endTime > row.shiftOffTime) {
-                showToast('종료 시간이 근무 종료 시간(' + row.shiftOffTime + ') 이후입니다.', 'error'); return;
-            }
-        }
+        if (!validateWithinEffectiveWorkTime(dto, tableData[parseInt(tr.dataset.idx)])) return;
         if (!checkOvertimeLeaveConflict(dto, tableData[parseInt(tr.dataset.idx)])) return;
+        if (hasOverlappingRequest(dto, tableData[parseInt(tr.dataset.idx)])) {
+            showToast('같은 시간대에 이미 다른 근태 신청이 있습니다.', 'error'); return;
+        }
+        if (!validateWeeklyWorkLimit(tr, tableData[parseInt(tr.dataset.idx)], currentRequestForRow(tr, tableData[parseInt(tr.dataset.idx)]))) return;
         if (!isEndAfterStart(dto.startTimeType, dto.startTime, dto.endTimeType, dto.endTime)) {
             showToast('종료 시간이 시작 시간보다 앞설 수 없습니다.','error'); return;
         }

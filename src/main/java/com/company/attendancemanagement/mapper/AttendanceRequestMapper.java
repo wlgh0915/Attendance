@@ -57,10 +57,20 @@ public interface AttendanceRequestMapper {
                                              @Param("empCode")  String empCode,
                                              @Param("workDate") String workDate);
 
+    Map<String, Object> findEffectiveWorkTimeInfo(AttendanceRequestDto dto);
+
     /** 조퇴↔연장 충돌 신청 존재 여부 확인 */
     int countAttendanceCheckIn(@Param("company") String company,
                                @Param("empCode") String empCode,
                                @Param("workDate") String workDate);
+
+    int findWeeklyPlannedWorkMin(@Param("company") String company,
+                                 @Param("empCode") String empCode,
+                                 @Param("workDate") String workDate);
+
+    int sumActiveWeeklyRequestEffectMin(AttendanceRequestDto dto);
+
+    int countActiveOverlappingRequest(AttendanceRequestDto dto);
 
     int countActiveConflictingRequest(AttendanceRequestDto dto);
 }
