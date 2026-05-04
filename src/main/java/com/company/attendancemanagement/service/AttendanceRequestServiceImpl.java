@@ -432,7 +432,12 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
                 .filter(s -> "APPROVE".equals(s.getStepType()))
                 .allMatch(s -> "APPROVED".equals(s.getStatus()));
 
-        requestMapper.updateStatus(requestId, allApproved ? "APPROVED" : "SUBMITTED");
+        if (allApproved) {
+            requestMapper.updateStatus(requestId, "APPROVED");
+            requestMapper.applyApprovedOtherRequestToAttendance(requestId);
+        } else {
+            requestMapper.updateStatus(requestId, "SUBMITTED");
+        }
     }
 
     /**

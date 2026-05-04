@@ -46,6 +46,11 @@ function selectedShiftWorkMin(workCode, fallback) {
     return shift ? shift.workMinutes : (fallback || 0);
 }
 
+function baseDayWorkMin(row) {
+    if (row.actualWorkMin != null) return row.actualWorkMin;
+    return row.plannedWorkMin || 0;
+}
+
 function isActiveRequest(state) {
     return state && ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(state.status);
 }
@@ -66,7 +71,12 @@ function requestEffectMin(state) {
 }
 
 function cumulativeEstimatedWorkMin(row, selectedWorkCode) {
-    let total = selectedWorkCode ? selectedShiftWorkMin(selectedWorkCode, row.shiftWorkMin) : (row.shiftWorkMin || 0);
+    const weeklyBase = row.shiftWorkMin || 0;
+    const currentDayBase = baseDayWorkMin(row);
+    let total = weeklyBase;
+    if (selectedWorkCode) {
+        total = weeklyBase - currentDayBase + selectedShiftWorkMin(selectedWorkCode, currentDayBase);
+    }
     Object.values(row.requestsByWorkCode || {}).forEach(state => {
         if (!isActiveRequest(state) || state.existingRequestGroup === 'OTHER') return;
         total += requestEffectMin(state);

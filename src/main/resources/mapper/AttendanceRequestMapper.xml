@@ -77,6 +77,10 @@
         OUTER APPLY (
             SELECT ISNULL(SUM(
                 CASE WHEN arw.WORK_MIN IS NOT NULL THEN arw.WORK_MIN
+                     WHEN DATEADD(DAY, days.n,
+                             DATEADD(DAY, 1 - DATEPART(WEEKDAY, CAST(#{workDate} AS DATE)),
+                                     CAST(#{workDate} AS DATE))) &lt; CAST(#{workDate} AS DATE)
+                     THEN 0
                      WHEN ws.WORK_ON_HHMM IS NOT NULL AND ws.WORK_OFF_HHMM IS NOT NULL
                      THEN (CASE WHEN ws.WORK_OFF_HHMM >= ws.WORK_ON_HHMM
                                 THEN DATEDIFF(MINUTE, ws.WORK_ON_HHMM, ws.WORK_OFF_HHMM)
@@ -323,6 +327,36 @@
         WHERE REQ_ID = #{requestId}
     </update>
 
+    <update id="applyApprovedOtherRequestToAttendance">
+        MERGE HRTDAILYATTENDANCE01 AS T
+        USING (
+            SELECT r.COMPANY,
+                   r.TARGET_EMP_CODE AS EMP_CODE,
+                   CONVERT(VARCHAR(8), r.TARGET_DATE, 112) AS YYYYMMDD,
+                   r.TARGET_DEPT_CODE AS DEPT_CODE,
+                   o.CHANGE_SHIFT_CODE
+            FROM HRTATTENDANCEREQUEST01 r
+            JOIN HRTATTENDANCE_OTHER01 o
+              ON r.COMPANY = o.COMPANY
+             AND r.REQ_ID = o.REQ_ID
+            WHERE r.REQ_ID = #{requestId}
+              AND r.REQ_GROUP = 'OTHER'
+              AND r.STATUS = 'APPROVED'
+        ) AS S
+        ON T.COMPANY = S.COMPANY
+       AND T.EMP_CODE = S.EMP_CODE
+       AND T.YYYYMMDD = S.YYYYMMDD
+        WHEN MATCHED THEN
+            UPDATE SET
+                ACTUAL_SHIFT_CODE = S.CHANGE_SHIFT_CODE,
+                UPDATED_AT = GETDATE()
+        WHEN NOT MATCHED THEN
+            INSERT (COMPANY, EMP_CODE, YYYYMMDD, DEPT_CODE, SHIFT_CODE, ACTUAL_SHIFT_CODE,
+                    WORK_MIN, OVERNIGHT_YN, LATE_YN, LATE_MIN, CREATED_AT, UPDATED_AT)
+            VALUES (S.COMPANY, S.EMP_CODE, S.YYYYMMDD, S.DEPT_CODE, NULL, S.CHANGE_SHIFT_CODE,
+                    0, 'N', 'N', 0, GETDATE(), GETDATE());
+    </update>
+
     <select id="findDeptLeader" resultType="String">
         SELECT DEPT_LEADER
         FROM ORGDEPTMASTER01
@@ -504,54 +538,64 @@
             SELECT DATEADD(DAY,
                            -((DATEDIFF(DAY, 0, CAST(#{workDate} AS DATE)) % 7 + 7) % 7),
                            CAST(#{workDate} AS DATE)) AS WEEK_START
+        ),
+        WEEK_DAYS AS (
+            SELECT DATEADD(DAY, days.n, BASE.WEEK_START) AS WORK_DATE,
+                   days.n AS DAY_OFFSET
+            FROM BASE
+            CROSS JOIN (VALUES(0),(1),(2),(3),(4),(5),(6)) AS days(n)
+        ),
+        DAILY_WORK AS (
+            SELECT CASE
+                       WHEN ar.WORK_MIN IS NOT NULL THEN ar.WORK_MIN
+                       WHEN wd.WORK_DATE < CAST(#{workDate} AS DATE) THEN 0
+                       WHEN s.WORK_ON_HHMM IS NULL OR s.WORK_OFF_HHMM IS NULL THEN 0
+                       WHEN ISNULL(day_type.WORK_DAY_TYPE, '') IN ('OFF', 'HOLIDAY') THEN 0
+                       WHEN s.WORK_OFF_HHMM >= s.WORK_ON_HHMM
+                       THEN DATEDIFF(MINUTE, s.WORK_ON_HHMM, s.WORK_OFF_HHMM)
+                            - ISNULL(DATEDIFF(MINUTE, s.BREAK1_START_HHMM, s.BREAK1_END_HHMM), 0)
+                            - ISNULL(DATEDIFF(MINUTE, s.BREAK2_START_HHMM, s.BREAK2_END_HHMM), 0)
+                       ELSE 1440 + DATEDIFF(MINUTE, s.WORK_ON_HHMM, s.WORK_OFF_HHMM)
+                            - ISNULL(DATEDIFF(MINUTE, s.BREAK1_START_HHMM, s.BREAK1_END_HHMM), 0)
+                            - ISNULL(DATEDIFF(MINUTE, s.BREAK2_START_HHMM, s.BREAK2_END_HHMM), 0)
+                   END AS WORK_MIN
+            FROM WEEK_DAYS wd
+            JOIN HRIDEPTTRANSFER01 tr
+                   ON tr.COMPANY    = #{company}
+                  AND tr.EMP_CODE   = #{empCode}
+                  AND tr.START_DATE <= wd.WORK_DATE
+                  AND (tr.END_DATE IS NULL OR tr.END_DATE >= wd.WORK_DATE)
+            JOIN ORGDEPTMASTER01 dept
+                   ON dept.COMPANY   = #{company}
+                  AND dept.DEPT_CODE = tr.DEPT_CODE
+            JOIN HRTWORKPATTERNMASTER01 pm
+                   ON pm.COMPANY           = dept.COMPANY
+                  AND pm.WORK_PATTERN_CODE = dept.WORK_PATTERN_CODE
+                  AND pm.USE_YN            = 'Y'
+            JOIN HRTWORKPATTERNDETAIL01 pd
+                   ON pd.COMPANY           = pm.COMPANY
+                  AND pd.WORK_PATTERN_CODE = pm.WORK_PATTERN_CODE
+                  AND pd.SEQ = (
+                      (DATEDIFF(DAY, pm.START_DATE, wd.WORK_DATE) % pm.CYCLE_COUNT
+                       + pm.CYCLE_COUNT) % pm.CYCLE_COUNT + 1
+                  )
+            JOIN HRTSHIFTMASTER01 s
+                   ON s.COMPANY = pd.COMPANY AND s.SHIFT_CODE = pd.SHIFT_CODE
+            CROSS APPLY (
+                SELECT CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+                           WHEN 'WEEKDAY' THEN 'WORK'
+                           WHEN 'ANYDAY'  THEN 'WORK'
+                           WHEN 'WEEKEND' THEN 'OFF'
+                           ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+                       END AS WORK_DAY_TYPE
+            ) day_type
+            LEFT JOIN HRTDAILYATTENDANCE01 ar
+                   ON tr.COMPANY = ar.COMPANY
+                  AND tr.EMP_CODE = ar.EMP_CODE
+                  AND ar.YYYYMMDD = CONVERT(VARCHAR(8), wd.WORK_DATE, 112)
         )
-        SELECT ISNULL(SUM(
-            CASE
-                WHEN ar.WORK_MIN IS NOT NULL THEN ar.WORK_MIN
-                WHEN s.WORK_ON_HHMM IS NOT NULL
-                 AND s.WORK_OFF_HHMM IS NOT NULL
-                 AND CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
-                         WHEN 'WEEKDAY' THEN 'WORK'
-                         WHEN 'ANYDAY'  THEN 'WORK'
-                         WHEN 'WEEKEND' THEN 'OFF'
-                         ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
-                     END NOT IN ('OFF', 'HOLIDAY')
-                THEN (CASE WHEN s.WORK_OFF_HHMM >= s.WORK_ON_HHMM
-                           THEN DATEDIFF(MINUTE, s.WORK_ON_HHMM, s.WORK_OFF_HHMM)
-                           ELSE 1440 + DATEDIFF(MINUTE, s.WORK_ON_HHMM, s.WORK_OFF_HHMM)
-                      END
-                      - ISNULL(DATEDIFF(MINUTE, s.BREAK1_START_HHMM, s.BREAK1_END_HHMM), 0)
-                      - ISNULL(DATEDIFF(MINUTE, s.BREAK2_START_HHMM, s.BREAK2_END_HHMM), 0))
-                ELSE 0
-            END
-        ), 0)
-        FROM BASE
-        CROSS JOIN (VALUES(0),(1),(2),(3),(4),(5),(6)) AS days(n)
-        JOIN HRIDEPTTRANSFER01 tr
-               ON tr.COMPANY    = #{company}
-              AND tr.EMP_CODE   = #{empCode}
-              AND tr.START_DATE <= DATEADD(DAY, days.n, BASE.WEEK_START)
-              AND (tr.END_DATE IS NULL OR tr.END_DATE >= DATEADD(DAY, days.n, BASE.WEEK_START))
-        JOIN ORGDEPTMASTER01 dept
-               ON dept.COMPANY   = #{company}
-              AND dept.DEPT_CODE = tr.DEPT_CODE
-        JOIN HRTWORKPATTERNMASTER01 pm
-               ON pm.COMPANY           = dept.COMPANY
-              AND pm.WORK_PATTERN_CODE = dept.WORK_PATTERN_CODE
-              AND pm.USE_YN            = 'Y'
-        JOIN HRTWORKPATTERNDETAIL01 pd
-               ON pd.COMPANY           = pm.COMPANY
-              AND pd.WORK_PATTERN_CODE = pm.WORK_PATTERN_CODE
-              AND pd.SEQ = (
-                  (DATEDIFF(DAY, pm.START_DATE, DATEADD(DAY, days.n, BASE.WEEK_START)) % pm.CYCLE_COUNT
-                   + pm.CYCLE_COUNT) % pm.CYCLE_COUNT + 1
-              )
-        JOIN HRTSHIFTMASTER01 s
-               ON s.COMPANY = pd.COMPANY AND s.SHIFT_CODE = pd.SHIFT_CODE
-        LEFT JOIN HRTDAILYATTENDANCE01 ar
-               ON tr.COMPANY = ar.COMPANY
-              AND tr.EMP_CODE = ar.EMP_CODE
-              AND ar.YYYYMMDD = CONVERT(VARCHAR(8), DATEADD(DAY, days.n, BASE.WEEK_START), 112)
+        SELECT ISNULL(SUM(WORK_MIN), 0)
+        FROM DAILY_WORK
         ]]>
     </select>
 

@@ -39,6 +39,8 @@ public interface AttendanceRequestMapper {
 
     int updateStatus(@Param("requestId") String requestId, @Param("status") String status);
 
+    int applyApprovedOtherRequestToAttendance(@Param("requestId") String requestId);
+
     String findDeptLeader(@Param("company") String company, @Param("deptCode") String deptCode);
 
     List<DepartmentDto> findDeptListForDropdown(@Param("company") String company);
