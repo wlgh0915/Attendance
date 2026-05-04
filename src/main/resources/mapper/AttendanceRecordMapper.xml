@@ -57,6 +57,10 @@
         SELECT ISNULL(s.SHIFT_CODE, '')                       AS shiftCode,
                CONVERT(VARCHAR(5), s.WORK_ON_HHMM,  108)     AS workOnHhmm,
                CONVERT(VARCHAR(5), s.WORK_OFF_HHMM, 108)     AS workOffHhmm,
+               CONVERT(VARCHAR(5), s.BREAK1_START_HHMM, 108) AS break1StartHhmm,
+               CONVERT(VARCHAR(5), s.BREAK1_END_HHMM,   108) AS break1EndHhmm,
+               CONVERT(VARCHAR(5), s.BREAK2_START_HHMM, 108) AS break2StartHhmm,
+               CONVERT(VARCHAR(5), s.BREAK2_END_HHMM,   108) AS break2EndHhmm,
                CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
                    WHEN 'WEEKDAY' THEN 'WORK'
                    WHEN 'ANYDAY'  THEN 'WORK'
@@ -92,7 +96,9 @@
         <![CDATA[
         SELECT r.REQ_TYPE AS reqType,
                LEFT(CONVERT(VARCHAR(8), g.START_TIME, 108), 5) AS startTime,
-               LEFT(CONVERT(VARCHAR(8), g.END_TIME,   108), 5) AS endTime
+               ISNULL(g.START_TIME_TYPE, 'N0') AS startTimeType,
+               LEFT(CONVERT(VARCHAR(8), g.END_TIME,   108), 5) AS endTime,
+               ISNULL(g.END_TIME_TYPE, 'N0') AS endTimeType
         FROM HRTATTENDANCEREQUEST01 r
         LEFT JOIN HRTATTENDANCE_GENERAL01 g
                ON r.COMPANY = g.COMPANY AND r.REQ_ID = g.REQ_ID
@@ -100,7 +106,8 @@
           AND r.TARGET_EMP_CODE = #{empCode}
           AND r.TARGET_DATE     = CAST(#{yyyymmdd} AS DATE)
           AND r.STATUS          = 'APPROVED'
-          AND r.REQ_GROUP       = 'OVERTIME'
+          AND r.REQ_GROUP       = 'GENERAL'
+          AND r.REQ_TYPE IN ('연장', '조출연장')
         ]]>
     </select>
 

@@ -23,6 +23,20 @@
             END                                                   AS workDayType,
             LEFT(CONVERT(VARCHAR(8), s.WORK_ON_HHMM,  108), 5)   AS shiftOnTime,
             LEFT(CONVERT(VARCHAR(8), s.WORK_OFF_HHMM, 108), 5)   AS shiftOffTime,
+            LEFT(CONVERT(VARCHAR(8), s.BREAK1_START_HHMM, 108), 5) AS break1StartHhmm,
+            LEFT(CONVERT(VARCHAR(8), s.BREAK1_END_HHMM,   108), 5) AS break1EndHhmm,
+            LEFT(CONVERT(VARCHAR(8), s.BREAK2_START_HHMM, 108), 5) AS break2StartHhmm,
+            LEFT(CONVERT(VARCHAR(8), s.BREAK2_END_HHMM,   108), 5) AS break2EndHhmm,
+            CASE WHEN s.WORK_ON_HHMM IS NOT NULL AND s.WORK_OFF_HHMM IS NOT NULL
+                 THEN (CASE WHEN s.WORK_OFF_HHMM >= s.WORK_ON_HHMM
+                            THEN DATEDIFF(MINUTE, s.WORK_ON_HHMM, s.WORK_OFF_HHMM)
+                            ELSE 1440 + DATEDIFF(MINUTE, s.WORK_ON_HHMM, s.WORK_OFF_HHMM)
+                       END
+                       - ISNULL(DATEDIFF(MINUTE, s.BREAK1_START_HHMM, s.BREAK1_END_HHMM), 0)
+                       - ISNULL(DATEDIFF(MINUTE, s.BREAK2_START_HHMM, s.BREAK2_END_HHMM), 0))
+                 ELSE 0
+            END                                                   AS plannedWorkMin,
+            ar.WORK_MIN                                           AS actualWorkMin,
             weekly.weekWorkMin                                     AS shiftWorkMin,
             LEFT(CONVERT(VARCHAR(8), ar.CHECK_IN, 108), 5)         AS checkIn,
             r.REQ_ID                                              AS requestId,
@@ -62,7 +76,8 @@
                ON pd.COMPANY = s.COMPANY AND pd.SHIFT_CODE = s.SHIFT_CODE
         OUTER APPLY (
             SELECT ISNULL(SUM(
-                CASE WHEN ws.WORK_ON_HHMM IS NOT NULL AND ws.WORK_OFF_HHMM IS NOT NULL
+                CASE WHEN arw.WORK_MIN IS NOT NULL THEN arw.WORK_MIN
+                     WHEN ws.WORK_ON_HHMM IS NOT NULL AND ws.WORK_OFF_HHMM IS NOT NULL
                      THEN (CASE WHEN ws.WORK_OFF_HHMM >= ws.WORK_ON_HHMM
                                 THEN DATEDIFF(MINUTE, ws.WORK_ON_HHMM, ws.WORK_OFF_HHMM)
                                 ELSE 1440 + DATEDIFF(MINUTE, ws.WORK_ON_HHMM, ws.WORK_OFF_HHMM)
@@ -87,6 +102,13 @@
                        )
             INNER JOIN HRTSHIFTMASTER01 ws
                     ON wpd.COMPANY = ws.COMPANY AND wpd.SHIFT_CODE = ws.SHIFT_CODE
+            LEFT JOIN HRTDAILYATTENDANCE01 arw
+                    ON h.COMPANY = arw.COMPANY
+                   AND h.EMP_CODE = arw.EMP_CODE
+                   AND arw.YYYYMMDD = CONVERT(VARCHAR(8),
+                        DATEADD(DAY, days.n,
+                            DATEADD(DAY, 1 - DATEPART(WEEKDAY, CAST(#{workDate} AS DATE)),
+                                    CAST(#{workDate} AS DATE))), 112)
         ) weekly
         LEFT JOIN HRTATTENDANCEREQUEST01 r
                ON h.COMPANY = r.COMPANY
@@ -225,10 +247,7 @@
             #{company}, #{requestId},
             CAST(#{startTime} AS TIME), #{startTimeType},
             CAST(#{endTime}   AS TIME), #{endTimeType},
-            (CASE WHEN #{endTimeType} = 'N1' THEN 1440 ELSE 0 END
-                + DATEDIFF(MINUTE, CAST('00:00' AS TIME), CAST(#{endTime} AS TIME)))
-            - (CASE WHEN #{startTimeType} = 'N1' THEN 1440 ELSE 0 END
-                + DATEDIFF(MINUTE, CAST('00:00' AS TIME), CAST(#{startTime} AS TIME))),
+            #{requestWorkMin},
             GETDATE(), GETDATE()
         )
     </insert>
@@ -269,10 +288,7 @@
             START_TIME_TYPE = #{startTimeType},
             END_TIME        = CAST(#{endTime}   AS TIME),
             END_TIME_TYPE   = #{endTimeType},
-            WORK_MIN        = (CASE WHEN #{endTimeType} = 'N1' THEN 1440 ELSE 0 END
-                                + DATEDIFF(MINUTE, CAST('00:00' AS TIME), CAST(#{endTime} AS TIME)))
-                              - (CASE WHEN #{startTimeType} = 'N1' THEN 1440 ELSE 0 END
-                                + DATEDIFF(MINUTE, CAST('00:00' AS TIME), CAST(#{startTime} AS TIME))),
+            WORK_MIN        = #{requestWorkMin},
             UPDATED_AT      = GETDATE()
         WHERE REQ_ID  = #{requestId}
           AND COMPANY = #{company}
@@ -374,7 +390,11 @@
     <select id="findPlannedShiftInfo" resultType="java.util.HashMap">
         <![CDATA[
         SELECT LEFT(CONVERT(VARCHAR(8), s.WORK_ON_HHMM,  108), 5) AS workOnHhmm,
-               LEFT(CONVERT(VARCHAR(8), s.WORK_OFF_HHMM, 108), 5) AS workOffHhmm
+               LEFT(CONVERT(VARCHAR(8), s.WORK_OFF_HHMM, 108), 5) AS workOffHhmm,
+               LEFT(CONVERT(VARCHAR(8), s.BREAK1_START_HHMM, 108), 5) AS break1StartHhmm,
+               LEFT(CONVERT(VARCHAR(8), s.BREAK1_END_HHMM,   108), 5) AS break1EndHhmm,
+               LEFT(CONVERT(VARCHAR(8), s.BREAK2_START_HHMM, 108), 5) AS break2StartHhmm,
+               LEFT(CONVERT(VARCHAR(8), s.BREAK2_END_HHMM,   108), 5) AS break2EndHhmm
         FROM HRIDEPTTRANSFER01 tr
         JOIN ORGDEPTMASTER01 dept
                ON dept.COMPANY   = #{company}
@@ -487,6 +507,7 @@
         )
         SELECT ISNULL(SUM(
             CASE
+                WHEN ar.WORK_MIN IS NOT NULL THEN ar.WORK_MIN
                 WHEN s.WORK_ON_HHMM IS NOT NULL
                  AND s.WORK_OFF_HHMM IS NOT NULL
                  AND CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
@@ -527,6 +548,10 @@
               )
         JOIN HRTSHIFTMASTER01 s
                ON s.COMPANY = pd.COMPANY AND s.SHIFT_CODE = pd.SHIFT_CODE
+        LEFT JOIN HRTDAILYATTENDANCE01 ar
+               ON tr.COMPANY = ar.COMPANY
+              AND tr.EMP_CODE = ar.EMP_CODE
+              AND ar.YYYYMMDD = CONVERT(VARCHAR(8), DATEADD(DAY, days.n, BASE.WEEK_START), 112)
         ]]>
     </select>
 

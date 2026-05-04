@@ -207,6 +207,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         int requestWorkMin = 0;
         if (!isOther) {
             requestWorkMin = validateRequestTimeRange(dto);
+            dto.setRequestWorkMin(requestWorkMin);
         }
 
         // 조출연장: 시작시간 09:00 이전, 연장: 종료시간 18:00 이후
@@ -275,7 +276,13 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         if (end <= start) {
             throw new IllegalArgumentException("종료 시간이 시작 시간보다 늦어야 합니다.");
         }
-        return end - start;
+        int workMin = end - start;
+        Map<String, Object> shiftInfo = requestMapper.findPlannedShiftInfo(
+                dto.getCompany(), dto.getEmpCode(), dto.getWorkDate());
+        if (shiftInfo != null) {
+            workMin -= breakOverlapMin(shiftInfo, start, end);
+        }
+        return Math.max(0, workMin);
     }
 
     private boolean isSameDay(String timeType) {
@@ -289,6 +296,27 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
     private int toMinute(String hhmm) {
         LocalTime time = LocalTime.parse(hhmm);
         return time.getHour() * 60 + time.getMinute();
+    }
+
+    private int breakOverlapMin(Map<String, Object> shiftInfo, int startMin, int endMin) {
+        return overlapBreak(shiftInfo.get("break1StartHhmm"), shiftInfo.get("break1EndHhmm"), startMin, endMin)
+                + overlapBreak(shiftInfo.get("break2StartHhmm"), shiftInfo.get("break2EndHhmm"), startMin, endMin);
+    }
+
+    private int overlapBreak(Object breakStartValue, Object breakEndValue, int startMin, int endMin) {
+        if (breakStartValue == null || breakEndValue == null) return 0;
+        String breakStartText = breakStartValue.toString();
+        String breakEndText = breakEndValue.toString();
+        if (breakStartText.isBlank() || breakEndText.isBlank()) return 0;
+        int breakStart = toMinute(breakStartText);
+        int breakEnd = breakStartText.compareTo(breakEndText) > 0
+                ? 1440 + toMinute(breakEndText)
+                : toMinute(breakEndText);
+        if (endMin > 1440 && breakStart < startMin) {
+            breakStart += 1440;
+            breakEnd += 1440;
+        }
+        return Math.max(0, Math.min(endMin, breakEnd) - Math.max(startMin, breakStart));
     }
 
     private void validateWeeklyWorkLimit(AttendanceRequestDto dto, int requestWorkMin) {

@@ -103,20 +103,38 @@ function minutesBetween(startType, startTime, endType, endTime) {
     return Math.max(endMin - startMin, 0);
 }
 
+function breakOverlapMin(row, startMin, endMin) {
+    const overlap = (breakStart, breakEnd) => {
+        if (!breakStart || !breakEnd) return 0;
+        let bs = absoluteMinute('N0', breakStart);
+        let be = absoluteMinute('N0', breakEnd);
+        if (be < bs) be += 1440;
+        if (endMin > 1440 && bs < startMin) {
+            bs += 1440;
+            be += 1440;
+        }
+        return Math.max(0, Math.min(endMin, be) - Math.max(startMin, bs));
+    };
+    return overlap(row.break1StartHhmm, row.break1EndHhmm)
+        + overlap(row.break2StartHhmm, row.break2EndHhmm);
+}
+
 function absoluteMinute(timeType, time) {
     if (!time) return null;
     const [h, m] = time.split(':').map(Number);
     return (timeType === 'N1' ? 1440 : 0) + h * 60 + m;
 }
 
-function selectedWorkMin(tr, state) {
+function selectedWorkMin(tr, state, row) {
     if (state && state.requestWorkMin != null && state.status !== 'DRAFT') return state.requestWorkMin;
-    return minutesBetween(
-        tr.querySelector('[data-field="startTimeType"]').value,
-        tr.querySelector('[data-field="startTime"]').value,
-        tr.querySelector('[data-field="endTimeType"]').value,
-        tr.querySelector('[data-field="endTime"]').value
-    );
+    const startType = tr.querySelector('[data-field="startTimeType"]').value;
+    const startTime = tr.querySelector('[data-field="startTime"]').value;
+    const endType = tr.querySelector('[data-field="endTimeType"]').value;
+    const endTime = tr.querySelector('[data-field="endTime"]').value;
+    const startMin = absoluteMinute(startType, startTime);
+    const endMin = absoluteMinute(endType, endTime);
+    if (startMin == null || endMin == null) return 0;
+    return Math.max(0, endMin - startMin - breakOverlapMin(row || {}, startMin, endMin));
 }
 
 function isActiveRequest(state) {
@@ -213,7 +231,7 @@ function cumulativeEstimatedWorkMin(row, tr, currentState) {
         total += requestEffectMin(categoryOfRequest(state), state.requestWorkMin || 0);
     });
 
-    const selectedMin = selectedWorkMin(tr, currentState);
+    const selectedMin = selectedWorkMin(tr, currentState, row);
     total += requestEffectMin(currentCategory, selectedMin);
     return Math.max(total, 0);
 }
@@ -282,7 +300,7 @@ function renderTable(rows) {
     if (checkAll) checkAll.checked = false;
     const tbody = document.getElementById('reqTableBody');
     if (!rows || rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="13" class="no-data">조회된 인원이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="15" class="no-data">조회된 인원이 없습니다.</td></tr>';
         tableData = [];
         return;
     }
@@ -314,6 +332,8 @@ function renderTable(rows) {
             + '<td>'+(r.empName||'')+'</td>'
             + '<td>'+(r.deptName||'')+'</td>'
             + '<td>'+(r.workPlanName||'-')+'</td>'
+            + '<td>'+formatWorkMin(r.plannedWorkMin || 0)+'</td>'
+            + '<td>'+formatWorkMin(r.actualWorkMin || 0)+'</td>'
             + '<td data-field="shiftWorkMin">'+formatWorkMin(savedEstimatedWorkMin(r, existing, selectedWorkCode))+'</td>'
             + '<td><select data-field="requestWorkCode" onchange="onWorkCodeChange(this,'+idx+')">'+buildWorkCodeOptions(currentCategory,selectedWorkCode)+'</select></td>'
             + '<td><input type="text" data-field="reason" value="'+reasonVal+'" placeholder="사유" '+disFull+'></td>'
