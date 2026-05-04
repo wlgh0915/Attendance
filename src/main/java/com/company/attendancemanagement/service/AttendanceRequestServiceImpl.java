@@ -197,6 +197,11 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
 
         boolean isOther = "OTHER".equals(dto.getRequestCategory());
 
+        if (!isOther && requestMapper.countAttendanceCheckIn(
+                dto.getCompany(), dto.getEmpCode(), dto.getWorkDate()) == 0) {
+            throw new IllegalArgumentException("출근 기록이 없으면 일반 근태를 신청할 수 없습니다.");
+        }
+
         // 조출연장: 시작시간 09:00 이전, 연장: 종료시간 18:00 이후
         if ("조출연장".equals(dto.getRequestWorkCode())
                 && dto.getStartTime() != null && !dto.getStartTime().isBlank()
@@ -204,6 +209,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             throw new IllegalArgumentException("조출연장은 시작시간이 09:00 이전이어야 합니다.");
         }
         if ("연장".equals(dto.getRequestWorkCode())
+                && isSameDay(dto.getEndTimeType())
                 && dto.getEndTime() != null && !dto.getEndTime().isBlank()
                 && dto.getEndTime().compareTo("18:00") <= 0) {
             throw new IllegalArgumentException("연장근무는 종료시간이 18:00 이후여야 합니다.");
@@ -216,12 +222,14 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             if (shiftInfo != null) {
                 String workOn  = (String) shiftInfo.get("workOnHhmm");
                 String workOff = (String) shiftInfo.get("workOffHhmm");
-                if (workOn != null && dto.getStartTime() != null && !dto.getStartTime().isBlank()
+                if (workOn != null && isSameDay(dto.getStartTimeType())
+                        && dto.getStartTime() != null && !dto.getStartTime().isBlank()
                         && dto.getStartTime().compareTo(workOn) < 0) {
                     throw new IllegalArgumentException(
                             "시작 시간이 근무 시작 시간(" + workOn + ") 이전입니다.");
                 }
-                if (workOff != null && dto.getEndTime() != null && !dto.getEndTime().isBlank()
+                if (workOff != null && isSameDay(dto.getEndTimeType())
+                        && dto.getEndTime() != null && !dto.getEndTime().isBlank()
                         && dto.getEndTime().compareTo(workOff) > 0) {
                     throw new IllegalArgumentException(
                             "종료 시간이 근무 종료 시간(" + workOff + ") 이후입니다.");
@@ -264,6 +272,10 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             }
         }
         return dto;
+    }
+
+    private boolean isSameDay(String timeType) {
+        return timeType == null || timeType.isBlank() || "N0".equals(timeType);
     }
 
     private void validateNoActiveSameWorkRequest(AttendanceRequestDto dto) {

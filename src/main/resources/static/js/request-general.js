@@ -74,6 +74,18 @@ function isEndAfterStart(startType, startTime, endType, endTime) {
     return endMin > startMin;
 }
 
+function isSameDay(timeType) {
+    return !timeType || timeType === 'N0';
+}
+
+function validateCheckIn(row) {
+    if (!row.checkIn) {
+        showToast('출근 기록이 없으면 일반 근태를 신청할 수 없습니다.', 'error');
+        return false;
+    }
+    return true;
+}
+
 function formatWorkMin(min) {
     if (min == null || min === 0) return '-';
     const h = Math.floor(min / 60), m = min % 60;
@@ -382,19 +394,20 @@ async function doSave() {
     for (const tr of selected) {
         const dto = rowToDto(tr);
         if (!dto.requestWorkCode) { showToast('신청근무를 선택하세요.','error'); return; }
+        if (!validateCheckIn(tableData[parseInt(tr.dataset.idx)])) return;
         if (!dto.startTime || !dto.endTime) { showToast('시작/종료 시간을 선택하세요.','error'); return; }
         if (dto.requestWorkCode === '조출연장' && dto.startTime >= '09:00') {
             showToast('조출연장은 시작시간이 09:00 이전이어야 합니다.','error'); return;
         }
-        if (dto.requestWorkCode === '연장' && dto.endTime <= '18:00') {
+        if (dto.requestWorkCode === '연장' && isSameDay(dto.endTimeType) && dto.endTime <= '18:00') {
             showToast('연장근무는 종료시간이 18:00 이후여야 합니다.','error'); return;
         }
         if (dto.requestWorkCode === '조퇴' || dto.requestWorkCode === '외출') {
             const row = tableData[parseInt(tr.dataset.idx)];
-            if (row.shiftOnTime && dto.startTime && dto.startTime < row.shiftOnTime) {
+            if (row.shiftOnTime && isSameDay(dto.startTimeType) && dto.startTime && dto.startTime < row.shiftOnTime) {
                 showToast('시작 시간이 근무 시작 시간(' + row.shiftOnTime + ') 이전입니다.', 'error'); return;
             }
-            if (row.shiftOffTime && dto.endTime && dto.endTime > row.shiftOffTime) {
+            if (row.shiftOffTime && isSameDay(dto.endTimeType) && dto.endTime && dto.endTime > row.shiftOffTime) {
                 showToast('종료 시간이 근무 종료 시간(' + row.shiftOffTime + ') 이후입니다.', 'error'); return;
             }
         }
@@ -439,13 +452,20 @@ async function doSubmit() {
         let requestId = dto.requestId;
         const existing = currentRequestForRow(tr, tableData[idx]);
         if (!dto.requestWorkCode) { showToast('신청근무를 선택하세요.','error'); return; }
+        if (!validateCheckIn(tableData[idx])) return;
         if (!dto.startTime || !dto.endTime) { showToast('시작/종료 시간을 선택하세요.','error'); return; }
+        if (dto.requestWorkCode === '조출연장' && dto.startTime >= '09:00') {
+            showToast('조출연장은 시작시간이 09:00 이전이어야 합니다.','error'); return;
+        }
+        if (dto.requestWorkCode === '연장' && isSameDay(dto.endTimeType) && dto.endTime <= '18:00') {
+            showToast('연장근무는 종료시간이 18:00 이후여야 합니다.','error'); return;
+        }
         if (dto.requestWorkCode === '조퇴' || dto.requestWorkCode === '외출') {
             const row = tableData[parseInt(tr.dataset.idx)];
-            if (row.shiftOnTime && dto.startTime && dto.startTime < row.shiftOnTime) {
+            if (row.shiftOnTime && isSameDay(dto.startTimeType) && dto.startTime && dto.startTime < row.shiftOnTime) {
                 showToast('시작 시간이 근무 시작 시간(' + row.shiftOnTime + ') 이전입니다.', 'error'); return;
             }
-            if (row.shiftOffTime && dto.endTime && dto.endTime > row.shiftOffTime) {
+            if (row.shiftOffTime && isSameDay(dto.endTimeType) && dto.endTime && dto.endTime > row.shiftOffTime) {
                 showToast('종료 시간이 근무 종료 시간(' + row.shiftOffTime + ') 이후입니다.', 'error'); return;
             }
         }

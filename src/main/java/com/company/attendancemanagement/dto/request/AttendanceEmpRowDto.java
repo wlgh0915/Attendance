@@ -20,6 +20,7 @@ public class AttendanceEmpRowDto {
     private String shiftOnTime;     // 근무 시작 시각 HH:mm
     private String shiftOffTime;    // 근무 종료 시각 HH:mm
     private Integer shiftWorkMin;   // 예상 근무 분
+    private String checkIn;         // HH:mm
     // 기존 근태신청 (없으면 null)
     private String requestId;
     private String existingRequestGroup;

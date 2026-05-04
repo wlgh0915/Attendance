@@ -15,10 +15,16 @@
             d.DEPT_NAME                                           AS deptName,
             ISNULL(s.SHIFT_CODE, '')                              AS workPlanCode,
             ISNULL(s.SHIFT_NAME, '미설정')                         AS workPlanName,
-            ISNULL(s.WORK_DAY_TYPE, 'WORK')                       AS workDayType,
+            CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+                WHEN 'WEEKDAY' THEN 'WORK'
+                WHEN 'ANYDAY'  THEN 'WORK'
+                WHEN 'WEEKEND' THEN 'OFF'
+                ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+            END                                                   AS workDayType,
             LEFT(CONVERT(VARCHAR(8), s.WORK_ON_HHMM,  108), 5)   AS shiftOnTime,
             LEFT(CONVERT(VARCHAR(8), s.WORK_OFF_HHMM, 108), 5)   AS shiftOffTime,
             weekly.weekWorkMin                                     AS shiftWorkMin,
+            LEFT(CONVERT(VARCHAR(8), ar.CHECK_IN, 108), 5)         AS checkIn,
             r.REQ_ID                                              AS requestId,
             r.REQ_GROUP                                           AS existingRequestGroup,
             CASE WHEN r.REQ_GROUP = 'OTHER' THEN o.CHANGE_SHIFT_CODE
@@ -93,6 +99,10 @@
                ON r.COMPANY = o.COMPANY AND r.REQ_ID = o.REQ_ID
         LEFT JOIN HRIMASTER01 re
                ON r.COMPANY = re.COMPANY AND r.REQUESTER_EMP_CODE = re.EMP_CODE
+        LEFT JOIN HRTDAILYATTENDANCE01 ar
+               ON h.COMPANY = ar.COMPANY
+              AND h.EMP_CODE = ar.EMP_CODE
+              AND ar.YYYYMMDD = REPLACE(#{workDate}, '-', '')
         WHERE h.COMPANY = #{company}
           AND h.DEPT_CODE = #{deptCode}
           AND h.RETIRE_DATE IS NULL
@@ -101,10 +111,26 @@
           </if>
           <choose>
               <when test="'HOLIDAY'.equals(requestCategory)">
-                  AND s.WORK_DAY_TYPE IN ('OFF', 'HOLIDAY')
+                  AND CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+                          WHEN 'WEEKDAY' THEN 'WORK'
+                          WHEN 'ANYDAY'  THEN 'WORK'
+                          WHEN 'WEEKEND' THEN 'OFF'
+                          ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+                      END IN ('OFF', 'HOLIDAY')
               </when>
               <when test="'OVERTIME'.equals(requestCategory) or 'LEAVE'.equals(requestCategory)">
-                  AND (s.WORK_DAY_TYPE IS NULL OR s.WORK_DAY_TYPE NOT IN ('OFF', 'HOLIDAY'))
+                  AND (CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+                           WHEN 'WEEKDAY' THEN 'WORK'
+                           WHEN 'ANYDAY'  THEN 'WORK'
+                           WHEN 'WEEKEND' THEN 'OFF'
+                           ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+                       END IS NULL
+                       OR CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+                              WHEN 'WEEKDAY' THEN 'WORK'
+                              WHEN 'ANYDAY'  THEN 'WORK'
+                              WHEN 'WEEKEND' THEN 'OFF'
+                              ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+                          END NOT IN ('OFF', 'HOLIDAY'))
               </when>
           </choose>
           <if test="empCode != null and empCode != ''">
@@ -373,6 +399,15 @@
           AND s.WORK_ON_HHMM IS NOT NULL
           AND s.WORK_OFF_HHMM IS NOT NULL
         ]]>
+    </select>
+
+    <select id="countAttendanceCheckIn" resultType="int">
+        SELECT COUNT(*)
+        FROM HRTDAILYATTENDANCE01
+        WHERE COMPANY = #{company}
+          AND EMP_CODE = #{empCode}
+          AND YYYYMMDD = REPLACE(#{workDate}, '-', '')
+          AND CHECK_IN IS NOT NULL
     </select>
 
     <!-- 날짜별 계획 근무 유형 조회 (휴일근무 validation용) -->
