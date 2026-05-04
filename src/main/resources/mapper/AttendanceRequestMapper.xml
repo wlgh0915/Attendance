@@ -320,6 +320,61 @@
         ORDER BY SORT_SEQ, SHIFT_CODE
     </select>
 
+    <!-- 조퇴↔연장 충돌 신청 존재 여부 (조퇴 신청 시 연장 유무, 연장 신청 시 조퇴 유무) -->
+    <select id="countActiveConflictingRequest"
+            parameterType="com.company.attendancemanagement.dto.request.AttendanceRequestDto"
+            resultType="int">
+        SELECT COUNT(*)
+        FROM HRTATTENDANCEREQUEST01
+        WHERE COMPANY         = #{company}
+          AND TARGET_EMP_CODE = #{empCode}
+          AND TARGET_DATE     = CAST(#{workDate} AS DATE)
+          AND STATUS IN ('DRAFT', 'SUBMITTED', 'APPROVED')
+          AND REQ_GROUP = 'GENERAL'
+          <if test="requestId != null and requestId != ''">
+              AND REQ_ID &lt;&gt; #{requestId}
+          </if>
+          <choose>
+              <when test="'연장'.equals(requestWorkCode) or '조출연장'.equals(requestWorkCode)">
+                  AND REQ_TYPE = '조퇴'
+              </when>
+              <when test="'조퇴'.equals(requestWorkCode)">
+                  AND REQ_TYPE IN ('연장', '조출연장')
+              </when>
+          </choose>
+    </select>
+
+    <!-- 날짜별 계획 근무 시작/종료 시간 조회 (조퇴·외출 validation용) -->
+    <select id="findPlannedShiftInfo" resultType="java.util.HashMap">
+        <![CDATA[
+        SELECT LEFT(CONVERT(VARCHAR(8), s.WORK_ON_HHMM,  108), 5) AS workOnHhmm,
+               LEFT(CONVERT(VARCHAR(8), s.WORK_OFF_HHMM, 108), 5) AS workOffHhmm
+        FROM HRIDEPTTRANSFER01 tr
+        JOIN ORGDEPTMASTER01 dept
+               ON dept.COMPANY   = #{company}
+              AND dept.DEPT_CODE = tr.DEPT_CODE
+        JOIN HRTWORKPATTERNMASTER01 pm
+               ON pm.COMPANY           = dept.COMPANY
+              AND pm.WORK_PATTERN_CODE = dept.WORK_PATTERN_CODE
+              AND pm.USE_YN            = 'Y'
+        JOIN HRTWORKPATTERNDETAIL01 pd
+               ON pd.COMPANY           = pm.COMPANY
+              AND pd.WORK_PATTERN_CODE = pm.WORK_PATTERN_CODE
+              AND pd.SEQ = (
+                  (DATEDIFF(DAY, pm.START_DATE, CAST(#{workDate} AS DATE)) % pm.CYCLE_COUNT
+                   + pm.CYCLE_COUNT) % pm.CYCLE_COUNT + 1
+              )
+        JOIN HRTSHIFTMASTER01 s
+               ON s.COMPANY = pd.COMPANY AND s.SHIFT_CODE = pd.SHIFT_CODE
+        WHERE tr.COMPANY    = #{company}
+          AND tr.EMP_CODE   = #{empCode}
+          AND tr.START_DATE <= CAST(#{workDate} AS DATE)
+          AND (tr.END_DATE IS NULL OR tr.END_DATE >= CAST(#{workDate} AS DATE))
+          AND s.WORK_ON_HHMM IS NOT NULL
+          AND s.WORK_OFF_HHMM IS NOT NULL
+        ]]>
+    </select>
+
     <!-- 날짜별 계획 근무 유형 조회 (휴일근무 validation용) -->
     <select id="findPlannedWorkDayType" resultType="String">
         <![CDATA[

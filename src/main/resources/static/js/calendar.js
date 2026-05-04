@@ -81,7 +81,16 @@ function renderCalendar() {
             inner += `<span class="late-badge">지각 ${day.record.lateMin}분</span>`;
         }
 
-        // 4. 근태신청 (연장, 연차, 반차 등)
+        // 4. 결근 (WORK일이고 과거 날짜이며 출근 기록 없고 승인된 휴가도 없는 경우)
+        const hasApprovedLeave = (day.requests || []).some(
+            r => r.requestCategory === 'LEAVE' && r.status === 'APPROVED'
+        );
+        if (day.workDayType === 'WORK' &&
+                (!day.record || !day.record.checkIn) && !hasApprovedLeave) {
+            inner += `<span class="absent-badge">결근</span>`;
+        }
+
+        // 5. 근태신청 (연장, 연차, 반차 등)
         (day.requests || []).forEach(r => {
             const typeLabel = r.requestWorkCode || catLabel(r.requestCategory);
             let timeStr = '';
@@ -99,6 +108,13 @@ function renderCalendar() {
 
     endRow();
     tbody.innerHTML = html;
+
+    const totalMin = DAYS.reduce((sum, d) => sum + (d.record && d.record.workMin ? d.record.workMin : 0), 0);
+    const th = Math.floor(totalMin / 60), tm = totalMin % 60;
+    const totalTxt = totalMin > 0
+        ? th + '시간' + (tm > 0 ? ' ' + tm + '분' : '')
+        : '-';
+    document.getElementById('monthTotal').textContent = '월 총 근무시간: ' + totalTxt;
 }
 
 /* ───────── 부서/사원 변경 ───────── */
@@ -175,6 +191,27 @@ async function doModalSave() {
     }
     if (workCode === '연장' && end && end <= '18:00') {
         showToast('연장근무는 종료시간이 18:00 이후여야 합니다.', 'error'); return;
+    }
+    if (workCode === '조퇴' || workCode === '외출') {
+        const dayInfo = DAYS.find(d => d.workDate === modalDate);
+        if (dayInfo) {
+            if (dayInfo.workOnHhmm && start && start < dayInfo.workOnHhmm) {
+                showToast('시작 시간이 근무 시작 시간(' + dayInfo.workOnHhmm + ') 이전입니다.', 'error'); return;
+            }
+            if (dayInfo.workOffHhmm && end && end > dayInfo.workOffHhmm) {
+                showToast('종료 시간이 근무 종료 시간(' + dayInfo.workOffHhmm + ') 이후입니다.', 'error'); return;
+            }
+        }
+    }
+    const activeReqs = (DAYS.find(d => d.workDate === modalDate)?.requests || [])
+        .filter(r => ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(r.status));
+    if ((workCode === '연장' || workCode === '조출연장') &&
+            activeReqs.some(r => r.requestWorkCode === '조퇴')) {
+        showToast('조퇴 신청이 있는 날에는 연장근무를 신청할 수 없습니다.', 'error'); return;
+    }
+    if (workCode === '조퇴' &&
+            activeReqs.some(r => r.requestWorkCode === '연장' || r.requestWorkCode === '조출연장')) {
+        showToast('연장근무 신청이 있는 날에는 조퇴를 신청할 수 없습니다.', 'error'); return;
     }
 
     const dto = {

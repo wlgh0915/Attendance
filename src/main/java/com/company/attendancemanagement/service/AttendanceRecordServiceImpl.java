@@ -33,6 +33,12 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
     }
 
     @Override
+    public Map<String, Object> getPlannedShift(String company, String empCode, String yyyymmdd) {
+        Map<String, Object> planned = recordMapper.findPlannedShift(company, empCode, yyyymmdd);
+        return planned != null ? planned : Map.of();
+    }
+
+    @Override
     public void upsert(AttendanceRecordDto dto) {
         String company  = dto.getCompany();
         String empCode  = dto.getEmpCode();

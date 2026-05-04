@@ -105,6 +105,24 @@ function isActiveRequest(state) {
     return state && ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(state.status);
 }
 
+function hasActiveRequest(row, ...codes) {
+    return codes.some(code => isActiveRequest(row.requestsByWorkCode && row.requestsByWorkCode[code]));
+}
+
+function checkOvertimeLeaveConflict(dto, row) {
+    const isOvertime  = dto.requestWorkCode === '연장' || dto.requestWorkCode === '조출연장';
+    const isLeaveEarly = dto.requestWorkCode === '조퇴';
+    if (isOvertime && hasActiveRequest(row, '조퇴')) {
+        showToast('조퇴 신청이 있는 날에는 연장근무를 신청할 수 없습니다.', 'error');
+        return false;
+    }
+    if (isLeaveEarly && hasActiveRequest(row, '연장', '조출연장')) {
+        showToast('연장근무 신청이 있는 날에는 조퇴를 신청할 수 없습니다.', 'error');
+        return false;
+    }
+    return true;
+}
+
 function categoryOfRequest(state) {
     if (!state || state.existingRequestGroup === 'OTHER') return 'OTHER';
     if (state.requestWorkCode === '연장' || state.requestWorkCode === '조출연장') return 'OVERTIME';
@@ -371,6 +389,16 @@ async function doSave() {
         if (dto.requestWorkCode === '연장' && dto.endTime <= '18:00') {
             showToast('연장근무는 종료시간이 18:00 이후여야 합니다.','error'); return;
         }
+        if (dto.requestWorkCode === '조퇴' || dto.requestWorkCode === '외출') {
+            const row = tableData[parseInt(tr.dataset.idx)];
+            if (row.shiftOnTime && dto.startTime && dto.startTime < row.shiftOnTime) {
+                showToast('시작 시간이 근무 시작 시간(' + row.shiftOnTime + ') 이전입니다.', 'error'); return;
+            }
+            if (row.shiftOffTime && dto.endTime && dto.endTime > row.shiftOffTime) {
+                showToast('종료 시간이 근무 종료 시간(' + row.shiftOffTime + ') 이후입니다.', 'error'); return;
+            }
+        }
+        if (!checkOvertimeLeaveConflict(dto, tableData[parseInt(tr.dataset.idx)])) return;
         if (!isEndAfterStart(dto.startTimeType, dto.startTime, dto.endTimeType, dto.endTime)) {
             showToast('종료 시간이 시작 시간보다 앞설 수 없습니다.','error'); return;
         }
@@ -412,6 +440,16 @@ async function doSubmit() {
         const existing = currentRequestForRow(tr, tableData[idx]);
         if (!dto.requestWorkCode) { showToast('신청근무를 선택하세요.','error'); return; }
         if (!dto.startTime || !dto.endTime) { showToast('시작/종료 시간을 선택하세요.','error'); return; }
+        if (dto.requestWorkCode === '조퇴' || dto.requestWorkCode === '외출') {
+            const row = tableData[parseInt(tr.dataset.idx)];
+            if (row.shiftOnTime && dto.startTime && dto.startTime < row.shiftOnTime) {
+                showToast('시작 시간이 근무 시작 시간(' + row.shiftOnTime + ') 이전입니다.', 'error'); return;
+            }
+            if (row.shiftOffTime && dto.endTime && dto.endTime > row.shiftOffTime) {
+                showToast('종료 시간이 근무 종료 시간(' + row.shiftOffTime + ') 이후입니다.', 'error'); return;
+            }
+        }
+        if (!checkOvertimeLeaveConflict(dto, tableData[parseInt(tr.dataset.idx)])) return;
         if (!isEndAfterStart(dto.startTimeType, dto.startTime, dto.endTimeType, dto.endTime)) {
             showToast('종료 시간이 시작 시간보다 앞설 수 없습니다.','error'); return;
         }

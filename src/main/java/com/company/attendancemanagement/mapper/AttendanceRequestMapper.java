@@ -9,6 +9,7 @@ import com.company.attendancemanagement.dto.request.AttendanceRequestSearchDto;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.util.Map;
 
 public interface AttendanceRequestMapper {
 
@@ -50,4 +51,12 @@ public interface AttendanceRequestMapper {
     String findPlannedWorkDayType(@Param("company")  String company,
                                   @Param("empCode")  String empCode,
                                   @Param("workDate") String workDate);
+
+    /** 해당 날짜의 계획 근무 시작/종료 시간 조회 (조퇴·외출 validation용) */
+    Map<String, Object> findPlannedShiftInfo(@Param("company")  String company,
+                                             @Param("empCode")  String empCode,
+                                             @Param("workDate") String workDate);
+
+    /** 조퇴↔연장 충돌 신청 존재 여부 확인 */
+    int countActiveConflictingRequest(AttendanceRequestDto dto);
 }

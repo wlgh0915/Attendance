@@ -99,6 +99,11 @@
         </tr>
         </tbody>
     </table>
+    <div class="month-total"
+         th:with="h=${monthTotalMin / 60}, m=${monthTotalMin % 60}">
+        월 총 근무시간:
+        <span th:text="${monthTotalMin > 0 ? h + '시간' + (m > 0 ? ' ' + m + '분' : '') : '-'}"></span>
+    </div>
 
 </div>
 
@@ -112,9 +117,7 @@
         </div>
         <div class="modal-row">
             <label>계획근태코드</label>
-            <select id="mShiftCode">
-                <option value="">-- 선택 --</option>
-            </select>
+            <input type="text" id="mShiftCode" readonly>
         </div>
         <div class="modal-row">
             <label>실적근태코드</label>

@@ -209,6 +209,26 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             throw new IllegalArgumentException("연장근무는 종료시간이 18:00 이후여야 합니다.");
         }
 
+        // 조퇴·외출은 근무 시작/종료 시간 내에서만 신청 가능
+        if ("조퇴".equals(dto.getRequestWorkCode()) || "외출".equals(dto.getRequestWorkCode())) {
+            Map<String, Object> shiftInfo = requestMapper.findPlannedShiftInfo(
+                    dto.getCompany(), dto.getEmpCode(), dto.getWorkDate());
+            if (shiftInfo != null) {
+                String workOn  = (String) shiftInfo.get("workOnHhmm");
+                String workOff = (String) shiftInfo.get("workOffHhmm");
+                if (workOn != null && dto.getStartTime() != null && !dto.getStartTime().isBlank()
+                        && dto.getStartTime().compareTo(workOn) < 0) {
+                    throw new IllegalArgumentException(
+                            "시작 시간이 근무 시작 시간(" + workOn + ") 이전입니다.");
+                }
+                if (workOff != null && dto.getEndTime() != null && !dto.getEndTime().isBlank()
+                        && dto.getEndTime().compareTo(workOff) > 0) {
+                    throw new IllegalArgumentException(
+                            "종료 시간이 근무 종료 시간(" + workOff + ") 이후입니다.");
+                }
+            }
+        }
+
         // 휴일근무는 계획 근무유형이 OFF/HOLIDAY인 날에만 신청 가능
         if ("HOLIDAY".equals(dto.getRequestCategory())) {
             String wdt = requestMapper.findPlannedWorkDayType(
@@ -253,6 +273,19 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         int duplicateCount = requestMapper.countActiveSameWorkRequest(dto);
         if (duplicateCount > 0) {
             throw new IllegalArgumentException("같은 일자에 같은 근무 신청이 이미 있습니다.");
+        }
+
+        boolean isOvertime  = "연장".equals(dto.getRequestWorkCode()) || "조출연장".equals(dto.getRequestWorkCode());
+        boolean isLeaveEarly = "조퇴".equals(dto.getRequestWorkCode());
+        if (isOvertime || isLeaveEarly) {
+            int conflictCount = requestMapper.countActiveConflictingRequest(dto);
+            if (conflictCount > 0) {
+                if (isOvertime) {
+                    throw new IllegalArgumentException("조퇴 신청이 있는 날에는 연장근무를 신청할 수 없습니다.");
+                } else {
+                    throw new IllegalArgumentException("연장근무 신청이 있는 날에는 조퇴를 신청할 수 없습니다.");
+                }
+            }
         }
     }
 

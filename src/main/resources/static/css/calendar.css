@@ -53,6 +53,13 @@
                background: #e8f5e9; padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
 .late-badge  { display: block; margin-top: 1px; font-size: 9px; color: #7b1f1f;
                background: #fde8e8; padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
+.absent-badge { display: block; margin-top: 2px; font-size: 9px; font-weight: 700; color: #fff;
+                background: #c0392b; padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
+
+.month-total {
+    text-align: right; margin-top: 8px; font-size: 13px;
+    font-weight: 700; color: #2c3e50;
+}
 
 .modal-bg {
     display: none; position: fixed; inset: 0;

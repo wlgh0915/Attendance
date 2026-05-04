@@ -96,9 +96,15 @@ public class AttendanceRecordController {
             rows.add(row);
         }
 
+        int monthTotalMin = rows.stream()
+                .filter(r -> r.getWorkMin() != null)
+                .mapToInt(AttendanceRecordDto::getWorkMin)
+                .sum();
+
         Map<String, String> empInfo = calendarService.getEmpInfo(company, targetEmp);
 
         model.addAttribute("rows",         rows);
+        model.addAttribute("monthTotalMin", monthTotalMin);
         model.addAttribute("depts",        depts);
         model.addAttribute("emps",         emps);
         model.addAttribute("empInfo",      empInfo);
@@ -120,6 +126,17 @@ public class AttendanceRecordController {
         LoginUserDto loginUser = getLoginUser(session);
         if (loginUser == null) return ResponseEntity.status(401).build();
         return ResponseEntity.ok(requestMapper.findShiftCodes(loginUser.getCompany()));
+    }
+
+    /* ───────── 날짜별 계획 근태코드 조회 (부서 근무패턴 기반) ───────── */
+    @GetMapping("/planned-shift")
+    @ResponseBody
+    public ResponseEntity<?> getPlannedShift(HttpSession session,
+                                              @RequestParam String empCode,
+                                              @RequestParam String yyyymmdd) {
+        LoginUserDto loginUser = getLoginUser(session);
+        if (loginUser == null) return ResponseEntity.status(401).build();
+        return ResponseEntity.ok(recordService.getPlannedShift(loginUser.getCompany(), empCode, yyyymmdd));
     }
 
     /* ───────── 실적 저장 (UPSERT) ───────── */

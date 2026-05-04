@@ -6,7 +6,6 @@ async function loadShiftCodes() {
     shiftCodes = await res.json();
     const opts = '<option value="">-- 선택 --</option>'
         + shiftCodes.map(s => `<option value="${s.shiftCode}">${s.shiftCode} ${s.shiftName}</option>`).join('');
-    document.getElementById('mShiftCode').innerHTML       = opts;
     document.getElementById('mActualShiftCode').innerHTML = opts;
 }
 
@@ -37,17 +36,30 @@ function autoCalcWorkMin() {
 /* ───────── 모달 열기 ───────── */
 let currentYmd = '';
 
-function openModal(btn) {
+async function openModal(btn) {
     const d = btn.dataset;
     currentYmd = d.ymd;
-    document.getElementById('modalTitle').textContent      = d.has === 'true' ? '출퇴근 실적 수정' : '출퇴근 실적 등록';
-    document.getElementById('mDate').value                 = d.ymd.slice(0,4) + '-' + d.ymd.slice(4,6) + '-' + d.ymd.slice(6,8);
-    document.getElementById('mShiftCode').value            = (d.shift  && d.shift  !== 'null') ? d.shift  : '';
-    document.getElementById('mActualShiftCode').value      = (d.actual && d.actual !== 'null') ? d.actual : '';
-    document.getElementById('mCheckIn').value              = d.ci !== 'null' ? (d.ci  || '') : '';
-    document.getElementById('mCheckOut').value             = d.co !== 'null' ? (d.co  || '') : '';
-    document.getElementById('mOvernightYn').value          = d.on !== 'null' ? (d.on  || 'N') : 'N';
-    document.getElementById('mWorkMin').value              = d.wm !== 'null' ? (d.wm  || '') : '';
+    document.getElementById('modalTitle').textContent = d.has === 'true' ? '출퇴근 실적 수정' : '출퇴근 실적 등록';
+    document.getElementById('mDate').value            = d.ymd.slice(0,4) + '-' + d.ymd.slice(4,6) + '-' + d.ymd.slice(6,8);
+    document.getElementById('mActualShiftCode').value = (d.actual && d.actual !== 'null') ? d.actual : '';
+    document.getElementById('mCheckIn').value         = d.ci !== 'null' ? (d.ci  || '') : '';
+    document.getElementById('mCheckOut').value        = d.co !== 'null' ? (d.co  || '') : '';
+    document.getElementById('mOvernightYn').value     = d.on !== 'null' ? (d.on  || 'N') : 'N';
+    document.getElementById('mWorkMin').value         = d.wm !== 'null' ? (d.wm  || '') : '';
+
+    // 계획 근태코드: DB에 저장된 값이 있으면 사용, 없으면 부서 근무패턴에서 자동 조회
+    if (d.shift && d.shift !== 'null') {
+        document.getElementById('mShiftCode').value = d.shift;
+    } else {
+        try {
+            const res     = await fetch(`/attendance/record/planned-shift?empCode=${TARGET_EMP}&yyyymmdd=${d.ymd}`);
+            const planned = await res.json();
+            document.getElementById('mShiftCode').value = planned.shiftCode || '';
+        } catch (e) {
+            document.getElementById('mShiftCode').value = '';
+        }
+    }
+
     document.getElementById('modalBg').classList.add('open');
 }
 
