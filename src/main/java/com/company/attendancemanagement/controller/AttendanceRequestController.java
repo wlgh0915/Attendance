@@ -1,9 +1,12 @@
 package com.company.attendancemanagement.controller;
 
 import com.company.attendancemanagement.common.SessionConst;
+import com.company.attendancemanagement.dto.approval.ApprovalDetailDto;
 import com.company.attendancemanagement.dto.login.LoginUserDto;
 import com.company.attendancemanagement.dto.request.AttendanceEmpRowDto;
 import com.company.attendancemanagement.dto.request.AttendanceRequestDto;
+import com.company.attendancemanagement.dto.request.AttendanceRequestHistoryDto;
+import com.company.attendancemanagement.dto.request.AttendanceRequestHistorySearchDto;
 import com.company.attendancemanagement.dto.request.AttendanceRequestSearchDto;
 import com.company.attendancemanagement.service.AttendanceRequestService;
 import jakarta.servlet.http.HttpSession;
@@ -44,6 +47,43 @@ public class AttendanceRequestController {
         model.addAllAttributes(formData);
         model.addAttribute("today", LocalDate.now().toString());
         return "attendance/request/other";
+    }
+
+    @GetMapping("/history")
+    public String historyPage(AttendanceRequestHistorySearchDto search,
+                              HttpSession session,
+                              Model model) {
+        LoginUserDto loginUser = getLoginUser(session);
+        if (loginUser == null) return "redirect:/login";
+
+        LocalDate today = LocalDate.now();
+        if (search.getFromDate() == null || search.getFromDate().isBlank()) {
+            search.setFromDate(today.withDayOfMonth(1).toString());
+        }
+        if (search.getToDate() == null || search.getToDate().isBlank()) {
+            search.setToDate(today.toString());
+        }
+
+        Map<String, Object> formData = requestService.getFormData(loginUser);
+        List<AttendanceRequestHistoryDto> rows = requestService.findHistory(search, loginUser);
+
+        model.addAllAttributes(formData);
+        model.addAttribute("search", search);
+        model.addAttribute("rows", rows);
+        return "attendance/request/history";
+    }
+
+    @GetMapping("/history/detail")
+    @ResponseBody
+    public ResponseEntity<?> historyDetail(@RequestParam String requestId, HttpSession session) {
+        LoginUserDto loginUser = getLoginUser(session);
+        if (loginUser == null) return ResponseEntity.status(401).build();
+        try {
+            ApprovalDetailDto detail = requestService.getHistoryDetail(requestId, loginUser);
+            return ResponseEntity.ok(detail);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 
     @GetMapping("/general/search")

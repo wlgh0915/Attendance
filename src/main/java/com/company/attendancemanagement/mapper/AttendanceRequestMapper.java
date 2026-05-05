@@ -3,7 +3,10 @@ package com.company.attendancemanagement.mapper;
 import com.company.attendancemanagement.dto.department.DepartmentDto;
 import com.company.attendancemanagement.dto.login.LoginUserDto;
 import com.company.attendancemanagement.dto.pattern.ShiftCodeDto;
+import com.company.attendancemanagement.dto.approval.ApprovalDetailDto;
 import com.company.attendancemanagement.dto.request.AttendanceEmpRowDto;
+import com.company.attendancemanagement.dto.request.AttendanceRequestHistoryDto;
+import com.company.attendancemanagement.dto.request.AttendanceRequestHistorySearchDto;
 import com.company.attendancemanagement.dto.request.AttendanceRequestDto;
 import com.company.attendancemanagement.dto.request.AttendanceRequestSearchDto;
 import org.apache.ibatis.annotations.Param;
@@ -15,7 +18,12 @@ public interface AttendanceRequestMapper {
 
     List<AttendanceEmpRowDto> searchEmployees(AttendanceRequestSearchDto search);
 
+    List<AttendanceRequestHistoryDto> findHistory(AttendanceRequestHistorySearchDto search);
+
     AttendanceRequestDto findByRequestId(@Param("requestId") String requestId);
+
+    ApprovalDetailDto findHistoryDetail(@Param("requestId") String requestId,
+                                        @Param("company") String company);
 
     int countActiveSameWorkRequest(AttendanceRequestDto dto);
 

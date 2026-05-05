@@ -1,6 +1,7 @@
 package com.company.attendancemanagement.service;
 
 import com.company.attendancemanagement.dto.department.DepartmentDto;
+import com.company.attendancemanagement.dto.approval.ApprovalDetailDto;
 import com.company.attendancemanagement.dto.login.LoginUserDto;
 import com.company.attendancemanagement.dto.pattern.ShiftCodeDto;
 import com.company.attendancemanagement.dto.request.*;
@@ -75,6 +76,60 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         }
 
         return mergeRequestsByEmployee(requestMapper.searchEmployees(search), search.getRequestCategory());
+    }
+
+    @Override
+    public List<AttendanceRequestHistoryDto> findHistory(AttendanceRequestHistorySearchDto search,
+                                                         LoginUserDto loginUser) {
+        String deptLeader = requestMapper.findDeptLeader(loginUser.getCompany(), loginUser.getDeptCode());
+        boolean isDeptLeader = loginUser.getEmpCode().equals(deptLeader);
+        boolean isAdmin = "ADMIN".equals(loginUser.getRoleCode());
+        boolean canViewAll = isAdmin || isDeptLeader;
+
+        search.setCompany(loginUser.getCompany());
+        search.setCanViewAll(canViewAll);
+        search.setLoginEmpCode(loginUser.getEmpCode());
+
+        if (!canViewAll) {
+            search.setDeptCode(null);
+            search.setEmpCode(null);
+        } else if (isAdmin && search.getDeptCode() != null && !search.getDeptCode().isBlank()) {
+            List<DepartmentDto> accessible = requestMapper.findAccessibleDepts(
+                    loginUser.getCompany(), loginUser.getDeptCode());
+            boolean ok = accessible.stream().anyMatch(d -> d.getDeptCode().equals(search.getDeptCode()));
+            if (!ok) search.setDeptCode(loginUser.getDeptCode());
+        }
+
+        return requestMapper.findHistory(search);
+    }
+
+    @Override
+    public ApprovalDetailDto getHistoryDetail(String requestId, LoginUserDto loginUser) {
+        AttendanceRequestDto request = requestMapper.findByRequestId(requestId);
+        if (request == null || !loginUser.getCompany().equals(request.getCompany())) {
+            throw new IllegalArgumentException("조회할 수 없는 근태신청입니다.");
+        }
+
+        String deptLeader = requestMapper.findDeptLeader(loginUser.getCompany(), loginUser.getDeptCode());
+        boolean isDeptLeader = loginUser.getEmpCode().equals(deptLeader);
+        boolean isAdmin = "ADMIN".equals(loginUser.getRoleCode());
+        boolean allowed = loginUser.getEmpCode().equals(request.getRequesterCode())
+                || loginUser.getEmpCode().equals(request.getEmpCode());
+
+        if (!allowed && (isAdmin || isDeptLeader)) {
+            List<DepartmentDto> accessible = isAdmin
+                    ? requestMapper.findAccessibleDepts(loginUser.getCompany(), loginUser.getDeptCode())
+                    : requestMapper.findDeptListForDropdown(loginUser.getCompany());
+            allowed = accessible.stream().anyMatch(d -> d.getDeptCode().equals(request.getDeptCode()));
+        }
+        if (!allowed) {
+            throw new IllegalArgumentException("조회 권한이 없습니다.");
+        }
+
+        ApprovalDetailDto detail = requestMapper.findHistoryDetail(requestId, loginUser.getCompany());
+        if (detail == null) throw new IllegalArgumentException("조회할 수 없는 근태신청입니다.");
+        detail.setApprovalChain(approvalMapper.findByRequestId(requestId));
+        return detail;
     }
 
     private List<AttendanceEmpRowDto> mergeRequestsByEmployee(List<AttendanceEmpRowDto> rows, String requestCategory) {

@@ -290,6 +290,117 @@
         WHERE r.REQ_ID = #{requestId}
     </select>
 
+    <select id="findHistory"
+            parameterType="com.company.attendancemanagement.dto.request.AttendanceRequestHistorySearchDto"
+            resultType="com.company.attendancemanagement.dto.request.AttendanceRequestHistoryDto">
+        SELECT
+            r.REQ_ID                                          AS requestId,
+            CONVERT(VARCHAR(10), r.TARGET_DATE, 23)           AS workDate,
+            CASE
+                WHEN r.REQ_GROUP = 'OTHER' THEN 'OTHER'
+                WHEN r.REQ_TYPE IN ('연장', '조출연장') THEN 'OVERTIME'
+                WHEN r.REQ_TYPE = '휴일근무' THEN 'HOLIDAY'
+                ELSE 'LEAVE'
+            END                                               AS requestCategory,
+            CASE WHEN r.REQ_GROUP = 'OTHER' THEN o.CHANGE_SHIFT_CODE
+                 ELSE r.REQ_TYPE END                          AS requestWorkCode,
+            r.TARGET_EMP_CODE                                 AS empCode,
+            te.EMP_NAME                                       AS empName,
+            r.TARGET_DEPT_CODE                                AS deptCode,
+            td.DEPT_NAME                                      AS deptName,
+            r.REQUESTER_EMP_CODE                              AS requesterCode,
+            re.EMP_NAME                                       AS requesterName,
+            r.REASON                                          AS reason,
+            r.REASON_DETAIL                                   AS reasonDetail,
+            LEFT(CONVERT(VARCHAR(8), g.START_TIME, 108), 5)  AS startTime,
+            ISNULL(g.START_TIME_TYPE, 'N0')                   AS startTimeType,
+            LEFT(CONVERT(VARCHAR(8), g.END_TIME,   108), 5)  AS endTime,
+            ISNULL(g.END_TIME_TYPE,   'N0')                   AS endTimeType,
+            g.WORK_MIN                                        AS requestWorkMin,
+            r.STATUS                                          AS status,
+            CONVERT(VARCHAR(19), r.CREATED_AT, 120)           AS requestedAt,
+            CONVERT(VARCHAR(19), r.UPDATED_AT, 120)           AS updatedAt
+        FROM HRTATTENDANCEREQUEST01 r
+        LEFT JOIN HRTATTENDANCE_GENERAL01 g ON r.COMPANY = g.COMPANY AND r.REQ_ID = g.REQ_ID
+        LEFT JOIN HRTATTENDANCE_OTHER01 o   ON r.COMPANY = o.COMPANY AND r.REQ_ID = o.REQ_ID
+        LEFT JOIN HRIMASTER01 te ON r.COMPANY = te.COMPANY AND r.TARGET_EMP_CODE = te.EMP_CODE
+        LEFT JOIN HRIMASTER01 re ON r.COMPANY = re.COMPANY AND r.REQUESTER_EMP_CODE = re.EMP_CODE
+        LEFT JOIN ORGDEPTMASTER01 td ON r.COMPANY = td.COMPANY AND r.TARGET_DEPT_CODE = td.DEPT_CODE
+        WHERE r.COMPANY = #{company}
+          AND r.TARGET_DATE BETWEEN CAST(#{fromDate} AS DATE) AND CAST(#{toDate} AS DATE)
+          <if test="!canViewAll">
+              AND (r.REQUESTER_EMP_CODE = #{loginEmpCode} OR r.TARGET_EMP_CODE = #{loginEmpCode})
+          </if>
+          <if test="canViewAll and deptCode != null and deptCode != ''">
+              AND r.TARGET_DEPT_CODE = #{deptCode}
+          </if>
+          <if test="canViewAll and empCode != null and empCode != ''">
+              AND r.TARGET_EMP_CODE = #{empCode}
+          </if>
+          <if test="status != null and status != '' and !'ALL'.equals(status)">
+              AND r.STATUS = #{status}
+          </if>
+          <if test="requestCategory != null and requestCategory != '' and !'ALL'.equals(requestCategory)">
+              <choose>
+                  <when test="'OTHER'.equals(requestCategory)">
+                      AND r.REQ_GROUP = 'OTHER'
+                  </when>
+                  <when test="'OVERTIME'.equals(requestCategory)">
+                      AND r.REQ_GROUP = 'GENERAL' AND r.REQ_TYPE IN ('연장', '조출연장')
+                  </when>
+                  <when test="'HOLIDAY'.equals(requestCategory)">
+                      AND r.REQ_GROUP = 'GENERAL' AND r.REQ_TYPE = '휴일근무'
+                  </when>
+                  <otherwise>
+                      AND r.REQ_GROUP = 'GENERAL'
+                      AND r.REQ_TYPE NOT IN ('연장', '조출연장', '휴일근무')
+                  </otherwise>
+              </choose>
+          </if>
+        ORDER BY r.TARGET_DATE DESC, r.CREATED_AT DESC
+    </select>
+
+    <select id="findHistoryDetail"
+            resultType="com.company.attendancemanagement.dto.approval.ApprovalDetailDto">
+        SELECT
+            r.REQ_ID                                         AS requestId,
+            CONVERT(VARCHAR(10), r.TARGET_DATE, 23)          AS targetDate,
+            r.REQ_TYPE                                       AS reqType,
+            r.REQ_GROUP                                      AS reqGroup,
+            r.REASON                                         AS reason,
+            r.REASON_DETAIL                                  AS reasonDetail,
+            r.STATUS                                         AS requestStatus,
+            te.EMP_CODE                                      AS targetEmpCode,
+            te.EMP_NAME                                      AS targetEmpName,
+            td.DEPT_NAME                                     AS targetDeptName,
+            re.EMP_CODE                                      AS requesterEmpCode,
+            re.EMP_NAME                                      AS requesterEmpName,
+            LEFT(CONVERT(VARCHAR(8), g.START_TIME, 108), 5) AS startTime,
+            ISNULL(g.START_TIME_TYPE, 'N0')                  AS startTimeType,
+            LEFT(CONVERT(VARCHAR(8), g.END_TIME,   108), 5) AS endTime,
+            ISNULL(g.END_TIME_TYPE,   'N0')                  AS endTimeType,
+            o.CHANGE_SHIFT_CODE                              AS changeShiftCode,
+            s.SHIFT_NAME                                     AS changeShiftName,
+            LEFT(CONVERT(VARCHAR(8), ar.CHECK_IN,  108), 5) AS recordCheckIn,
+            LEFT(CONVERT(VARCHAR(8), ar.CHECK_OUT, 108), 5) AS recordCheckOut,
+            ar.WORK_MIN                                      AS recordWorkMin,
+            ar.OVERNIGHT_YN                                  AS recordOvernightYn,
+            ar.LATE_YN                                       AS recordLateYn,
+            ar.LATE_MIN                                      AS recordLateMin
+        FROM HRTATTENDANCEREQUEST01 r
+        JOIN HRIMASTER01 te ON r.COMPANY = te.COMPANY AND r.TARGET_EMP_CODE = te.EMP_CODE
+        LEFT JOIN ORGDEPTMASTER01 td ON te.COMPANY = td.COMPANY AND te.DEPT_CODE = td.DEPT_CODE
+        JOIN HRIMASTER01 re ON r.COMPANY = re.COMPANY AND r.REQUESTER_EMP_CODE = re.EMP_CODE
+        LEFT JOIN HRTATTENDANCE_GENERAL01 g ON r.COMPANY = g.COMPANY AND r.REQ_ID = g.REQ_ID
+        LEFT JOIN HRTATTENDANCE_OTHER01 o ON r.COMPANY = o.COMPANY AND r.REQ_ID = o.REQ_ID
+        LEFT JOIN HRTSHIFTMASTER01 s ON r.COMPANY = s.COMPANY AND o.CHANGE_SHIFT_CODE = s.SHIFT_CODE
+        LEFT JOIN HRTDAILYATTENDANCE01 ar ON r.COMPANY = ar.COMPANY
+                                         AND r.TARGET_EMP_CODE = ar.EMP_CODE
+                                         AND ar.YYYYMMDD = CONVERT(VARCHAR(8), r.TARGET_DATE, 112)
+        WHERE r.REQ_ID = #{requestId}
+          AND r.COMPANY = #{company}
+    </select>
+
     <select id="countActiveSameWorkRequest"
             parameterType="com.company.attendancemanagement.dto.request.AttendanceRequestDto"
             resultType="int">
