@@ -80,36 +80,51 @@ function renderCalendar() {
 
         let inner = `<div class="date-num">${dn}</div>`;
 
-        // 1. 계획 근태코드 (항상 표시)
-        if (day.shiftName) {
-            const timePart = (day.workDayType === 'WORK' && day.workOnHhmm && day.workOffHhmm)
-                ? `<span class="shift-time"> ${day.workOnHhmm}~${day.workOffHhmm}</span>`
+        // 활성 기타근태(근무변경) 신청
+        const activeOtherReq = (day.requests || []).find(
+            r => r.requestCategory === 'OTHER' && ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(r.status)
+        );
+        // 변경 후 근무 시간이 없으면 휴무 근태(연차/병가 등)
+        const isLeaveDay = activeOtherReq != null && !activeOtherReq.changeShiftOnHhmm;
+
+        // 1. 계획/변경 근태코드
+        const dispShiftName = (activeOtherReq && activeOtherReq.changeShiftName)
+            ? activeOtherReq.changeShiftName : day.shiftName;
+        const dispOnHhmm  = activeOtherReq ? activeOtherReq.changeShiftOnHhmm  : day.workOnHhmm;
+        const dispOffHhmm = activeOtherReq ? activeOtherReq.changeShiftOffHhmm : day.workOffHhmm;
+        const dispWorkDayType = activeOtherReq
+            ? (dispOnHhmm ? 'WORK' : 'OFF')
+            : day.workDayType;
+
+        if (dispShiftName) {
+            const timePart = (dispWorkDayType === 'WORK' && dispOnHhmm && dispOffHhmm)
+                ? `<span class="shift-time"> ${dispOnHhmm}~${dispOffHhmm}</span>`
                 : '';
-            inner += `<span class="shift-badge"><span class="${shiftCls(day.workDayType)}">${day.shiftName}</span>${timePart}</span>`;
+            inner += `<span class="shift-badge"><span class="${shiftCls(dispWorkDayType)}">${dispShiftName}</span>${timePart}</span>`;
         }
 
-        // 2. 실 출퇴근 시간
-        if (day.record && (day.record.checkIn || day.record.checkOut)) {
+        // 2. 실 출퇴근 시간 (휴무 근태이면 표시 안 함)
+        if (!isLeaveDay && day.record && (day.record.checkIn || day.record.checkOut)) {
             const ci = day.record.checkIn  || '--:--';
             const co = day.record.checkOut || '--:--';
             inner += `<span class="rec-badge">출 ${ci} / 퇴 ${co}</span>`;
         }
 
-        // 3. 지각
-        if (day.record && day.record.lateYn === 'Y') {
+        // 3. 지각 (휴무 근태이면 표시 안 함)
+        if (!isLeaveDay && day.record && day.record.lateYn === 'Y') {
             inner += `<span class="late-badge">지각 ${day.record.lateMin}분</span>`;
         }
 
-        // 4. 결근 (WORK일이고 과거 날짜이며 출근 기록 없고 승인된 휴가도 없는 경우)
+        // 4. 조출 (휴무 근태이면 표시 안 함)
         const early = earlyMin(day);
-        if (early > 0) {
+        if (!isLeaveDay && early > 0) {
             inner += `<span class="early-badge">조출 ${early}분</span>`;
         }
         if (hasShiftMismatch(day)) {
             inner += `<span class="mismatch-badge">근태코드 불일치</span>`;
         }
 
-        const hasApprovedLeave = (day.requests || []).some(
+        const hasApprovedLeave = isLeaveDay || (day.requests || []).some(
             r => r.requestCategory === 'LEAVE' && r.status === 'APPROVED'
         );
         if (day.workDayType === 'WORK' &&
@@ -119,7 +134,9 @@ function renderCalendar() {
 
         // 5. 근태신청 (연장, 연차, 반차 등)
         (day.requests || []).forEach(r => {
-            const typeLabel = r.requestWorkCode || catLabel(r.requestCategory);
+            const typeLabel = (r.requestCategory === 'OTHER' && r.changeShiftName)
+                ? r.changeShiftName
+                : (r.requestWorkCode || catLabel(r.requestCategory));
             let timeStr = '';
             if (r.startTime || r.endTime) {
                 const st = r.startTime || '--:--';

@@ -126,10 +126,33 @@
                    ON arw.COMPANY = h.COMPANY
                   AND arw.EMP_CODE = h.EMP_CODE
                   AND arw.YYYYMMDD = CONVERT(VARCHAR(8), wd.WORK_DATE, 112)
+            OUTER APPLY (
+                SELECT TOP 1 oto.CHANGE_SHIFT_CODE
+                FROM HRTATTENDANCEREQUEST01 otr
+                JOIN HRTATTENDANCE_OTHER01 oto ON oto.COMPANY = otr.COMPANY AND oto.REQ_ID = otr.REQ_ID
+                WHERE otr.COMPANY         = h.COMPANY
+                  AND otr.TARGET_EMP_CODE = h.EMP_CODE
+                  AND otr.TARGET_DATE     = wd.WORK_DATE
+                  AND otr.REQ_GROUP       = 'OTHER'
+                  AND otr.STATUS IN ('DRAFT', 'SUBMITTED', 'APPROVED')
+            ) oReq
+            LEFT JOIN HRTSHIFTMASTER01 ows
+                   ON ows.COMPANY    = h.COMPANY
+                  AND ows.SHIFT_CODE = oReq.CHANGE_SHIFT_CODE
             CROSS APPLY (
                 SELECT CASE
                            WHEN arw.WORK_MIN IS NOT NULL THEN arw.WORK_MIN
-                           WHEN wd.WORK_DATE &lt; CAST(#{workDate} AS DATE) THEN 0
+                           WHEN wd.WORK_DATE &lt; CAST(GETDATE() AS DATE) THEN 0
+                           WHEN oReq.CHANGE_SHIFT_CODE IS NOT NULL THEN
+                               CASE WHEN ows.WORK_ON_HHMM IS NULL OR ows.WORK_OFF_HHMM IS NULL THEN 0
+                                    WHEN ows.WORK_OFF_HHMM >= ows.WORK_ON_HHMM
+                                    THEN DATEDIFF(MINUTE, ows.WORK_ON_HHMM, ows.WORK_OFF_HHMM)
+                                         - ISNULL(DATEDIFF(MINUTE, ows.BREAK1_START_HHMM, ows.BREAK1_END_HHMM), 0)
+                                         - ISNULL(DATEDIFF(MINUTE, ows.BREAK2_START_HHMM, ows.BREAK2_END_HHMM), 0)
+                                    ELSE 1440 + DATEDIFF(MINUTE, ows.WORK_ON_HHMM, ows.WORK_OFF_HHMM)
+                                         - ISNULL(DATEDIFF(MINUTE, ows.BREAK1_START_HHMM, ows.BREAK1_END_HHMM), 0)
+                                         - ISNULL(DATEDIFF(MINUTE, ows.BREAK2_START_HHMM, ows.BREAK2_END_HHMM), 0)
+                               END
                            WHEN ws.WORK_ON_HHMM IS NULL OR ws.WORK_OFF_HHMM IS NULL THEN 0
                            WHEN ISNULL(day_type.WORK_DAY_TYPE, '') IN ('OFF', 'HOLIDAY') THEN 0
                            WHEN ws.WORK_OFF_HHMM >= ws.WORK_ON_HHMM

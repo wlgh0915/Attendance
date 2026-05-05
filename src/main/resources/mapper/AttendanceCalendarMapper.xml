@@ -65,9 +65,15 @@
             r.REQ_TYPE                                       AS requestWorkCode,
             LEFT(CONVERT(VARCHAR(8), g.START_TIME, 108), 5) AS startTime,
             LEFT(CONVERT(VARCHAR(8), g.END_TIME,   108), 5) AS endTime,
-            r.STATUS                                         AS status
+            r.STATUS                                         AS status,
+            o.CHANGE_SHIFT_CODE                              AS changeShiftCode,
+            cs.SHIFT_NAME                                    AS changeShiftName,
+            CONVERT(VARCHAR(5), cs.WORK_ON_HHMM,  108)      AS changeShiftOnHhmm,
+            CONVERT(VARCHAR(5), cs.WORK_OFF_HHMM, 108)      AS changeShiftOffHhmm
         FROM HRTATTENDANCEREQUEST01 r
-        LEFT JOIN HRTATTENDANCE_GENERAL01 g ON r.COMPANY = g.COMPANY AND r.REQ_ID = g.REQ_ID
+        LEFT JOIN HRTATTENDANCE_GENERAL01 g  ON r.COMPANY = g.COMPANY AND r.REQ_ID = g.REQ_ID
+        LEFT JOIN HRTATTENDANCE_OTHER01 o    ON r.COMPANY = o.COMPANY AND r.REQ_ID = o.REQ_ID
+        LEFT JOIN HRTSHIFTMASTER01 cs        ON r.COMPANY = cs.COMPANY AND o.CHANGE_SHIFT_CODE = cs.SHIFT_CODE
         WHERE r.COMPANY        = #{company}
           AND r.TARGET_EMP_CODE = #{empCode}
           AND r.TARGET_DATE BETWEEN CAST(#{startDate} AS DATE) AND CAST(#{endDate} AS DATE)
