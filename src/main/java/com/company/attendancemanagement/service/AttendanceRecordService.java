@@ -8,6 +8,7 @@ import java.util.Map;
 public interface AttendanceRecordService {
     List<AttendanceRecordDto> findByMonth(String company, String empCode, String startYmd, String endYmd);
     Map<String, Object> getPlannedShift(String company, String empCode, String yyyymmdd);
+    int calculateWorkMin(AttendanceRecordDto dto);
     void upsert(AttendanceRecordDto dto);
     void delete(String company, String empCode, String yyyymmdd);
 }

@@ -49,7 +49,7 @@
     <table class="rec-table">
         <thead>
         <tr>
-            <th>날짜</th><th>요일</th><th>계획근태</th><th>실적근태</th>
+            <th>날짜</th><th>요일</th><th>계획근태</th>
             <th>출근</th><th>퇴근</th><th>근무(분)</th><th>익일</th>
             <th th:if="${isAdmin}">관리</th>
         </tr>
@@ -65,9 +65,6 @@
                 th:text="${row.dayLabel}"></td>
 
             <td class="no-data" th:text="${row.shiftCode != null ? row.shiftCode : '-'}"></td>
-
-            <td th:classappend="${row.actualShiftCode != null ? 'has-data' : 'no-data'}"
-                th:text="${row.actualShiftCode != null ? row.actualShiftCode : '-'}"></td>
 
             <td th:classappend="${row.checkIn != null ? 'has-data' : 'no-data'}"
                 th:text="${row.checkIn != null ? row.checkIn : '-'}"></td>
@@ -85,7 +82,6 @@
                         th:attr="data-ymd=${row.yyyymmdd},
                                  data-has=${row.hasRecord},
                                  data-shift=${row.shiftCode},
-                                 data-actual=${row.actualShiftCode},
                                  data-ci=${row.checkIn},
                                  data-co=${row.checkOut},
                                  data-wm=${row.workMin},
@@ -120,12 +116,6 @@
             <input type="text" id="mShiftCode" readonly>
         </div>
         <div class="modal-row">
-            <label>실적근태코드</label>
-            <select id="mActualShiftCode">
-                <option value="">-- 선택 --</option>
-            </select>
-        </div>
-        <div class="modal-row">
             <label>출근 / 퇴근</label>
             <div class="row-2">
                 <input type="time" id="mCheckIn"  oninput="autoCalcWorkMin()">
@@ -141,7 +131,7 @@
         </div>
         <div class="modal-row">
             <label>실근무분 (자동계산)</label>
-            <input type="number" id="mWorkMin" min="0" placeholder="분">
+            <input type="number" id="mWorkMin" min="0" placeholder="분" readonly>
         </div>
         <p class="modal-note">출근·퇴근 입력 시 실근무분이 자동 계산됩니다.</p>
         <div class="modal-actions">

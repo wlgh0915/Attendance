@@ -1,16 +1,3 @@
-/* ───────── 근태코드 로드 ───────── */
-let shiftCodes = [];
-
-async function loadShiftCodes() {
-    const res  = await fetch('/attendance/record/shift-codes');
-    shiftCodes = await res.json();
-    const opts = '<option value="">-- 선택 --</option>'
-        + shiftCodes.map(s => `<option value="${s.shiftCode}">${s.shiftCode} ${s.shiftName}</option>`).join('');
-    document.getElementById('mActualShiftCode').innerHTML = opts;
-}
-
-loadShiftCodes();
-
 /* ───────── 필터 변경 ───────── */
 function onDeptChange(v) {
     location.href = '/attendance/record?ym=' + CURRENT_YM + '&deptCode=' + v;
@@ -22,15 +9,43 @@ function onEmpChange(v) {
 }
 
 /* ───────── 실근무분 자동계산 ───────── */
-function autoCalcWorkMin() {
+let calcSeq = 0;
+
+async function autoCalcWorkMin() {
+    const seq = ++calcSeq;
     const ci = document.getElementById('mCheckIn').value;
     const co = document.getElementById('mCheckOut').value;
-    if (!ci || !co) return;
-    const ciMin = parseInt(ci.split(':')[0]) * 60 + parseInt(ci.split(':')[1]);
-    let   coMin = parseInt(co.split(':')[0]) * 60 + parseInt(co.split(':')[1]);
-    if (document.getElementById('mOvernightYn').value === 'Y') coMin += 1440;
-    const wm = coMin - ciMin - 60; // 점심 1시간 차감
-    if (wm > 0) document.getElementById('mWorkMin').value = wm;
+    if (!ci || !co) {
+        document.getElementById('mWorkMin').value = '';
+        return;
+    }
+    const overnightYn = document.getElementById('mOvernightYn').value;
+    if (overnightYn !== 'Y' && co < ci) {
+        document.getElementById('mWorkMin').value = '';
+        return;
+    }
+
+    const dto = {
+        empCode: TARGET_EMP,
+        yyyymmdd: currentYmd,
+        deptCode: SELECTED_DEPT,
+        shiftCode: document.getElementById('mShiftCode').value.trim() || null,
+        checkIn: ci,
+        checkOut: co,
+        overnightYn: overnightYn
+    };
+    try {
+        const res = await fetch('/attendance/record/calculate', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(dto)
+        });
+        const json = await res.json();
+        if (seq !== calcSeq) return;
+        document.getElementById('mWorkMin').value = json.success ? json.workMin : '';
+    } catch (e) {
+        if (seq === calcSeq) document.getElementById('mWorkMin').value = '';
+    }
 }
 
 /* ───────── 모달 열기 ───────── */
@@ -41,7 +56,6 @@ async function openModal(btn) {
     currentYmd = d.ymd;
     document.getElementById('modalTitle').textContent = d.has === 'true' ? '출퇴근 실적 수정' : '출퇴근 실적 등록';
     document.getElementById('mDate').value            = d.ymd.slice(0,4) + '-' + d.ymd.slice(4,6) + '-' + d.ymd.slice(6,8);
-    document.getElementById('mActualShiftCode').value = (d.actual && d.actual !== 'null') ? d.actual : '';
     document.getElementById('mCheckIn').value         = d.ci !== 'null' ? (d.ci  || '') : '';
     document.getElementById('mCheckOut').value        = d.co !== 'null' ? (d.co  || '') : '';
     document.getElementById('mOvernightYn').value     = d.on !== 'null' ? (d.on  || 'N') : 'N';
@@ -60,6 +74,7 @@ async function openModal(btn) {
         }
     }
 
+    autoCalcWorkMin();
     document.getElementById('modalBg').classList.add('open');
 }
 
@@ -73,16 +88,22 @@ function closeModalDirect() {
 /* ───────── 저장 ───────── */
 async function doSave() {
     const wm  = document.getElementById('mWorkMin').value;
+    const checkIn = document.getElementById('mCheckIn').value;
+    const checkOut = document.getElementById('mCheckOut').value;
+    const overnightYn = document.getElementById('mOvernightYn').value;
+    if (checkIn && checkOut && overnightYn !== 'Y' && checkOut < checkIn) {
+        showToast('퇴근 시간이 출근 시간보다 빠르면 익일여부를 Y로 선택해야 합니다.', 'error');
+        return;
+    }
     const dto = {
         empCode:         TARGET_EMP,
         yyyymmdd:        currentYmd,
         deptCode:        SELECTED_DEPT,
         shiftCode:       document.getElementById('mShiftCode').value.trim()       || null,
-        actualShiftCode: document.getElementById('mActualShiftCode').value.trim() || null,
-        checkIn:         document.getElementById('mCheckIn').value                || null,
-        checkOut:        document.getElementById('mCheckOut').value               || null,
+        checkIn:         checkIn                                                  || null,
+        checkOut:        checkOut                                                 || null,
         workMin:         wm ? parseInt(wm) : null,
-        overnightYn:     document.getElementById('mOvernightYn').value
+        overnightYn:     overnightYn
     };
     const res  = await fetch('/attendance/record/save', {
         method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(dto)

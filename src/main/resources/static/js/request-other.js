@@ -71,16 +71,12 @@ function requestEffectMin(state) {
 }
 
 function cumulativeEstimatedWorkMin(row, selectedWorkCode) {
-    const weeklyBase = row.shiftWorkMin || 0;
+    const weeklyBase = (row.shiftWorkMin || 0) + (row.activeWeeklyRequestEffectMin || 0);
     const currentDayBase = baseDayWorkMin(row);
     let total = weeklyBase;
     if (selectedWorkCode) {
         total = weeklyBase - currentDayBase + selectedShiftWorkMin(selectedWorkCode, currentDayBase);
     }
-    Object.values(row.requestsByWorkCode || {}).forEach(state => {
-        if (!isActiveRequest(state) || state.existingRequestGroup === 'OTHER') return;
-        total += requestEffectMin(state);
-    });
     return Math.max(total, 0);
 }
 

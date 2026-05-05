@@ -42,8 +42,7 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
         String empCode = dto.getEmpCode();
         String yyyymmdd = dto.getYyyymmdd();
 
-        Map<String, Object> planned = recordMapper.findPlannedShift(company, empCode, yyyymmdd);
-        int workMin = calculateWorkMin(dto, planned, company, empCode, yyyymmdd);
+        int workMin = calculateWorkMin(dto);
         dto.setWorkMin(workMin);
 
         String weekStart = toWeekBound(yyyymmdd, true);
@@ -61,8 +60,8 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
         recordMapper.upsert(dto);
     }
 
-    private int calculateWorkMin(AttendanceRecordDto dto, Map<String, Object> planned,
-                                 String company, String empCode, String yyyymmdd) {
+    @Override
+    public int calculateWorkMin(AttendanceRecordDto dto) {
         String checkIn = dto.getCheckIn();
         String checkOut = dto.getCheckOut();
 
@@ -71,44 +70,18 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
         }
 
         int actualInMin = toMinutes(checkIn);
-        int actualOutMin = toNextDayMinute(toMinutes(checkOut), actualInMin);
+        int actualOutMin = toActualOutMinute(dto, actualInMin);
+        int minutes = actualOutMin - actualInMin;
+        Map<String, Object> planned = recordMapper.findPlannedShift(
+                dto.getCompany(), dto.getEmpCode(), dto.getYyyymmdd());
 
         if (planned == null
                 || planned.get("workOnHhmm") == null
                 || planned.get("workOffHhmm") == null) {
-            return Math.max(0, actualOutMin - actualInMin);
+            return Math.max(0, minutes);
         }
 
-        String workDayType = (String) planned.get("workDayType");
-        if ("OFF".equals(workDayType) || "HOLIDAY".equals(workDayType)) {
-            int raw = actualOutMin - actualInMin;
-            return Math.max(0, raw - breakOverlapMin(planned, actualInMin, actualOutMin));
-        }
-
-        int planStartMin = toMinutes((String) planned.get("workOnHhmm"));
-        int planEndMin = toNextDayMinute(toMinutes((String) planned.get("workOffHhmm")), planStartMin);
-
-        List<Map<String, Object>> reqs =
-                recordMapper.findApprovedOvertimeRequests(company, empCode, yyyymmdd);
-
-        int effectiveStartMin = planStartMin;
-        int effectiveEndMin = planEndMin;
-        for (Map<String, Object> req : reqs) {
-            if ("조출연장".equals(req.get("reqType")) && req.get("startTime") != null) {
-                int approvedMin = absoluteMinute((String) req.get("startTimeType"), (String) req.get("startTime"));
-                if (approvedMin < effectiveStartMin) effectiveStartMin = approvedMin;
-            }
-            if ("연장".equals(req.get("reqType")) && req.get("endTime") != null) {
-                int approvedMin = absoluteMinute((String) req.get("endTimeType"), (String) req.get("endTime"));
-                if (approvedMin > effectiveEndMin) effectiveEndMin = approvedMin;
-            }
-        }
-
-        if (actualInMin > effectiveStartMin) effectiveStartMin = actualInMin;
-        if (actualOutMin < effectiveEndMin) effectiveEndMin = actualOutMin;
-
-        int minutes = effectiveEndMin - effectiveStartMin;
-        minutes -= breakOverlapMin(planned, effectiveStartMin, effectiveEndMin);
+        minutes -= breakOverlapMin(planned, actualInMin, actualOutMin);
         return Math.max(0, minutes);
     }
 
@@ -131,12 +104,19 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
         return Math.max(0, Math.min(endMin, breakEnd) - Math.max(startMin, breakStart));
     }
 
-    private int absoluteMinute(String timeType, String hhmm) {
-        return ("N1".equals(timeType) ? 1440 : 0) + toMinutes(hhmm);
-    }
-
     private int toNextDayMinute(int minute, int baseMinute) {
         return minute < baseMinute ? minute + 1440 : minute;
+    }
+
+    private int toActualOutMinute(AttendanceRecordDto dto, int actualInMin) {
+        int actualOutMin = toMinutes(dto.getCheckOut());
+        if ("Y".equals(dto.getOvernightYn())) {
+            return actualOutMin + 1440;
+        }
+        if (actualOutMin < actualInMin) {
+            throw new IllegalArgumentException("퇴근 시간이 출근 시간보다 빠르면 익일여부를 Y로 선택해야 합니다.");
+        }
+        return actualOutMin;
     }
 
     private boolean isBlank(String s) {

@@ -25,7 +25,10 @@ public class AttendanceEmpRowDto {
     private Integer plannedWorkMin;
     private Integer actualWorkMin;
     private Integer shiftWorkMin;
+    private Integer activeWeeklyRequestEffectMin;
     private String checkIn;
+    private String checkOut;
+    private String overnightYn;
 
     private String requestId;
     private String existingRequestGroup;

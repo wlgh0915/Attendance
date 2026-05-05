@@ -223,16 +223,44 @@ function requestEffectMin(category, min) {
     return 0;
 }
 
-function cumulativeEstimatedWorkMin(row, tr, currentState) {
-    const selectedCode = tr.querySelector('[data-field="requestWorkCode"]').value;
-    let total = row.shiftWorkMin || 0;
-    Object.entries(row.requestsByWorkCode || {}).forEach(([code, state]) => {
-        if (!isActiveRequest(state) || code === selectedCode) return;
-        total += requestEffectMin(categoryOfRequest(state), state.requestWorkMin || 0);
-    });
+function actualAttendanceRange(row) {
+    if (!row || !row.checkIn || !row.checkOut || row.actualWorkMin == null) return null;
+    const start = absoluteMinute('N0', row.checkIn);
+    let end = absoluteMinute('N0', row.checkOut);
+    if (row.overnightYn === 'Y' || end < start) end += 1440;
+    return {start, end};
+}
 
+function actualOverlapMin(row, tr) {
+    const actual = actualAttendanceRange(row);
+    if (!actual) return 0;
+    const startType = tr.querySelector('[data-field="startTimeType"]').value;
+    const startTime = tr.querySelector('[data-field="startTime"]').value;
+    const endType = tr.querySelector('[data-field="endTimeType"]').value;
+    const endTime = tr.querySelector('[data-field="endTime"]').value;
+    const start = absoluteMinute(startType, startTime);
+    const end = absoluteMinute(endType, endTime);
+    if (start == null || end == null) return 0;
+    return Math.max(0, Math.min(end, actual.end) - Math.max(start, actual.start));
+}
+
+function requestEffectForState(state) {
+    if (!isActiveRequest(state) || state.existingRequestGroup === 'OTHER') return 0;
+    return requestEffectMin(categoryOfRequest(state), state.requestWorkMin || 0);
+}
+
+function weeklyBaseWithRequests(row) {
+    return (row.shiftWorkMin || 0) + (row.activeWeeklyRequestEffectMin || 0);
+}
+
+function cumulativeEstimatedWorkMin(row, tr, currentState) {
+    let total = weeklyBaseWithRequests(row) - requestEffectForState(currentState);
     const selectedMin = selectedWorkMin(tr, currentState, row);
-    total += requestEffectMin(currentCategory, selectedMin);
+    let effectMin = requestEffectMin(currentCategory, selectedMin);
+    if (effectMin > 0) {
+        effectMin = Math.max(0, effectMin - actualOverlapMin(row, tr));
+    }
+    total += effectMin;
     return Math.max(total, 0);
 }
 
@@ -253,15 +281,7 @@ function validateWeeklyWorkLimit(tr, row, state) {
 }
 
 function savedEstimatedWorkMin(row, state, selectedWorkCode) {
-    let total = row.shiftWorkMin || 0;
-    Object.entries(row.requestsByWorkCode || {}).forEach(([code, req]) => {
-        if (!isActiveRequest(req) || code === selectedWorkCode) return;
-        total += requestEffectMin(categoryOfRequest(req), req.requestWorkMin || 0);
-    });
-    if (isActiveRequest(state)) {
-        total += requestEffectMin(categoryOfRequest(state), state.requestWorkMin || 0);
-    }
-    return Math.max(total, 0);
+    return Math.max(weeklyBaseWithRequests(row), 0);
 }
 
 function computeTimeState(category, code, r) {

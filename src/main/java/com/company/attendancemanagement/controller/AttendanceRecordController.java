@@ -139,6 +139,24 @@ public class AttendanceRecordController {
         return ResponseEntity.ok(recordService.getPlannedShift(loginUser.getCompany(), empCode, yyyymmdd));
     }
 
+    @PostMapping("/calculate")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> calculate(@RequestBody AttendanceRecordDto dto,
+                                                         HttpSession session) {
+        LoginUserDto loginUser = getLoginUser(session);
+        if (loginUser == null) return ResponseEntity.status(401).body(fail("로그인이 필요합니다."));
+        if (!"ADMIN".equals(loginUser.getRoleCode()))
+            return ResponseEntity.status(403).body(fail("권한이 없습니다."));
+
+        dto.setCompany(loginUser.getCompany());
+        try {
+            int workMin = recordService.calculateWorkMin(dto);
+            return ResponseEntity.ok(Map.of("success", true, "workMin", workMin));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.ok(fail(e.getMessage()));
+        }
+    }
+
     /* ───────── 실적 저장 (UPSERT) ───────── */
     @PostMapping("/save")
     @ResponseBody

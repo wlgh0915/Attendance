@@ -324,6 +324,10 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         if (effectMin <= 0) {
             return;
         }
+        effectMin = Math.max(0, effectMin - actualOverlapMin(dto));
+        if (effectMin <= 0) {
+            return;
+        }
         int plannedMin = requestMapper.findWeeklyPlannedWorkMin(
                 dto.getCompany(), dto.getEmpCode(), dto.getWorkDate());
         int activeRequestMin = requestMapper.sumActiveWeeklyRequestEffectMin(dto);
@@ -334,6 +338,35 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
                     "주 52시간을 초과하여 신청할 수 없습니다. 초과 시간: %d시간 %d분",
                     overMin / 60, overMin % 60));
         }
+    }
+
+    private int actualOverlapMin(AttendanceRequestDto dto) {
+        Map<String, Object> actual = requestMapper.findAttendanceRecordInfo(
+                dto.getCompany(), dto.getEmpCode(), dto.getWorkDate());
+        if (actual == null) return 0;
+
+        String checkIn = stringValue(actual, "checkIn", "CHECKIN");
+        String checkOut = stringValue(actual, "checkOut", "CHECKOUT");
+        if (checkIn == null || checkOut == null) return 0;
+
+        int actualStart = toMinute(checkIn);
+        int actualEnd = toMinute(checkOut);
+        String overnightYn = stringValue(actual, "overnightYn", "OVERNIGHTYN");
+        if ("Y".equals(overnightYn) || actualEnd < actualStart) {
+            actualEnd += 1440;
+        }
+
+        int requestStart = absoluteMinute(dto.getStartTimeType(), dto.getStartTime());
+        int requestEnd = absoluteMinute(dto.getEndTimeType(), dto.getEndTime());
+        return Math.max(0, Math.min(requestEnd, actualEnd) - Math.max(requestStart, actualStart));
+    }
+
+    private String stringValue(Map<String, Object> map, String camelKey, String upperKey) {
+        Object value = map.get(camelKey);
+        if (value == null) value = map.get(upperKey);
+        if (value == null) return null;
+        String text = value.toString();
+        return text.isBlank() ? null : text;
     }
 
     private int requestEffectMin(String category, String workCode, int workMin) {

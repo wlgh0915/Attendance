@@ -34,7 +34,6 @@
             UPDATE SET
                 DEPT_CODE         = #{deptCode},
                 SHIFT_CODE        = #{shiftCode},
-                ACTUAL_SHIFT_CODE = #{actualShiftCode},
                 CHECK_IN          = #{checkIn},
                 CHECK_OUT         = #{checkOut},
                 WORK_MIN          = #{workMin},
@@ -43,11 +42,11 @@
                 LATE_MIN          = #{lateMin},
                 UPDATED_AT        = GETDATE()
         WHEN NOT MATCHED THEN
-            INSERT (COMPANY, EMP_CODE, YYYYMMDD, DEPT_CODE, SHIFT_CODE, ACTUAL_SHIFT_CODE,
+            INSERT (COMPANY, EMP_CODE, YYYYMMDD, DEPT_CODE, SHIFT_CODE,
                     CHECK_IN, CHECK_OUT, WORK_MIN, OVERNIGHT_YN, LATE_YN, LATE_MIN,
                     CREATED_AT, UPDATED_AT)
             VALUES (#{company}, #{empCode}, #{yyyymmdd}, #{deptCode}, #{shiftCode},
-                    #{actualShiftCode}, #{checkIn}, #{checkOut}, #{workMin},
+                    #{checkIn}, #{checkOut}, #{workMin},
                     #{overnightYn}, #{lateYn}, #{lateMin}, GETDATE(), GETDATE());
     </update>
 

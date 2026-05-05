@@ -66,6 +66,10 @@ public interface AttendanceRequestMapper {
                                @Param("empCode") String empCode,
                                @Param("workDate") String workDate);
 
+    Map<String, Object> findAttendanceRecordInfo(@Param("company") String company,
+                                                 @Param("empCode") String empCode,
+                                                 @Param("workDate") String workDate);
+
     int findWeeklyPlannedWorkMin(@Param("company") String company,
                                  @Param("empCode") String empCode,
                                  @Param("workDate") String workDate);
