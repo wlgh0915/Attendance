@@ -1,4 +1,4 @@
-.cal-page { max-width: 1260px; padding: 20px 24px; }
+.cal-page { max-width: 1260px; padding: 20px 24px; margin: 0 auto; }
 .cal-top  { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-bottom: 16px; }
 
 .cal-nav  { display: flex; align-items: center; gap: 8px; }

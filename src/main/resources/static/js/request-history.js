@@ -86,8 +86,12 @@ async function openHistoryDetail(btn) {
         ).join('');
 
     document.getElementById('detailModal').classList.add('open');
+    document.body.classList.add('detail-drawer-open');
 }
 
 function closeHistoryDetail() {
-    document.getElementById('detailModal').classList.remove('open');
+    const modal = document.getElementById('detailModal');
+    modal.classList.add('closing');
+    document.body.classList.remove('detail-drawer-open');
+    setTimeout(() => modal.classList.remove('open', 'closing'), 260);
 }

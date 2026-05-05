@@ -58,10 +58,10 @@ public class AttendanceRequestController {
 
         LocalDate today = LocalDate.now();
         if (search.getFromDate() == null || search.getFromDate().isBlank()) {
-            search.setFromDate(today.withDayOfMonth(1).toString());
+            search.setFromDate(today.minusMonths(1).toString());
         }
         if (search.getToDate() == null || search.getToDate().isBlank()) {
-            search.setToDate(today.toString());
+            search.setToDate(today.plusMonths(1).toString());
         }
 
         Map<String, Object> formData = requestService.getFormData(loginUser);
