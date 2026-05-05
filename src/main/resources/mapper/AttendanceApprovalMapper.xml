@@ -103,7 +103,13 @@
             LEFT(CONVERT(VARCHAR(8), g.END_TIME,   108), 5) AS endTime,
             ISNULL(g.END_TIME_TYPE,   'N0')                  AS endTimeType,
             o.CHANGE_SHIFT_CODE                              AS changeShiftCode,
-            s.SHIFT_NAME                                     AS changeShiftName
+            s.SHIFT_NAME                                     AS changeShiftName,
+            LEFT(CONVERT(VARCHAR(8), ar.CHECK_IN,  108), 5) AS recordCheckIn,
+            LEFT(CONVERT(VARCHAR(8), ar.CHECK_OUT, 108), 5) AS recordCheckOut,
+            ar.WORK_MIN                                      AS recordWorkMin,
+            ar.OVERNIGHT_YN                                  AS recordOvernightYn,
+            ar.LATE_YN                                       AS recordLateYn,
+            ar.LATE_MIN                                      AS recordLateMin
         FROM HRTATTENDANCEREQUEST01 r
         JOIN  HRIMASTER01 te ON r.COMPANY = te.COMPANY AND r.TARGET_EMP_CODE   = te.EMP_CODE
         LEFT JOIN ORGDEPTMASTER01 td ON te.COMPANY = td.COMPANY AND te.DEPT_CODE = td.DEPT_CODE
@@ -111,6 +117,9 @@
         LEFT JOIN HRTATTENDANCE_GENERAL01 g ON r.COMPANY = g.COMPANY AND r.REQ_ID = g.REQ_ID
         LEFT JOIN HRTATTENDANCE_OTHER01   o ON r.COMPANY = o.COMPANY AND r.REQ_ID = o.REQ_ID
         LEFT JOIN HRTSHIFTMASTER01        s ON r.COMPANY = s.COMPANY AND o.CHANGE_SHIFT_CODE = s.SHIFT_CODE
+        LEFT JOIN HRTDAILYATTENDANCE01   ar ON r.COMPANY = ar.COMPANY
+                                            AND r.TARGET_EMP_CODE = ar.EMP_CODE
+                                            AND ar.YYYYMMDD = CONVERT(VARCHAR(8), r.TARGET_DATE, 112)
         WHERE r.REQ_ID = #{requestId}
           AND r.COMPANY = #{company}
           AND EXISTS (

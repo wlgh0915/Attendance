@@ -245,6 +245,13 @@ async function openDetail(requestId) {
         timeInfo = '<div class="lbl">변경근무</div><div class="val">'+escapeHtml(d.changeShiftName || d.changeShiftCode || '-')+'</div>';
     }
 
+    const attendanceInfo =
+        '<div class="lbl">출근</div><div class="val">'+escapeHtml(d.recordCheckIn || '-')+'</div>'
+        + '<div class="lbl">퇴근</div><div class="val">'+escapeHtml(d.recordCheckOut || '-')+'</div>'
+        + '<div class="lbl">실근무분</div><div class="val">'+escapeHtml(d.recordWorkMin ?? '-')+'</div>'
+        + '<div class="lbl">익일퇴근</div><div class="val">'+escapeHtml(d.recordOvernightYn || '-')+'</div>'
+        + '<div class="lbl">지각</div><div class="val">'+escapeHtml(d.recordLateYn === 'Y' ? ('Y (' + (d.recordLateMin ?? 0) + '분)') : (d.recordLateYn || '-'))+'</div>';
+
     document.getElementById('detailInfo').innerHTML =
         '<div class="lbl">신청번호</div><div class="val">'+escapeHtml(d.requestId)+'</div>'
         + '<div class="lbl">근태구분</div><div class="val">'+groupName+' / '+reqTypeName+'</div>'
@@ -252,6 +259,7 @@ async function openDetail(requestId) {
         + '<div class="lbl">대상자</div><div class="val">'+escapeHtml(d.targetEmpName)+' ('+escapeHtml(d.targetEmpCode)+') / '+escapeHtml(d.targetDeptName)+'</div>'
         + '<div class="lbl">신청자</div><div class="val">'+escapeHtml(d.requesterEmpName)+' ('+escapeHtml(d.requesterEmpCode)+')</div>'
         + timeInfo
+        + attendanceInfo
         + '<div class="lbl">사유</div><div class="val">'+escapeHtml(d.reason || '-')+'</div>'
         + '<div class="lbl">사유상세</div><div class="val">'+escapeHtml(d.reasonDetail || '-')+'</div>'
         + '<div class="lbl">신청상태</div><div class="val">'+escapeHtml(statusLabel[d.requestStatus] || d.requestStatus || '-')+'</div>';
