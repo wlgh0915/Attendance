@@ -37,4 +37,8 @@ public interface AttendanceCalendarMapper {
                                           @Param("empCode")  String empCode,
                                           @Param("startYmd") String startYmd,
                                           @Param("endYmd")   String endYmd);
+
+    int generateDeptRecordsFromPlan(@Param("company") String company,
+                                     @Param("deptCode") String deptCode,
+                                     @Param("yyyymmdd") String yyyymmdd);
 }

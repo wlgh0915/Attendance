@@ -14,4 +14,5 @@ public interface AttendanceCalendarService {
     List<EmpSimpleDto>     getEmpsByDept(String company, String deptCode);
     /** ADMIN의 접근 가능 부서 목록 (본인 부서 + 하위 부서 재귀) */
     List<DepartmentDto>    getAccessibleDepts(String company, String deptCode);
+    int generateDeptRecordsFromPlan(String company, String deptCode, String yyyymmdd);
 }

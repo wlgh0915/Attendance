@@ -90,6 +90,7 @@
     <select id="findRecords"
             resultType="com.company.attendancemanagement.dto.record.DailyAttendanceDto">
         SELECT YYYYMMDD          AS yyyymmdd,
+               SHIFT_CODE        AS shiftCode,
                ACTUAL_SHIFT_CODE AS actualShiftCode,
                LEFT(CONVERT(VARCHAR(8), CHECK_IN,  108), 5) AS checkIn,
                LEFT(CONVERT(VARCHAR(8), CHECK_OUT, 108), 5) AS checkOut,
@@ -136,5 +137,177 @@
         WHERE h.COMPANY  = #{company}
           AND h.EMP_CODE = #{empCode}
     </select>
+
+    <update id="generateDeptRecordsFromPlan">
+        <![CDATA[
+        MERGE HRTDAILYATTENDANCE01 AS T
+        USING (
+            SELECT base.COMPANY,
+                   base.EMP_CODE,
+                   base.YYYYMMDD,
+                   base.DEPT_CODE,
+                   base.SHIFT_CODE,
+                   finalTime.CHECK_IN,
+                   finalTime.CHECK_OUT,
+                   CASE WHEN finalMin.OUT_MIN < finalMin.IN_MIN THEN 'Y' ELSE 'N' END AS OVERNIGHT_YN,
+                   CASE WHEN workCalc.WORK_MIN < 0 THEN 0 ELSE workCalc.WORK_MIN END AS WORK_MIN,
+                   CASE WHEN finalMin.IN_MIN > base.PLAN_IN_MIN THEN 'Y' ELSE 'N' END AS LATE_YN,
+                   CASE WHEN finalMin.IN_MIN > base.PLAN_IN_MIN THEN finalMin.IN_MIN - base.PLAN_IN_MIN ELSE 0 END AS LATE_MIN
+            FROM (
+                SELECT h.COMPANY,
+                       h.EMP_CODE,
+                       CONVERT(VARCHAR(8), CONVERT(DATE, #{yyyymmdd}, 112), 112) AS YYYYMMDD,
+                       h.DEPT_CODE,
+                       s.SHIFT_CODE,
+                       s.WORK_ON_HHMM,
+                       s.WORK_OFF_HHMM,
+                       s.BREAK1_START_HHMM,
+                       s.BREAK1_END_HHMM,
+                       s.BREAK2_START_HHMM,
+                       s.BREAK2_END_HHMM,
+                       DATEDIFF(MINUTE, CAST('00:00' AS TIME), s.WORK_ON_HHMM) AS PLAN_IN_MIN
+            FROM HRIMASTER01 h
+            JOIN ORGDEPTMASTER01 dept
+                   ON dept.COMPANY = h.COMPANY
+                  AND dept.DEPT_CODE = h.DEPT_CODE
+            JOIN HRTWORKPATTERNMASTER01 pm
+                   ON pm.COMPANY = dept.COMPANY
+                  AND pm.WORK_PATTERN_CODE = dept.WORK_PATTERN_CODE
+                  AND pm.USE_YN = 'Y'
+            JOIN HRTWORKPATTERNDETAIL01 pd
+                   ON pd.COMPANY = pm.COMPANY
+                  AND pd.WORK_PATTERN_CODE = pm.WORK_PATTERN_CODE
+                  AND pd.SEQ = (
+                      (DATEDIFF(DAY, pm.START_DATE, CONVERT(DATE, #{yyyymmdd}, 112)) % pm.CYCLE_COUNT
+                       + pm.CYCLE_COUNT) % pm.CYCLE_COUNT + 1
+                  )
+            JOIN HRTSHIFTMASTER01 s
+                   ON s.COMPANY = pd.COMPANY
+                  AND s.SHIFT_CODE = pd.SHIFT_CODE
+            CROSS APPLY (
+                SELECT CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+                           WHEN 'WEEKDAY' THEN 'WORK'
+                           WHEN 'ANYDAY'  THEN 'WORK'
+                           WHEN 'WEEKEND' THEN 'OFF'
+                           ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+                       END AS WORK_DAY_TYPE
+            ) day_type
+            WHERE h.COMPANY = #{company}
+              AND h.DEPT_CODE = #{deptCode}
+              AND h.RETIRE_DATE IS NULL
+              AND day_type.WORK_DAY_TYPE = 'WORK'
+              AND s.WORK_ON_HHMM IS NOT NULL
+              AND s.WORK_OFF_HHMM IS NOT NULL
+            ) base
+            LEFT JOIN HRTDAILYATTENDANCE01 ex
+                   ON ex.COMPANY = base.COMPANY
+                  AND ex.EMP_CODE = base.EMP_CODE
+                  AND ex.YYYYMMDD = base.YYYYMMDD
+            CROSS APPLY (
+                SELECT ISNULL(ex.CHECK_IN, base.WORK_ON_HHMM) AS CHECK_IN,
+                       ISNULL(ex.CHECK_OUT, base.WORK_OFF_HHMM) AS CHECK_OUT
+            ) finalTime
+            CROSS APPLY (
+                SELECT DATEDIFF(MINUTE, CAST('00:00' AS TIME), finalTime.CHECK_IN) AS IN_MIN,
+                       DATEDIFF(MINUTE, CAST('00:00' AS TIME), finalTime.CHECK_OUT) AS RAW_OUT_MIN
+            ) rawMin
+            CROSS APPLY (
+                SELECT rawMin.IN_MIN AS IN_MIN,
+                       CASE WHEN rawMin.RAW_OUT_MIN < rawMin.IN_MIN
+                            THEN rawMin.RAW_OUT_MIN + 1440 ELSE rawMin.RAW_OUT_MIN END AS OUT_MIN
+            ) finalMin
+            CROSS APPLY (
+                SELECT CASE WHEN base.BREAK1_START_HHMM IS NULL OR base.BREAK1_END_HHMM IS NULL THEN NULL
+                            ELSE DATEDIFF(MINUTE, CAST('00:00' AS TIME), base.BREAK1_START_HHMM)
+                       END AS B1_START_MIN,
+                       CASE WHEN base.BREAK1_START_HHMM IS NULL OR base.BREAK1_END_HHMM IS NULL THEN NULL
+                            ELSE CASE
+                                     WHEN DATEDIFF(MINUTE, CAST('00:00' AS TIME), base.BREAK1_END_HHMM)
+                                          < DATEDIFF(MINUTE, CAST('00:00' AS TIME), base.BREAK1_START_HHMM)
+                                     THEN DATEDIFF(MINUTE, CAST('00:00' AS TIME), base.BREAK1_END_HHMM) + 1440
+                                     ELSE DATEDIFF(MINUTE, CAST('00:00' AS TIME), base.BREAK1_END_HHMM)
+                                 END
+                       END AS B1_END_MIN,
+                       CASE WHEN base.BREAK2_START_HHMM IS NULL OR base.BREAK2_END_HHMM IS NULL THEN NULL
+                            ELSE DATEDIFF(MINUTE, CAST('00:00' AS TIME), base.BREAK2_START_HHMM)
+                       END AS B2_START_MIN,
+                       CASE WHEN base.BREAK2_START_HHMM IS NULL OR base.BREAK2_END_HHMM IS NULL THEN NULL
+                            ELSE CASE
+                                     WHEN DATEDIFF(MINUTE, CAST('00:00' AS TIME), base.BREAK2_END_HHMM)
+                                          < DATEDIFF(MINUTE, CAST('00:00' AS TIME), base.BREAK2_START_HHMM)
+                                     THEN DATEDIFF(MINUTE, CAST('00:00' AS TIME), base.BREAK2_END_HHMM) + 1440
+                                     ELSE DATEDIFF(MINUTE, CAST('00:00' AS TIME), base.BREAK2_END_HHMM)
+                                 END
+                       END AS B2_END_MIN
+            ) rawBreak
+            CROSS APPLY (
+                SELECT CASE WHEN rawBreak.B1_START_MIN IS NULL THEN NULL
+                            WHEN finalMin.OUT_MIN > 1440 AND rawBreak.B1_START_MIN < finalMin.IN_MIN
+                            THEN rawBreak.B1_START_MIN + 1440 ELSE rawBreak.B1_START_MIN
+                       END AS B1_START_MIN,
+                       CASE WHEN rawBreak.B1_END_MIN IS NULL THEN NULL
+                            WHEN finalMin.OUT_MIN > 1440 AND rawBreak.B1_START_MIN < finalMin.IN_MIN
+                            THEN rawBreak.B1_END_MIN + 1440 ELSE rawBreak.B1_END_MIN
+                       END AS B1_END_MIN,
+                       CASE WHEN rawBreak.B2_START_MIN IS NULL THEN NULL
+                            WHEN finalMin.OUT_MIN > 1440 AND rawBreak.B2_START_MIN < finalMin.IN_MIN
+                            THEN rawBreak.B2_START_MIN + 1440 ELSE rawBreak.B2_START_MIN
+                       END AS B2_START_MIN,
+                       CASE WHEN rawBreak.B2_END_MIN IS NULL THEN NULL
+                            WHEN finalMin.OUT_MIN > 1440 AND rawBreak.B2_START_MIN < finalMin.IN_MIN
+                            THEN rawBreak.B2_END_MIN + 1440 ELSE rawBreak.B2_END_MIN
+                       END AS B2_END_MIN
+            ) adjBreak
+            CROSS APPLY (
+                SELECT CASE WHEN adjBreak.B1_START_MIN IS NULL
+                                 OR finalMin.OUT_MIN <= adjBreak.B1_START_MIN
+                                 OR adjBreak.B1_END_MIN <= finalMin.IN_MIN
+                            THEN 0
+                            ELSE
+                                (CASE WHEN finalMin.OUT_MIN < adjBreak.B1_END_MIN
+                                      THEN finalMin.OUT_MIN ELSE adjBreak.B1_END_MIN END)
+                                -
+                                (CASE WHEN finalMin.IN_MIN > adjBreak.B1_START_MIN
+                                      THEN finalMin.IN_MIN ELSE adjBreak.B1_START_MIN END)
+                       END
+                       + CASE WHEN adjBreak.B2_START_MIN IS NULL
+                                    OR finalMin.OUT_MIN <= adjBreak.B2_START_MIN
+                                    OR adjBreak.B2_END_MIN <= finalMin.IN_MIN
+                               THEN 0
+                               ELSE
+                                   (CASE WHEN finalMin.OUT_MIN < adjBreak.B2_END_MIN
+                                         THEN finalMin.OUT_MIN ELSE adjBreak.B2_END_MIN END)
+                                   -
+                                   (CASE WHEN finalMin.IN_MIN > adjBreak.B2_START_MIN
+                                         THEN finalMin.IN_MIN ELSE adjBreak.B2_START_MIN END)
+                         END AS BREAK_MIN
+            ) breakCalc
+            CROSS APPLY (
+                SELECT finalMin.OUT_MIN - finalMin.IN_MIN - ISNULL(breakCalc.BREAK_MIN, 0) AS WORK_MIN
+            ) workCalc
+        ) AS S
+        ON T.COMPANY = S.COMPANY
+       AND T.EMP_CODE = S.EMP_CODE
+       AND T.YYYYMMDD = S.YYYYMMDD
+        WHEN MATCHED THEN
+            UPDATE SET
+                DEPT_CODE    = S.DEPT_CODE,
+                SHIFT_CODE   = S.SHIFT_CODE,
+                CHECK_IN     = ISNULL(T.CHECK_IN, S.CHECK_IN),
+                CHECK_OUT    = ISNULL(T.CHECK_OUT, S.CHECK_OUT),
+                WORK_MIN     = S.WORK_MIN,
+                OVERNIGHT_YN = S.OVERNIGHT_YN,
+                LATE_YN      = S.LATE_YN,
+                LATE_MIN     = S.LATE_MIN,
+                UPDATED_AT   = GETDATE()
+        WHEN NOT MATCHED THEN
+            INSERT (COMPANY, EMP_CODE, YYYYMMDD, DEPT_CODE, SHIFT_CODE,
+                    CHECK_IN, CHECK_OUT, WORK_MIN, OVERNIGHT_YN, LATE_YN, LATE_MIN,
+                    CREATED_AT, UPDATED_AT)
+            VALUES (S.COMPANY, S.EMP_CODE, S.YYYYMMDD, S.DEPT_CODE, S.SHIFT_CODE,
+                    S.CHECK_IN, S.CHECK_OUT, S.WORK_MIN, S.OVERNIGHT_YN, S.LATE_YN, S.LATE_MIN,
+                    GETDATE(), GETDATE());
+        ]]>
+    </update>
 
 </mapper>

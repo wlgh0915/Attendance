@@ -27,6 +27,24 @@ function statusLabel(s) {
     return {DRAFT:'미상신', SUBMITTED:'승인중', APPROVED:'승인', REJECTED:'반려', CANCELED:'취소'}[s] || s;
 }
 
+function toMinute(hhmm) {
+    if (!hhmm) return null;
+    const [h, m] = hhmm.split(':').map(Number);
+    return h * 60 + m;
+}
+
+function earlyMin(day) {
+    if (!day || !day.record || !day.record.checkIn || !day.workOnHhmm) return 0;
+    const actual = toMinute(day.record.checkIn);
+    const planned = toMinute(day.workOnHhmm);
+    if (actual == null || planned == null) return 0;
+    return Math.max(0, planned - actual);
+}
+
+function hasShiftMismatch(day) {
+    return day && day.record && day.record.shiftCode && day.shiftCode && day.record.shiftCode !== day.shiftCode;
+}
+
 function weekTotalCell(weekMin) {
     if (weekMin <= 0) return '<td class="week-total">-</td>';
     const h    = Math.floor(weekMin / 60);
@@ -57,6 +75,7 @@ function renderCalendar() {
         const c      = dowToCol(day.dayOfWeekNum);
         const colCls = c === 0 ? 'col-sun' : c === 6 ? 'col-sat' : '';
         const todCls = day.workDate === today ? 'today' : '';
+        const monthCls = day.inCurrentMonth ? '' : 'out-month';
         const dn     = parseInt(day.workDate.slice(8));
 
         let inner = `<div class="date-num">${dn}</div>`;
@@ -82,6 +101,14 @@ function renderCalendar() {
         }
 
         // 4. 결근 (WORK일이고 과거 날짜이며 출근 기록 없고 승인된 휴가도 없는 경우)
+        const early = earlyMin(day);
+        if (early > 0) {
+            inner += `<span class="early-badge">조출 ${early}분</span>`;
+        }
+        if (hasShiftMismatch(day)) {
+            inner += `<span class="mismatch-badge">근태코드 불일치</span>`;
+        }
+
         const hasApprovedLeave = (day.requests || []).some(
             r => r.requestCategory === 'LEAVE' && r.status === 'APPROVED'
         );
@@ -102,14 +129,16 @@ function renderCalendar() {
             inner += `<span class="req-badge"><span class="${reqCls(r.status)}">${typeLabel} ${statusLabel(r.status)}</span>${timeStr}</span>`;
         });
 
-        html += `<td class="${colCls} ${todCls}" onclick="openModal('${day.workDate}')">${inner}</td>`;
+        html += `<td class="${colCls} ${todCls} ${monthCls}" onclick="openModal('${day.workDate}')">${inner}</td>`;
         col++;
     });
 
     endRow();
     tbody.innerHTML = html;
 
-    const totalMin = DAYS.reduce((sum, d) => sum + (d.record && d.record.workMin ? d.record.workMin : 0), 0);
+    const totalMin = DAYS
+        .filter(d => d.inCurrentMonth)
+        .reduce((sum, d) => sum + (d.record && d.record.workMin ? d.record.workMin : 0), 0);
     const th = Math.floor(totalMin / 60), tm = totalMin % 60;
     const totalTxt = totalMin > 0
         ? th + '시간' + (tm > 0 ? ' ' + tm + '분' : '')
@@ -126,6 +155,40 @@ function onEmpChange(empCode) {
     if (!empCode) return;
     const dept = IS_ADMIN ? document.getElementById('deptSelect').value : SELECTED_DEPT;
     location.href = `/attendance/calendar?ym=${CURRENT_YM}&deptCode=${dept}&empCode=${empCode}`;
+}
+
+function initRecordGenerateDate() {
+    const input = document.getElementById('recordGenerateDate');
+    if (!input) return;
+    input.value = today.startsWith(CURRENT_YM) ? today : CURRENT_YM + '-01';
+}
+
+async function generateDeptRecords() {
+    const dateEl = document.getElementById('recordGenerateDate');
+    const deptEl = document.getElementById('deptSelect');
+    const workDate = dateEl ? dateEl.value : '';
+    const deptCode = deptEl ? deptEl.value : SELECTED_DEPT;
+    if (!workDate) {
+        showToast('실적 반영일을 선택해주세요.', 'error');
+        return;
+    }
+    if (!deptCode) {
+        showToast('부서를 선택해주세요.', 'error');
+        return;
+    }
+    if (!confirm('선택한 부서 직원들의 출퇴근 실적을 근무계획 기준으로 반영하시겠습니까?')) return;
+
+    const res = await fetch('/attendance/calendar/generate-records?deptCode='
+        + encodeURIComponent(deptCode) + '&workDate=' + encodeURIComponent(workDate), {
+        method: 'POST'
+    });
+    const json = await res.json();
+    if (!json.success) {
+        showToast(json.message || '실적 반영에 실패했습니다.', 'error');
+        return;
+    }
+    showToast(json.message || '반영되었습니다.', 'success');
+    setTimeout(() => location.reload(), 800);
 }
 
 /* ───────── 근태 등록 모달 ───────── */
@@ -241,4 +304,5 @@ function showToast(msg, type) {
     setTimeout(() => { t.style.display = 'none'; }, 3000);
 }
 
+initRecordGenerateDate();
 renderCalendar();

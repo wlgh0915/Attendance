@@ -11,10 +11,25 @@
 
 .filter-group { display: flex; flex-direction: column; gap: 3px; }
 .filter-group label { font-size: 11px; color: #666; font-weight: 600; }
-.filter-group select {
+.filter-group select,
+.filter-group input {
     padding: 5px 10px; border: 1px solid #ced4da; border-radius: 4px;
     font-size: 13px; font-family: 'Malgun Gothic', sans-serif; min-width: 160px;
 }
+
+.btn-generate-records {
+    align-self: flex-end;
+    padding: 6px 14px;
+    border: none;
+    border-radius: 4px;
+    background: #2c3e50;
+    color: #fff;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Malgun Gothic', sans-serif;
+}
+.btn-generate-records:hover { background: #1f2d3a; }
 
 .emp-badge {
     margin-left: auto; align-self: center;
@@ -34,8 +49,21 @@
 .cal-grid td.empty { background: #fafafa; cursor: default; }
 .cal-grid td.empty:hover { background: #fafafa !important; }
 .cal-grid td.today { background: #fffde7 !important; }
+.cal-grid td.out-month { background: #f7f8fa; color: #8f9aa5; }
+.cal-grid td.out-month .date-num { color: #a6afb8; }
+.cal-grid td.out-month .shift-badge,
+.cal-grid td.out-month .rec-badge,
+.cal-grid td.out-month .req-badge,
+.cal-grid td.out-month .late-badge,
+.cal-grid td.out-month .early-badge,
+.cal-grid td.out-month .mismatch-badge,
+.cal-grid td.out-month .absent-badge {
+    opacity: 0.58;
+}
 .cal-grid td.col-sun .date-num { color: #e74c3c; }
 .cal-grid td.col-sat .date-num { color: #2980b9; }
+.cal-grid td.out-month.col-sun .date-num,
+.cal-grid td.out-month.col-sat .date-num { color: #a6afb8; }
 
 .date-num { font-size: 13px; font-weight: 700; color: #2c3e50; margin-bottom: 4px; }
 .badge { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 10px; font-weight: 600; margin: 1px 0; white-space: nowrap; }
@@ -53,6 +81,10 @@
                background: #e8f5e9; padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
 .late-badge  { display: block; margin-top: 1px; font-size: 9px; color: #7b1f1f;
                background: #fde8e8; padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
+.early-badge  { display: block; margin-top: 1px; font-size: 9px; color: #7a4c00;
+                background: #fff3cd; padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
+.mismatch-badge { display: block; margin-top: 1px; font-size: 9px; color: #5a2d82;
+                  background: #efe5ff; padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
 .absent-badge { display: block; margin-top: 2px; font-size: 9px; font-weight: 700; color: #fff;
                 background: #c0392b; padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
 

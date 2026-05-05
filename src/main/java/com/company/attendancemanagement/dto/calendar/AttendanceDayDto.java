@@ -17,6 +17,7 @@ public class AttendanceDayDto {
     private String workOnHhmm;
     private String workOffHhmm;
     private String workDayType;    // WORK / OFF / HOLIDAY
+    private boolean inCurrentMonth;
     private List<AttendanceReqSummaryDto> requests = new ArrayList<>();
     private DailyAttendanceDto record;             // 출퇴근 실적 (없으면 null)
 }

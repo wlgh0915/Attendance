@@ -44,6 +44,14 @@
             </select>
         </div>
 
+        <div class="filter-group" th:if="${isAdmin}">
+            <label>실적 반영일</label>
+            <input type="date" id="recordGenerateDate">
+        </div>
+        <button type="button" class="btn-generate-records" th:if="${isAdmin}" onclick="generateDeptRecords()">
+            부서 실적 자동생성
+        </button>
+
         <div class="emp-badge" th:if="${empInfo != null}"
              th:text="${(empInfo['deptName'] ?: '') + ' | ' + (empInfo['empName'] ?: '') + ' (' + targetEmp + ')'}">
         </div>

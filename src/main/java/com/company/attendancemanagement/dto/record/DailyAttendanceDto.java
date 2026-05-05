@@ -7,6 +7,7 @@ import lombok.Setter;
 @Setter
 public class DailyAttendanceDto {
     private String  yyyymmdd;
+    private String  shiftCode;
     private String  actualShiftCode;
     private String  checkIn;       // HH:mm
     private String  checkOut;      // HH:mm
