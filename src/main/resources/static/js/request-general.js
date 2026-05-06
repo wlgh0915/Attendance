@@ -13,6 +13,10 @@ const shiftCodesData = Array.from(document.querySelectorAll('#shiftTimesData spa
     shiftName: sp.dataset.name,
     workOnHhmm:  sp.dataset.on  || '',
     workOffHhmm: sp.dataset.off || '',
+    break1StartHhmm: sp.dataset.break1Start || '',
+    break1EndHhmm: sp.dataset.break1End || '',
+    break2StartHhmm: sp.dataset.break2Start || '',
+    break2EndHhmm: sp.dataset.break2End || '',
     workMinutes: sp.dataset.workMin ? parseInt(sp.dataset.workMin, 10) : 0
 }));
 
@@ -78,7 +82,8 @@ function isSameDay(timeType) {
     return !timeType || timeType === 'N0';
 }
 
-function validateCheckIn(row) {
+function validateCheckIn(row, requestCategory) {
+    if (requestCategory === 'HOLIDAY') return true;
     if (!row.checkIn) {
         showToast('출근 기록이 없으면 일반 근태를 신청할 수 없습니다.', 'error');
         return false;
@@ -127,6 +132,10 @@ function absoluteMinute(timeType, time) {
 
 function selectedWorkMin(tr, state, row) {
     if (state && state.requestWorkMin != null && state.status !== 'DRAFT') return state.requestWorkMin;
+    const requestWorkCode = tr.querySelector('[data-field="requestWorkCode"]').value;
+    const breakSource = currentCategory === 'HOLIDAY'
+        ? (shiftCodesData.find(s => s.shiftCode === requestWorkCode || s.shiftName === requestWorkCode) || row || {})
+        : (row || {});
     const startType = tr.querySelector('[data-field="startTimeType"]').value;
     const startTime = tr.querySelector('[data-field="startTime"]').value;
     const endType = tr.querySelector('[data-field="endTimeType"]').value;
@@ -134,7 +143,7 @@ function selectedWorkMin(tr, state, row) {
     const startMin = absoluteMinute(startType, startTime);
     const endMin = absoluteMinute(endType, endTime);
     if (startMin == null || endMin == null) return 0;
-    return Math.max(0, endMin - startMin - breakOverlapMin(row || {}, startMin, endMin));
+    return Math.max(0, endMin - startMin - breakOverlapMin(breakSource, startMin, endMin));
 }
 
 function isActiveRequest(state) {
@@ -224,7 +233,7 @@ function requestEffectMin(category, min) {
 }
 
 function actualAttendanceRange(row) {
-    if (!row || !row.checkIn || !row.checkOut || row.actualWorkMin == null) return null;
+    if (!row || !row.checkIn || !row.checkOut) return null;
     const start = absoluteMinute('N0', row.checkIn);
     let end = absoluteMinute('N0', row.checkOut);
     if (row.overnightYn === 'Y' || end < start) end += 1440;
@@ -253,15 +262,116 @@ function weeklyBaseWithRequests(row) {
     return (row.shiftWorkMin || 0) + (row.activeWeeklyRequestEffectMin || 0);
 }
 
-function cumulativeEstimatedWorkMin(row, tr, currentState) {
-    let total = weeklyBaseWithRequests(row) - requestEffectForState(currentState);
-    const selectedMin = selectedWorkMin(tr, currentState, row);
-    let effectMin = requestEffectMin(currentCategory, selectedMin);
-    if (effectMin > 0) {
-        effectMin = Math.max(0, effectMin - actualOverlapMin(row, tr));
+function requestMatches(a, b) {
+    if (!a || !b) return false;
+    if (a.requestId != null && b.requestId != null) return String(a.requestId) === String(b.requestId);
+    return a.requestWorkCode && a.requestWorkCode === b.requestWorkCode;
+}
+
+function activeGeneralRequests(row) {
+    return Object.values((row && row.requestsByWorkCode) || {})
+        .filter(req => isActiveRequest(req) && categoryOfRequest(req) !== 'OTHER');
+}
+
+function requestRange(req) {
+    const start = absoluteMinute(req.startTimeType || 'N0', req.startTime);
+    let end = absoluteMinute(req.endTimeType || 'N0', req.endTime);
+    if (start == null || end == null) return null;
+    if (end < start) end += 1440;
+    return {start, end};
+}
+
+function plannedRange(row) {
+    const start = absoluteMinute('N0', row && row.shiftOnTime);
+    let end = absoluteMinute('N0', row && row.shiftOffTime);
+    if (start == null || end == null) return null;
+    if (end <= start) end += 1440;
+    return {start, end};
+}
+
+function recognizedActualWorkMin(row, currentState, selectedState) {
+    if (!row || !row.checkIn) return 0;
+
+    const plan = plannedRange(row);
+    const actualStart = absoluteMinute('N0', row.checkIn);
+    let actualEnd = null;
+    if (row.checkOut) {
+        actualEnd = absoluteMinute('N0', row.checkOut);
+        if (row.overnightYn === 'Y' || actualEnd < actualStart) actualEnd += 1440;
+    } else if (plan) {
+        actualEnd = plan.end;
     }
-    total += effectMin;
+    if (actualStart == null || actualEnd == null) return 0;
+
+    let total = 0;
+    if (plan && (row.plannedWorkMin || 0) > 0) {
+        const baseStart = Math.max(actualStart, plan.start);
+        const baseEnd = Math.min(actualEnd, plan.end);
+        if (baseEnd > baseStart) {
+            total += Math.max(0, baseEnd - baseStart - breakOverlapMin(row, baseStart, baseEnd));
+        }
+    }
+
+    const actual = row.checkOut ? {start: actualStart, end: actualEnd} : null;
+    const requests = activeGeneralRequests(row).filter(req => !requestMatches(req, currentState));
+    if (selectedState) requests.push(selectedState);
+    requests.forEach(req => {
+        const category = categoryOfRequest(req);
+        if (category === 'OVERTIME' || category === 'HOLIDAY') {
+            if (!actual) return;
+            const reqRange = requestRange(req);
+            if (!reqRange) return;
+            let overlap = Math.max(0, Math.min(actual.end, reqRange.end) - Math.max(actual.start, reqRange.start));
+            if ((req.requestWorkMin || 0) > 0) overlap = Math.min(overlap, req.requestWorkMin);
+            total += overlap;
+        } else if (category === 'LEAVE') {
+            total -= (req.requestWorkMin || row.plannedWorkMin || 0);
+        }
+    });
+
+    return Math.max(0, total);
+}
+
+function workDateIsPastOrToday() {
+    const workDate = document.getElementById('workDate').value;
+    if (!workDate) return false;
+    const today = new Date();
+    const ymd = today.getFullYear() + '-'
+        + String(today.getMonth() + 1).padStart(2, '0') + '-'
+        + String(today.getDate()).padStart(2, '0');
+    return workDate <= ymd;
+}
+
+function dailyExpectedWorkMin(row, currentState, selectedEffectMin) {
+    let total = row.plannedWorkMin || 0;
+    activeGeneralRequests(row).forEach(req => {
+        if (requestMatches(req, currentState)) return;
+        total += requestEffectForState(req);
+    });
+    total += selectedEffectMin || 0;
+    return Math.max(0, total);
+}
+
+function adjustedWeeklyWorkMin(row, currentState, selectedState) {
+    const selectedEffectMin = requestEffectForState(selectedState);
+    const total = weeklyBaseWithRequests(row) - requestEffectForState(currentState) + (selectedEffectMin || 0);
     return Math.max(total, 0);
+}
+
+function cumulativeEstimatedWorkMin(row, tr, currentState) {
+    const selectedMin = selectedWorkMin(tr, currentState, row);
+    const selectedWorkCode = tr.querySelector('[data-field="requestWorkCode"]').value;
+    const selectedState = selectedWorkCode ? {
+        status: 'DRAFT',
+        existingRequestGroup: 'GENERAL',
+        requestWorkCode: selectedWorkCode,
+        requestWorkMin: selectedMin,
+        startTimeType: tr.querySelector('[data-field="startTimeType"]').value,
+        startTime: tr.querySelector('[data-field="startTime"]').value,
+        endTimeType: tr.querySelector('[data-field="endTimeType"]').value,
+        endTime: tr.querySelector('[data-field="endTime"]').value
+    } : null;
+    return adjustedWeeklyWorkMin(row, currentState, selectedState);
 }
 
 function refreshEstimatedWorkMin(tr, row, state) {
@@ -281,7 +391,7 @@ function validateWeeklyWorkLimit(tr, row, state) {
 }
 
 function savedEstimatedWorkMin(row, state, selectedWorkCode) {
-    return Math.max(weeklyBaseWithRequests(row), 0);
+    return adjustedWeeklyWorkMin(row, null, null);
 }
 
 function computeTimeState(category, code, r) {
@@ -320,7 +430,7 @@ function renderTable(rows) {
     if (checkAll) checkAll.checked = false;
     const tbody = document.getElementById('reqTableBody');
     if (!rows || rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="15" class="no-data">조회된 인원이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="16" class="no-data">조회된 인원이 없습니다.</td></tr>';
         tableData = [];
         return;
     }
@@ -353,7 +463,8 @@ function renderTable(rows) {
             + '<td>'+(r.deptName||'')+'</td>'
             + '<td>'+(r.workPlanName||'-')+'</td>'
             + '<td>'+formatWorkMin(r.plannedWorkMin || 0)+'</td>'
-            + '<td>'+formatWorkMin(r.actualWorkMin || 0)+'</td>'
+            + '<td>'+(r.actualWorkName || r.actualWorkCode || '-')+'</td>'
+            + '<td>'+formatWorkMin(recognizedActualWorkMin(r))+'</td>'
             + '<td data-field="shiftWorkMin">'+formatWorkMin(savedEstimatedWorkMin(r, existing, selectedWorkCode))+'</td>'
             + '<td><select data-field="requestWorkCode" onchange="onWorkCodeChange(this,'+idx+')">'+buildWorkCodeOptions(currentCategory,selectedWorkCode)+'</select></td>'
             + '<td><input type="text" data-field="reason" value="'+reasonVal+'" placeholder="사유" '+disFull+'></td>'
@@ -492,7 +603,11 @@ async function doSearch() {
 
     const params = new URLSearchParams({requestCategory:currentCategory, workDate, deptCode, empCode});
     const res = await fetch('/attendance/request/general/search?'+params);
-    if (!res.ok) { showToast('조회 중 오류가 발생했습니다.','error'); return; }
+    if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        showToast((err && err.message) || '조회 중 오류가 발생했습니다.','error');
+        return;
+    }
     renderTable(await res.json());
 }
 
@@ -502,7 +617,7 @@ async function doSave() {
     for (const tr of selected) {
         const dto = rowToDto(tr);
         if (!dto.requestWorkCode) { showToast('신청근무를 선택하세요.','error'); return; }
-        if (!validateCheckIn(tableData[parseInt(tr.dataset.idx)])) return;
+        if (!validateCheckIn(tableData[parseInt(tr.dataset.idx)], currentCategory)) return;
         if (!dto.startTime || !dto.endTime) { showToast('시작/종료 시간을 선택하세요.','error'); return; }
         if (dto.requestWorkCode === '조출연장' && dto.startTime >= '09:00') {
             showToast('조출연장은 시작시간이 09:00 이전이어야 합니다.','error'); return;
@@ -556,7 +671,7 @@ async function doSubmit() {
         let requestId = dto.requestId;
         const existing = currentRequestForRow(tr, tableData[idx]);
         if (!dto.requestWorkCode) { showToast('신청근무를 선택하세요.','error'); return; }
-        if (!validateCheckIn(tableData[idx])) return;
+        if (!validateCheckIn(tableData[idx], currentCategory)) return;
         if (!dto.startTime || !dto.endTime) { showToast('시작/종료 시간을 선택하세요.','error'); return; }
         if (dto.requestWorkCode === '조출연장' && dto.startTime >= '09:00') {
             showToast('조출연장은 시작시간이 09:00 이전이어야 합니다.','error'); return;
@@ -616,3 +731,4 @@ function showToast(msg, type) {
 }
 
 document.addEventListener('DOMContentLoaded', doSearch);
+

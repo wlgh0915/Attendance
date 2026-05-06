@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -64,6 +65,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         search.setCompany(loginUser.getCompany());
         search.setDeptLeader(canViewAll);
         search.setLoginEmpCode(loginUser.getEmpCode());
+        search.setToday(LocalDate.now().toString());
 
         if (!canViewAll) {
             search.setDeptCode(loginUser.getDeptCode());
@@ -254,7 +256,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
 
         boolean isOther = "OTHER".equals(dto.getRequestCategory());
 
-        if (!isOther && requestMapper.countAttendanceCheckIn(
+        if (!isOther && !"HOLIDAY".equals(dto.getRequestCategory()) && requestMapper.countAttendanceCheckIn(
                 dto.getCompany(), dto.getEmpCode(), dto.getWorkDate()) == 0) {
             throw new IllegalArgumentException("출근 기록이 없으면 일반 근태를 신청할 수 없습니다.");
         }
@@ -332,8 +334,14 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             throw new IllegalArgumentException("종료 시간이 시작 시간보다 늦어야 합니다.");
         }
         int workMin = end - start;
-        Map<String, Object> shiftInfo = requestMapper.findPlannedShiftInfo(
-                dto.getCompany(), dto.getEmpCode(), dto.getWorkDate());
+        Map<String, Object> shiftInfo = null;
+        if ("HOLIDAY".equals(dto.getRequestCategory())) {
+            shiftInfo = requestMapper.findShiftInfoByCodeOrName(dto.getCompany(), dto.getRequestWorkCode());
+        }
+        if (shiftInfo == null) {
+            shiftInfo = requestMapper.findPlannedShiftInfo(
+                    dto.getCompany(), dto.getEmpCode(), dto.getWorkDate());
+        }
         if (shiftInfo != null) {
             workMin -= breakOverlapMin(shiftInfo, start, end);
         }

@@ -45,7 +45,9 @@
             END                                                   AS plannedWorkMin,
             ar.WORK_MIN                                           AS actualWorkMin,
             weekly.weekWorkMin                                     AS shiftWorkMin,
-            weeklyReq.activeWeeklyRequestEffectMin                 AS activeWeeklyRequestEffectMin,
+            weeklyReq.activeWeeklyRequestEffectMin + weeklyActualAdj.weekActualAdjustmentMin AS activeWeeklyRequestEffectMin,
+            COALESCE(NULLIF(ar.ACTUAL_SHIFT_CODE, ''), NULLIF(ar.SHIFT_CODE, ''), '') AS actualWorkCode,
+            ISNULL(actualShift.SHIFT_NAME, '')                     AS actualWorkName,
             LEFT(CONVERT(VARCHAR(8), ar.CHECK_IN, 108), 5)         AS checkIn,
             LEFT(CONVERT(VARCHAR(8), ar.CHECK_OUT, 108), 5)        AS checkOut,
             ar.OVERNIGHT_YN                                        AS overnightYn,
@@ -122,10 +124,6 @@
                            ELSE ISNULL(wpd.WORK_DAY_TYPE, ISNULL(ws.WORK_DAY_TYPE, ''))
                        END AS WORK_DAY_TYPE
             ) day_type
-            LEFT JOIN HRTDAILYATTENDANCE01 arw
-                   ON arw.COMPANY = h.COMPANY
-                  AND arw.EMP_CODE = h.EMP_CODE
-                  AND arw.YYYYMMDD = CONVERT(VARCHAR(8), wd.WORK_DATE, 112)
             OUTER APPLY (
                 SELECT TOP 1 oto.CHANGE_SHIFT_CODE
                 FROM HRTATTENDANCEREQUEST01 otr
@@ -141,30 +139,6 @@
                   AND ows.SHIFT_CODE = oReq.CHANGE_SHIFT_CODE
             CROSS APPLY (
                 SELECT CASE
-                           WHEN arw.CHECK_IN IS NOT NULL AND arw.CHECK_OUT IS NULL THEN
-                               CASE
-                                   WHEN oReq.CHANGE_SHIFT_CODE IS NOT NULL THEN
-                                       CASE WHEN ows.WORK_ON_HHMM IS NULL OR ows.WORK_OFF_HHMM IS NULL THEN 0
-                                            WHEN ows.WORK_OFF_HHMM >= ows.WORK_ON_HHMM
-                                            THEN DATEDIFF(MINUTE, ows.WORK_ON_HHMM, ows.WORK_OFF_HHMM)
-                                                 - ISNULL(DATEDIFF(MINUTE, ows.BREAK1_START_HHMM, ows.BREAK1_END_HHMM), 0)
-                                                 - ISNULL(DATEDIFF(MINUTE, ows.BREAK2_START_HHMM, ows.BREAK2_END_HHMM), 0)
-                                            ELSE 1440 + DATEDIFF(MINUTE, ows.WORK_ON_HHMM, ows.WORK_OFF_HHMM)
-                                                 - ISNULL(DATEDIFF(MINUTE, ows.BREAK1_START_HHMM, ows.BREAK1_END_HHMM), 0)
-                                                 - ISNULL(DATEDIFF(MINUTE, ows.BREAK2_START_HHMM, ows.BREAK2_END_HHMM), 0)
-                                       END
-                                   WHEN ws.WORK_ON_HHMM IS NULL OR ws.WORK_OFF_HHMM IS NULL THEN 0
-                                   WHEN ISNULL(day_type.WORK_DAY_TYPE, '') IN ('OFF', 'HOLIDAY') THEN 0
-                                   WHEN ws.WORK_OFF_HHMM >= ws.WORK_ON_HHMM
-                                   THEN DATEDIFF(MINUTE, ws.WORK_ON_HHMM, ws.WORK_OFF_HHMM)
-                                        - ISNULL(DATEDIFF(MINUTE, ws.BREAK1_START_HHMM, ws.BREAK1_END_HHMM), 0)
-                                        - ISNULL(DATEDIFF(MINUTE, ws.BREAK2_START_HHMM, ws.BREAK2_END_HHMM), 0)
-                                   ELSE 1440 + DATEDIFF(MINUTE, ws.WORK_ON_HHMM, ws.WORK_OFF_HHMM)
-                                        - ISNULL(DATEDIFF(MINUTE, ws.BREAK1_START_HHMM, ws.BREAK1_END_HHMM), 0)
-                                        - ISNULL(DATEDIFF(MINUTE, ws.BREAK2_START_HHMM, ws.BREAK2_END_HHMM), 0)
-                               END
-                           WHEN arw.WORK_MIN IS NOT NULL THEN arw.WORK_MIN
-                           WHEN wd.WORK_DATE &lt; CAST(GETDATE() AS DATE) THEN 0
                            WHEN oReq.CHANGE_SHIFT_CODE IS NOT NULL THEN
                                CASE WHEN ows.WORK_ON_HHMM IS NULL OR ows.WORK_OFF_HHMM IS NULL THEN 0
                                     WHEN ows.WORK_OFF_HHMM >= ows.WORK_ON_HHMM
@@ -191,8 +165,8 @@
             SELECT ISNULL(SUM(
                 CASE
                     WHEN wr.REQ_TYPE IN ('연장', '조출연장', '휴일근무')
-                        THEN CASE WHEN ISNULL(wg.WORK_MIN, 0) - ISNULL(actualOverlap.OVERLAP_MIN, 0) > 0
-                                  THEN ISNULL(wg.WORK_MIN, 0) - ISNULL(actualOverlap.OVERLAP_MIN, 0)
+                        THEN CASE WHEN ISNULL(wg.WORK_MIN, 0) > 0
+                                  THEN ISNULL(wg.WORK_MIN, 0)
                                   ELSE 0
                              END
                     WHEN wr.REQ_TYPE IN ('조퇴', '외근', '외출', '오전반차', '오후반차') THEN -ISNULL(wg.WORK_MIN, 0)
@@ -257,6 +231,254 @@
               AND wr.STATUS IN ('DRAFT', 'SUBMITTED', 'APPROVED')
               AND wr.REQ_GROUP = 'GENERAL'
         ) weeklyReq
+        OUTER APPLY (
+            SELECT ISNULL(SUM(dayAdj.ADJ_MIN), 0) AS weekActualAdjustmentMin
+            FROM (
+                SELECT DATEADD(DAY, days.n,
+                               DATEADD(DAY,
+                                       -((DATEDIFF(DAY, 0, CAST(#{workDate} AS DATE)) % 7 + 7) % 7),
+                                       CAST(#{workDate} AS DATE))) AS WORK_DATE
+                FROM (VALUES(0),(1),(2),(3),(4),(5),(6)) AS days(n)
+            ) awd
+            INNER JOIN HRIDEPTTRANSFER01 awtr
+                    ON awtr.COMPANY    = h.COMPANY
+                   AND awtr.EMP_CODE   = h.EMP_CODE
+                   AND awtr.START_DATE &lt;= awd.WORK_DATE
+                   AND (awtr.END_DATE IS NULL OR awtr.END_DATE >= awd.WORK_DATE)
+            INNER JOIN ORGDEPTMASTER01 awdept
+                    ON awdept.COMPANY   = awtr.COMPANY
+                   AND awdept.DEPT_CODE = awtr.DEPT_CODE
+            INNER JOIN HRTWORKPATTERNMASTER01 awpm
+                    ON awpm.COMPANY           = awdept.COMPANY
+                   AND awpm.WORK_PATTERN_CODE = awdept.WORK_PATTERN_CODE
+                   AND awpm.USE_YN            = 'Y'
+            INNER JOIN HRTWORKPATTERNDETAIL01 awpd
+                    ON awpd.COMPANY           = awpm.COMPANY
+                   AND awpd.WORK_PATTERN_CODE = awpm.WORK_PATTERN_CODE
+                   AND awpd.SEQ = (
+                       (DATEDIFF(DAY, awpm.START_DATE, awd.WORK_DATE) % awpm.CYCLE_COUNT
+                        + awpm.CYCLE_COUNT) % awpm.CYCLE_COUNT + 1
+                   )
+            INNER JOIN HRTSHIFTMASTER01 awps
+                    ON awps.COMPANY = awpd.COMPANY AND awps.SHIFT_CODE = awpd.SHIFT_CODE
+            OUTER APPLY (
+                SELECT TOP 1 awoto.CHANGE_SHIFT_CODE
+                FROM HRTATTENDANCEREQUEST01 awotr
+                JOIN HRTATTENDANCE_OTHER01 awoto ON awoto.COMPANY = awotr.COMPANY AND awoto.REQ_ID = awotr.REQ_ID
+                WHERE awotr.COMPANY         = h.COMPANY
+                  AND awotr.TARGET_EMP_CODE = h.EMP_CODE
+                  AND awotr.TARGET_DATE     = awd.WORK_DATE
+                  AND awotr.REQ_GROUP       = 'OTHER'
+                  AND awotr.STATUS IN ('DRAFT', 'SUBMITTED', 'APPROVED')
+            ) awoReq
+            LEFT JOIN HRTSHIFTMASTER01 aws
+                   ON aws.COMPANY = h.COMPANY
+                  AND aws.SHIFT_CODE = ISNULL(awoReq.CHANGE_SHIFT_CODE, awps.SHIFT_CODE)
+            LEFT JOIN HRTDAILYATTENDANCE01 awa
+                   ON awa.COMPANY = h.COMPANY
+                  AND awa.EMP_CODE = h.EMP_CODE
+                  AND awa.YYYYMMDD = CONVERT(VARCHAR(8), awd.WORK_DATE, 112)
+            CROSS APPLY (
+                SELECT CASE ISNULL(awpd.WORK_DAY_TYPE, ISNULL(aws.WORK_DAY_TYPE, ''))
+                           WHEN 'WEEKDAY' THEN 'WORK'
+                           WHEN 'ANYDAY'  THEN 'WORK'
+                           WHEN 'WEEKEND' THEN 'OFF'
+                           ELSE ISNULL(awpd.WORK_DAY_TYPE, ISNULL(aws.WORK_DAY_TYPE, ''))
+                       END AS WORK_DAY_TYPE
+            ) awDayType
+            CROSS APPLY (
+                SELECT CASE
+                           WHEN aws.WORK_ON_HHMM IS NULL OR aws.WORK_OFF_HHMM IS NULL THEN 0
+                           WHEN ISNULL(awDayType.WORK_DAY_TYPE, '') IN ('OFF', 'HOLIDAY') THEN 0
+                           WHEN aws.WORK_OFF_HHMM >= aws.WORK_ON_HHMM
+                           THEN DATEDIFF(MINUTE, aws.WORK_ON_HHMM, aws.WORK_OFF_HHMM)
+                                - ISNULL(DATEDIFF(MINUTE, aws.BREAK1_START_HHMM, aws.BREAK1_END_HHMM), 0)
+                                - ISNULL(DATEDIFF(MINUTE, aws.BREAK2_START_HHMM, aws.BREAK2_END_HHMM), 0)
+                           ELSE 1440 + DATEDIFF(MINUTE, aws.WORK_ON_HHMM, aws.WORK_OFF_HHMM)
+                                - ISNULL(DATEDIFF(MINUTE, aws.BREAK1_START_HHMM, aws.BREAK1_END_HHMM), 0)
+                                - ISNULL(DATEDIFF(MINUTE, aws.BREAK2_START_HHMM, aws.BREAK2_END_HHMM), 0)
+                       END AS PLAN_WORK_MIN,
+                       CASE WHEN aws.WORK_ON_HHMM IS NULL OR aws.WORK_OFF_HHMM IS NULL THEN NULL
+                            ELSE DATEDIFF(MINUTE, CAST('00:00' AS TIME), aws.WORK_ON_HHMM)
+                       END AS PLAN_START_MIN,
+                       CASE WHEN aws.WORK_ON_HHMM IS NULL OR aws.WORK_OFF_HHMM IS NULL THEN NULL
+                            ELSE CASE WHEN aws.WORK_OFF_HHMM >= aws.WORK_ON_HHMM THEN 0 ELSE 1440 END
+                                 + DATEDIFF(MINUTE, CAST('00:00' AS TIME), aws.WORK_OFF_HHMM)
+                       END AS PLAN_END_MIN
+            ) awPlan
+            CROSS APPLY (
+                SELECT CASE WHEN awa.CHECK_IN IS NULL THEN NULL
+                            ELSE DATEDIFF(MINUTE, CAST('00:00' AS TIME), awa.CHECK_IN)
+                       END AS ACTUAL_START_MIN,
+                       CASE WHEN awa.CHECK_IN IS NULL THEN NULL
+                            WHEN awa.CHECK_OUT IS NULL AND awPlan.PLAN_END_MIN IS NOT NULL THEN awPlan.PLAN_END_MIN
+                            WHEN awa.CHECK_OUT IS NULL THEN NULL
+                            ELSE
+                                CASE
+                                    WHEN ISNULL(awa.OVERNIGHT_YN, 'N') = 'Y'
+                                         OR DATEDIFF(MINUTE, CAST('00:00' AS TIME), awa.CHECK_OUT)
+                                            &lt; DATEDIFF(MINUTE, CAST('00:00' AS TIME), awa.CHECK_IN)
+                                    THEN 1440 ELSE 0
+                                END
+                                + DATEDIFF(MINUTE, CAST('00:00' AS TIME), awa.CHECK_OUT)
+                       END AS ACTUAL_END_MIN
+            ) awActualRange
+            CROSS APPLY (
+                SELECT CASE WHEN awActualRange.ACTUAL_START_MIN IS NULL OR awPlan.PLAN_START_MIN IS NULL THEN NULL
+                            WHEN awActualRange.ACTUAL_START_MIN > awPlan.PLAN_START_MIN THEN awActualRange.ACTUAL_START_MIN
+                            ELSE awPlan.PLAN_START_MIN
+                       END AS WORK_START_MIN,
+                       CASE WHEN awActualRange.ACTUAL_END_MIN IS NULL OR awPlan.PLAN_END_MIN IS NULL THEN NULL
+                            WHEN awActualRange.ACTUAL_END_MIN &lt; awPlan.PLAN_END_MIN THEN awActualRange.ACTUAL_END_MIN
+                            ELSE awPlan.PLAN_END_MIN
+                       END AS WORK_END_MIN
+            ) awClip
+            CROSS APPLY (
+                SELECT
+                    (CASE WHEN aws.BREAK1_START_HHMM IS NULL OR aws.BREAK1_END_HHMM IS NULL
+                                OR awClip.WORK_START_MIN IS NULL OR awClip.WORK_END_MIN IS NULL
+                                OR awClip.WORK_END_MIN &lt;= awClip.WORK_START_MIN
+                          THEN 0
+                          ELSE
+                              CASE WHEN (CASE WHEN aws.BREAK1_END_HHMM >= aws.BREAK1_START_HHMM THEN 0 ELSE 1440 END
+                                         + DATEDIFF(MINUTE, CAST('00:00' AS TIME), aws.BREAK1_END_HHMM)) &lt;= awClip.WORK_START_MIN
+                                     OR awClip.WORK_END_MIN &lt;= DATEDIFF(MINUTE, CAST('00:00' AS TIME), aws.BREAK1_START_HHMM)
+                                   THEN 0
+                                   ELSE
+                                      (CASE WHEN (CASE WHEN aws.BREAK1_END_HHMM >= aws.BREAK1_START_HHMM THEN 0 ELSE 1440 END
+                                                   + DATEDIFF(MINUTE, CAST('00:00' AS TIME), aws.BREAK1_END_HHMM)) &lt; awClip.WORK_END_MIN
+                                             THEN CASE WHEN aws.BREAK1_END_HHMM >= aws.BREAK1_START_HHMM THEN 0 ELSE 1440 END
+                                                  + DATEDIFF(MINUTE, CAST('00:00' AS TIME), aws.BREAK1_END_HHMM)
+                                             ELSE awClip.WORK_END_MIN END)
+                                      -
+                                      (CASE WHEN DATEDIFF(MINUTE, CAST('00:00' AS TIME), aws.BREAK1_START_HHMM) > awClip.WORK_START_MIN
+                                             THEN DATEDIFF(MINUTE, CAST('00:00' AS TIME), aws.BREAK1_START_HHMM)
+                                             ELSE awClip.WORK_START_MIN END)
+                              END
+                     END)
+                    +
+                    (CASE WHEN aws.BREAK2_START_HHMM IS NULL OR aws.BREAK2_END_HHMM IS NULL
+                                OR awClip.WORK_START_MIN IS NULL OR awClip.WORK_END_MIN IS NULL
+                                OR awClip.WORK_END_MIN &lt;= awClip.WORK_START_MIN
+                          THEN 0
+                          ELSE
+                              CASE WHEN (CASE WHEN aws.BREAK2_END_HHMM >= aws.BREAK2_START_HHMM THEN 0 ELSE 1440 END
+                                         + DATEDIFF(MINUTE, CAST('00:00' AS TIME), aws.BREAK2_END_HHMM)) &lt;= awClip.WORK_START_MIN
+                                     OR awClip.WORK_END_MIN &lt;= DATEDIFF(MINUTE, CAST('00:00' AS TIME), aws.BREAK2_START_HHMM)
+                                   THEN 0
+                                   ELSE
+                                      (CASE WHEN (CASE WHEN aws.BREAK2_END_HHMM >= aws.BREAK2_START_HHMM THEN 0 ELSE 1440 END
+                                                   + DATEDIFF(MINUTE, CAST('00:00' AS TIME), aws.BREAK2_END_HHMM)) &lt; awClip.WORK_END_MIN
+                                             THEN CASE WHEN aws.BREAK2_END_HHMM >= aws.BREAK2_START_HHMM THEN 0 ELSE 1440 END
+                                                  + DATEDIFF(MINUTE, CAST('00:00' AS TIME), aws.BREAK2_END_HHMM)
+                                             ELSE awClip.WORK_END_MIN END)
+                                      -
+                                      (CASE WHEN DATEDIFF(MINUTE, CAST('00:00' AS TIME), aws.BREAK2_START_HHMM) > awClip.WORK_START_MIN
+                                             THEN DATEDIFF(MINUTE, CAST('00:00' AS TIME), aws.BREAK2_START_HHMM)
+                                             ELSE awClip.WORK_START_MIN END)
+                              END
+                     END) AS BREAK_MIN
+            ) awBreak
+            OUTER APPLY (
+                SELECT ISNULL(SUM(reqEffect.EFFECT_MIN), 0) AS REQUEST_EFFECT_MIN
+                FROM (
+                    SELECT CASE
+                               WHEN awr.REQ_TYPE IN ('연장', '조출연장', '휴일근무')
+                                   THEN CASE WHEN ISNULL(awg.WORK_MIN, 0) > 0 THEN ISNULL(awg.WORK_MIN, 0) ELSE 0 END
+                               WHEN awr.REQ_GROUP = 'GENERAL'
+                                   THEN -CASE WHEN ISNULL(awg.WORK_MIN, 0) > 0 THEN ISNULL(awg.WORK_MIN, 0) ELSE awPlan.PLAN_WORK_MIN END
+                               ELSE 0
+                           END AS EFFECT_MIN
+                    FROM HRTATTENDANCEREQUEST01 awr
+                    JOIN HRTATTENDANCE_GENERAL01 awg
+                      ON awg.COMPANY = awr.COMPANY AND awg.REQ_ID = awr.REQ_ID
+                    WHERE awr.COMPANY = h.COMPANY
+                      AND awr.TARGET_EMP_CODE = h.EMP_CODE
+                      AND awr.TARGET_DATE = awd.WORK_DATE
+                      AND awr.REQ_GROUP = 'GENERAL'
+                      AND awr.STATUS IN ('DRAFT', 'SUBMITTED', 'APPROVED')
+                ) reqEffect
+            ) awExpectedReq
+            OUTER APPLY (
+                SELECT ISNULL(SUM(actualEffect.EFFECT_MIN), 0) AS ACTUAL_EFFECT_MIN
+                FROM (
+                    SELECT CASE
+                               WHEN awar.REQ_TYPE IN ('연장', '조출연장', '휴일근무') THEN
+                                   CASE
+                                       WHEN awa.CHECK_OUT IS NULL THEN 0
+                                       WHEN awActualRange.ACTUAL_START_MIN IS NULL OR awActualRange.ACTUAL_END_MIN IS NULL THEN 0
+                                       WHEN awReqRange.REQ_START_MIN IS NULL OR awReqRange.REQ_END_MIN IS NULL THEN 0
+                                       WHEN awReqRange.REQ_END_MIN &lt;= awActualRange.ACTUAL_START_MIN
+                                            OR awActualRange.ACTUAL_END_MIN &lt;= awReqRange.REQ_START_MIN THEN 0
+                                       WHEN (CASE WHEN awReqRange.REQ_END_MIN &lt; awActualRange.ACTUAL_END_MIN
+                                                  THEN awReqRange.REQ_END_MIN ELSE awActualRange.ACTUAL_END_MIN END)
+                                            -
+                                            (CASE WHEN awReqRange.REQ_START_MIN > awActualRange.ACTUAL_START_MIN
+                                                  THEN awReqRange.REQ_START_MIN ELSE awActualRange.ACTUAL_START_MIN END) > ISNULL(awag.WORK_MIN, 0)
+                                            THEN ISNULL(awag.WORK_MIN, 0)
+                                       ELSE
+                                            (CASE WHEN awReqRange.REQ_END_MIN &lt; awActualRange.ACTUAL_END_MIN
+                                                  THEN awReqRange.REQ_END_MIN ELSE awActualRange.ACTUAL_END_MIN END)
+                                            -
+                                            (CASE WHEN awReqRange.REQ_START_MIN > awActualRange.ACTUAL_START_MIN
+                                                  THEN awReqRange.REQ_START_MIN ELSE awActualRange.ACTUAL_START_MIN END)
+                                   END
+                               ELSE -CASE WHEN ISNULL(awag.WORK_MIN, 0) > 0 THEN ISNULL(awag.WORK_MIN, 0) ELSE awPlan.PLAN_WORK_MIN END
+                           END AS EFFECT_MIN
+                    FROM HRTATTENDANCEREQUEST01 awar
+                    JOIN HRTATTENDANCE_GENERAL01 awag
+                      ON awag.COMPANY = awar.COMPANY AND awag.REQ_ID = awar.REQ_ID
+                    CROSS APPLY (
+                        SELECT CASE WHEN awag.START_TIME IS NULL THEN NULL
+                                    ELSE CASE WHEN ISNULL(awag.START_TIME_TYPE, 'N0') = 'N1' THEN 1440 ELSE 0 END
+                                         + DATEDIFF(MINUTE, CAST('00:00' AS TIME), awag.START_TIME)
+                               END AS REQ_START_MIN,
+                               CASE WHEN awag.END_TIME IS NULL THEN NULL
+                                    ELSE CASE WHEN ISNULL(awag.END_TIME_TYPE, 'N0') = 'N1' THEN 1440 ELSE 0 END
+                                         + DATEDIFF(MINUTE, CAST('00:00' AS TIME), awag.END_TIME)
+                               END AS REQ_END_RAW_MIN
+                    ) awReqRaw
+                    CROSS APPLY (
+                        SELECT awReqRaw.REQ_START_MIN AS REQ_START_MIN,
+                               CASE
+                                   WHEN awReqRaw.REQ_START_MIN IS NULL OR awReqRaw.REQ_END_RAW_MIN IS NULL THEN awReqRaw.REQ_END_RAW_MIN
+                                   WHEN awReqRaw.REQ_END_RAW_MIN &lt;= awReqRaw.REQ_START_MIN THEN awReqRaw.REQ_END_RAW_MIN + 1440
+                                   ELSE awReqRaw.REQ_END_RAW_MIN
+                               END AS REQ_END_MIN
+                    ) awReqRange
+                    WHERE awar.COMPANY = h.COMPANY
+                      AND awar.TARGET_EMP_CODE = h.EMP_CODE
+                      AND awar.TARGET_DATE = awd.WORK_DATE
+                      AND awar.REQ_GROUP = 'GENERAL'
+                      AND awar.STATUS = 'APPROVED'
+                ) actualEffect
+            ) awActualReq
+            CROSS APPLY (
+                SELECT CASE
+                           WHEN awClip.WORK_START_MIN IS NOT NULL
+                                AND awClip.WORK_END_MIN IS NOT NULL
+                                AND awClip.WORK_END_MIN > awClip.WORK_START_MIN
+                           THEN awClip.WORK_END_MIN - awClip.WORK_START_MIN - ISNULL(awBreak.BREAK_MIN, 0)
+                           WHEN awa.WORK_MIN IS NOT NULL
+                                AND ISNULL(awPlan.PLAN_WORK_MIN, 0) > 0
+                           THEN CASE WHEN awa.WORK_MIN > awPlan.PLAN_WORK_MIN THEN awPlan.PLAN_WORK_MIN ELSE awa.WORK_MIN END
+                           ELSE 0
+                       END AS BASE_ACTUAL_MIN
+            ) awBaseActual
+            CROSS APPLY (
+                SELECT CASE
+                           WHEN awd.WORK_DATE > CAST(#{today} AS DATE) THEN 0
+                           ELSE
+                               (CASE WHEN
+                                    ISNULL(awBaseActual.BASE_ACTUAL_MIN, 0) + ISNULL(awActualReq.ACTUAL_EFFECT_MIN, 0) &lt; 0
+                                     THEN 0
+                                     ELSE
+                                    ISNULL(awBaseActual.BASE_ACTUAL_MIN, 0) + ISNULL(awActualReq.ACTUAL_EFFECT_MIN, 0)
+                                END)
+                                - (ISNULL(awPlan.PLAN_WORK_MIN, 0) + ISNULL(awExpectedReq.REQUEST_EFFECT_MIN, 0))
+                       END AS ADJ_MIN
+            ) dayAdj
+        ) weeklyActualAdj
         LEFT JOIN HRTATTENDANCEREQUEST01 r
                ON h.COMPANY = r.COMPANY
               AND h.EMP_CODE = r.TARGET_EMP_CODE
@@ -272,6 +494,9 @@
                ON h.COMPANY = ar.COMPANY
               AND h.EMP_CODE = ar.EMP_CODE
               AND ar.YYYYMMDD = REPLACE(#{workDate}, '-', '')
+        LEFT JOIN HRTSHIFTMASTER01 actualShift
+               ON actualShift.COMPANY = h.COMPANY
+              AND actualShift.SHIFT_CODE = COALESCE(NULLIF(ar.ACTUAL_SHIFT_CODE, ''), NULLIF(ar.SHIFT_CODE, ''), s.SHIFT_CODE)
         WHERE h.COMPANY = #{company}
           AND h.DEPT_CODE = #{deptCode}
           AND h.RETIRE_DATE IS NULL
@@ -633,6 +858,10 @@
                WORK_DAY_TYPE AS workDayType,
                CONVERT(VARCHAR(5), WORK_ON_HHMM,  108) AS workOnHhmm,
                CONVERT(VARCHAR(5), WORK_OFF_HHMM, 108) AS workOffHhmm,
+               CONVERT(VARCHAR(5), BREAK1_START_HHMM, 108) AS break1StartHhmm,
+               CONVERT(VARCHAR(5), BREAK1_END_HHMM,   108) AS break1EndHhmm,
+               CONVERT(VARCHAR(5), BREAK2_START_HHMM, 108) AS break2StartHhmm,
+               CONVERT(VARCHAR(5), BREAK2_END_HHMM,   108) AS break2EndHhmm,
                CASE
                    WHEN WORK_ON_HHMM IS NOT NULL AND WORK_OFF_HHMM IS NOT NULL
                        THEN (CASE WHEN WORK_OFF_HHMM >= WORK_ON_HHMM
@@ -706,6 +935,19 @@
           AND s.WORK_ON_HHMM IS NOT NULL
           AND s.WORK_OFF_HHMM IS NOT NULL
         ]]>
+    </select>
+
+    <select id="findShiftInfoByCodeOrName" resultType="java.util.HashMap">
+        SELECT LEFT(CONVERT(VARCHAR(8), WORK_ON_HHMM,  108), 5) AS workOnHhmm,
+               LEFT(CONVERT(VARCHAR(8), WORK_OFF_HHMM, 108), 5) AS workOffHhmm,
+               LEFT(CONVERT(VARCHAR(8), BREAK1_START_HHMM, 108), 5) AS break1StartHhmm,
+               LEFT(CONVERT(VARCHAR(8), BREAK1_END_HHMM,   108), 5) AS break1EndHhmm,
+               LEFT(CONVERT(VARCHAR(8), BREAK2_START_HHMM, 108), 5) AS break2StartHhmm,
+               LEFT(CONVERT(VARCHAR(8), BREAK2_END_HHMM,   108), 5) AS break2EndHhmm
+        FROM HRTSHIFTMASTER01
+        WHERE COMPANY = #{company}
+          AND USE_YN = 'Y'
+          AND (SHIFT_CODE = #{shiftCodeOrName} OR SHIFT_NAME = #{shiftCodeOrName})
     </select>
 
     <select id="findEffectiveWorkTimeInfo"
@@ -887,8 +1129,8 @@
         SELECT ISNULL(SUM(
             CASE
                 WHEN r.REQ_TYPE IN ('연장', '조출연장', '휴일근무')
-                    THEN CASE WHEN ISNULL(g.WORK_MIN, 0) - ISNULL(actualOverlap.OVERLAP_MIN, 0) > 0
-                              THEN ISNULL(g.WORK_MIN, 0) - ISNULL(actualOverlap.OVERLAP_MIN, 0)
+                    THEN CASE WHEN ISNULL(g.WORK_MIN, 0) > 0
+                              THEN ISNULL(g.WORK_MIN, 0)
                               ELSE 0
                          END
                 WHEN r.REQ_TYPE IN ('조퇴', '외근', '외출', '오전반차', '오후반차') THEN -ISNULL(g.WORK_MIN, 0)
