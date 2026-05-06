@@ -47,6 +47,7 @@ function selectedShiftWorkMin(workCode, fallback) {
 }
 
 function baseDayWorkMin(row) {
+    if (row.checkIn && !row.checkOut) return row.plannedWorkMin || 0;
     if (row.actualWorkMin != null) return row.actualWorkMin;
     return row.plannedWorkMin || 0;
 }
