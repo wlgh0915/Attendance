@@ -56,6 +56,12 @@ function isActiveRequest(state) {
     return state && ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(state.status);
 }
 
+function hasActiveOtherRequest(row) {
+    return Object.values(row.requestsByWorkCode || {}).some(req =>
+        req.existingRequestGroup === 'OTHER' && isActiveRequest(req)
+    );
+}
+
 function categoryOfRequest(state) {
     if (!state || state.existingRequestGroup === 'OTHER') return 'OTHER';
     if (state.requestWorkCode === '연장' || state.requestWorkCode === '조출연장') return 'OVERTIME';
@@ -95,20 +101,26 @@ function renderTable(rows) {
         const selectedWorkCode = r.requestWorkCode || '';
         const existing = existingRequestFor(r, selectedWorkCode) || r;
         const locked = (existing.status === 'SUBMITTED' || existing.status === 'APPROVED');
-        const dis = locked ? 'disabled' : '';
+        const activeOtherRequest = existing.existingRequestGroup === 'OTHER' && isActiveRequest(existing);
+        const blockedByOtherRequest = hasActiveOtherRequest(r) && !activeOtherRequest;
+        const dis = (locked || blockedByOtherRequest) ? 'disabled' : '';
+        const checkDis = blockedByOtherRequest ? 'disabled' : '';
         const reasonVal = (existing.reason||'').replace(/"/g,'&quot;');
         const reasonDetailVal = (existing.reasonDetail||'').replace(/"/g,'&quot;');
+        const statusHtml = blockedByOtherRequest
+            ? '<span class="badge badge-submitted">신청있음</span>'
+            : statusBadge(existing.status);
         return '<tr data-idx="'+idx+'">'
-            + '<td class="td-check" onclick="clickCheckCell(this)"><input type="checkbox" onclick="event.stopPropagation();toggleCheck(this)"></td>'
+            + '<td class="td-check" onclick="clickCheckCell(this)"><input type="checkbox" '+checkDis+' onclick="event.stopPropagation();toggleCheck(this)"></td>'
             + '<td>'+(r.empCode||'')+'</td>'
             + '<td>'+(r.empName||'')+'</td>'
             + '<td>'+(r.deptName||'')+'</td>'
             + '<td>'+(r.workPlanName||'-')+'</td>'
             + '<td data-field="shiftWorkMin">'+formatWorkMin(cumulativeEstimatedWorkMin(r, selectedWorkCode))+'</td>'
-            + '<td><select data-field="requestWorkCode" onchange="onWorkCodeChange(this,'+idx+')">'+buildShiftOptions(selectedWorkCode)+'</select></td>'
+            + '<td><select data-field="requestWorkCode" '+dis+' onchange="onWorkCodeChange(this,'+idx+')">'+buildShiftOptions(selectedWorkCode)+'</select></td>'
             + '<td><input type="text" data-field="reason" value="'+reasonVal+'" placeholder="사유" '+dis+'></td>'
             + '<td><input type="text" data-field="reasonDetail" value="'+reasonDetailVal+'" placeholder="사유 상세 입력" '+dis+'></td>'
-            + '<td data-field="status">'+statusBadge(existing.status)+'</td>'
+            + '<td data-field="status">'+statusHtml+'</td>'
             + '<td data-field="requesterName">'+(existing.requesterName||'')+'</td>'
             + '</tr>';
     }).join('');

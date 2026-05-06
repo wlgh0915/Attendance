@@ -463,7 +463,6 @@
           <choose>
               <when test="'OTHER'.equals(requestCategory)">
                   AND r.REQ_GROUP = 'OTHER'
-                  AND o.CHANGE_SHIFT_CODE = #{requestWorkCode}
               </when>
               <otherwise>
                   AND r.REQ_GROUP = 'GENERAL'

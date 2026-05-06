@@ -476,6 +476,9 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         }
         int duplicateCount = requestMapper.countActiveSameWorkRequest(dto);
         if (duplicateCount > 0) {
+            if ("OTHER".equals(dto.getRequestCategory())) {
+                throw new IllegalArgumentException("해당 일자에 이미 기타 근태 신청이 있습니다.");
+            }
             throw new IllegalArgumentException("같은 일자에 같은 근무 신청이 이미 있습니다.");
         }
     }
