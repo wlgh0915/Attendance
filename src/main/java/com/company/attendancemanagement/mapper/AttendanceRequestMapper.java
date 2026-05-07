@@ -49,6 +49,8 @@ public interface AttendanceRequestMapper {
 
     int applyApprovedOtherRequestToAttendance(@Param("requestId") String requestId);
 
+    int applyApprovedHolidayRequestToAttendance(@Param("requestId") String requestId);
+
     String findDeptLeader(@Param("company") String company, @Param("deptCode") String deptCode);
 
     List<DepartmentDto> findDeptListForDropdown(@Param("company") String company);

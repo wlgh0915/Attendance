@@ -534,6 +534,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         if (allApproved) {
             requestMapper.updateStatus(requestId, "APPROVED");
             requestMapper.applyApprovedOtherRequestToAttendance(requestId);
+            requestMapper.applyApprovedHolidayRequestToAttendance(requestId);
         } else {
             requestMapper.updateStatus(requestId, "SUBMITTED");
         }
