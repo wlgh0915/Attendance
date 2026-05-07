@@ -92,13 +92,20 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         search.setCanViewAll(canViewAll);
         search.setLoginEmpCode(loginUser.getEmpCode());
 
+        if (isAdmin) {
+            List<DepartmentDto> accessible = requestMapper.findAccessibleDepts(
+                    loginUser.getCompany(), loginUser.getDeptCode());
+            search.setAccessibleDeptCodes(accessible.stream()
+                    .map(DepartmentDto::getDeptCode)
+                    .toList());
+        }
+
         if (!canViewAll) {
             search.setDeptCode(null);
             search.setEmpCode(null);
         } else if (isAdmin && search.getDeptCode() != null && !search.getDeptCode().isBlank()) {
-            List<DepartmentDto> accessible = requestMapper.findAccessibleDepts(
-                    loginUser.getCompany(), loginUser.getDeptCode());
-            boolean ok = accessible.stream().anyMatch(d -> d.getDeptCode().equals(search.getDeptCode()));
+            boolean ok = search.getAccessibleDeptCodes().stream()
+                    .anyMatch(code -> code.equals(search.getDeptCode()));
             if (!ok) search.setDeptCode(loginUser.getDeptCode());
         }
 

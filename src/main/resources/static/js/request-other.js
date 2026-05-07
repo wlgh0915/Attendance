@@ -41,17 +41,6 @@ function formatWorkMin(min) {
     return m + '분';
 }
 
-function selectedShiftWorkMin(workCode, fallback) {
-    const shift = shiftCodesData.find(s => s.shiftCode === workCode || s.shiftName === workCode);
-    return shift ? shift.workMinutes : (fallback || 0);
-}
-
-function baseDayWorkMin(row) {
-    if (row.checkIn && !row.checkOut) return row.plannedWorkMin || 0;
-    if (row.actualWorkMin != null) return row.actualWorkMin;
-    return row.plannedWorkMin || 0;
-}
-
 function isActiveRequest(state) {
     return state && ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(state.status);
 }
@@ -77,14 +66,8 @@ function requestEffectMin(state) {
     return 0;
 }
 
-function cumulativeEstimatedWorkMin(row, selectedWorkCode) {
-    const weeklyBase = (row.shiftWorkMin || 0) + (row.activeWeeklyRequestEffectMin || 0);
-    const currentDayBase = baseDayWorkMin(row);
-    let total = weeklyBase;
-    if (selectedWorkCode) {
-        total = weeklyBase - currentDayBase + selectedShiftWorkMin(selectedWorkCode, currentDayBase);
-    }
-    return Math.max(total, 0);
+function cumulativeEstimatedWorkMin(row) {
+    return Math.max((row.shiftWorkMin || 0) + (row.activeWeeklyRequestEffectMin || 0), 0);
 }
 
 function renderTable(rows) {
@@ -116,7 +99,7 @@ function renderTable(rows) {
             + '<td>'+(r.empName||'')+'</td>'
             + '<td>'+(r.deptName||'')+'</td>'
             + '<td>'+(r.workPlanName||'-')+'</td>'
-            + '<td data-field="shiftWorkMin">'+formatWorkMin(cumulativeEstimatedWorkMin(r, selectedWorkCode))+'</td>'
+            + '<td data-field="shiftWorkMin">'+formatWorkMin(cumulativeEstimatedWorkMin(r))+'</td>'
             + '<td><select data-field="requestWorkCode" '+dis+' onchange="onWorkCodeChange(this,'+idx+')">'+buildShiftOptions(selectedWorkCode)+'</select></td>'
             + '<td><input type="text" data-field="reason" value="'+reasonVal+'" placeholder="사유" '+dis+'></td>'
             + '<td><input type="text" data-field="reasonDetail" value="'+reasonDetailVal+'" placeholder="사유 상세 입력" '+dis+'></td>'
@@ -138,7 +121,7 @@ function onWorkCodeChange(select, idx) {
     detailEl.value = state.reasonDetail || '';
     reasonEl.disabled = locked;
     detailEl.disabled = locked;
-    tr.querySelector('[data-field="shiftWorkMin"]').textContent = formatWorkMin(cumulativeEstimatedWorkMin(r, select.value));
+    tr.querySelector('[data-field="shiftWorkMin"]').textContent = formatWorkMin(cumulativeEstimatedWorkMin(r));
     tr.querySelector('[data-field="status"]').innerHTML = statusBadge(state.status);
     tr.querySelector('[data-field="requesterName"]').textContent = state.requesterName || '';
 }

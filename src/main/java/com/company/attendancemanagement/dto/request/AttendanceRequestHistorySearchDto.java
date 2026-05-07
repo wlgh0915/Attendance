@@ -3,6 +3,8 @@ package com.company.attendancemanagement.dto.request;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
+
 @Getter
 @Setter
 public class AttendanceRequestHistorySearchDto {
@@ -15,4 +17,5 @@ public class AttendanceRequestHistorySearchDto {
     private String requestCategory;
     private boolean canViewAll;
     private String loginEmpCode;
+    private List<String> accessibleDeptCodes;
 }

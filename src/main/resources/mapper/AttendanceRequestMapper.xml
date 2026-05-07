@@ -604,6 +604,12 @@
           <if test="canViewAll and deptCode != null and deptCode != ''">
               AND r.TARGET_DEPT_CODE = #{deptCode}
           </if>
+          <if test="canViewAll and (deptCode == null or deptCode == '') and accessibleDeptCodes != null and accessibleDeptCodes.size() > 0">
+              AND r.TARGET_DEPT_CODE IN
+              <foreach collection="accessibleDeptCodes" item="deptCodeItem" open="(" separator="," close=")">
+                  #{deptCodeItem}
+              </foreach>
+          </if>
           <if test="canViewAll and empCode != null and empCode != ''">
               AND r.TARGET_EMP_CODE = #{empCode}
           </if>
