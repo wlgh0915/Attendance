@@ -33,8 +33,20 @@ function toMinute(hhmm) {
     return h * 60 + m;
 }
 
+function getNextDate(dateStr) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const next = new Date(y, m - 1, d + 1);
+    return next.getFullYear() + '-'
+        + String(next.getMonth() + 1).padStart(2, '0') + '-'
+        + String(next.getDate()).padStart(2, '0');
+}
+
 function earlyMin(day) {
     if (!day || !day.record || !day.record.checkIn || !day.workOnHhmm) return 0;
+    const hasEarlyApproval = (day.requests || []).some(
+        r => r.requestWorkCode === '조출연장' && r.status === 'APPROVED'
+    );
+    if (!hasEarlyApproval) return 0;
     const actual = toMinute(day.record.checkIn);
     const planned = toMinute(day.workOnHhmm);
     if (actual == null || planned == null) return 0;
@@ -43,6 +55,34 @@ function earlyMin(day) {
 
 function hasShiftMismatch(day) {
     return day && day.record && day.record.shiftCode && day.shiftCode && day.record.shiftCode !== day.shiftCode;
+}
+
+// 시프트 계획 근무분 (근무변경 승인 시 변경된 시프트 기준)
+function plannedShiftMin(day) {
+    if (day.workDayType === 'OFF' || day.workDayType === 'HOLIDAY') return 0;
+    const approvedOther = (day.requests || []).find(
+        r => r.requestCategory === 'OTHER' && r.status === 'APPROVED'
+    );
+    if (approvedOther) return approvedOther.changeShiftWorkMin || 0;
+    return day.shiftWorkMin || 0;
+}
+
+// 승인된 근태신청으로 계획 근무분 가감
+function requestAdjustMin(day) {
+    let adj = 0;
+    (day.requests || [])
+        .filter(r => r.status === 'APPROVED' && r.startTime && r.endTime)
+        .forEach(r => {
+            const s = toMinute(r.startTime);
+            const e = toMinute(r.endTime);
+            const min = e < s ? (1440 - s + e) : (e - s);
+            if (['연장', '조출연장', '휴일근무'].includes(r.requestWorkCode)) {
+                adj += min;
+            } else if (['조퇴', '외출', '외근', '전반차', '후반차'].includes(r.requestWorkCode)) {
+                adj -= min;
+            }
+        });
+    return adj;
 }
 
 function weekTotalCell(weekMin) {
@@ -60,6 +100,20 @@ function renderCalendar() {
     const tbody = document.getElementById('calBody');
     let html = '', col = 0, weekMin = 0;
 
+    // 전날 연장근무가 자정을 넘어 이어지는 경우: nextDate → 익일 요청 목록
+    const overnightMap = {};
+    DAYS.forEach(day => {
+        (day.requests || []).forEach(r => {
+            if (['연장', '조출연장'].includes(r.requestWorkCode) && r.startTime && r.endTime &&
+                    toMinute(r.endTime) < toMinute(r.startTime) &&
+                    ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(r.status)) {
+                const nextDate = getNextDate(day.workDate);
+                if (!overnightMap[nextDate]) overnightMap[nextDate] = [];
+                overnightMap[nextDate].push(r);
+            }
+        });
+    });
+
     const openRow = () => { html += '<tr>'; col = 0; weekMin = 0; };
     const endRow  = () => {
         while (col < 7) { html += '<td class="empty"></td>'; col++; }
@@ -71,7 +125,8 @@ function renderCalendar() {
 
     DAYS.forEach(day => {
         if (col === 7) { endRow(); openRow(); }
-        if (day.record && day.record.workMin) weekMin += day.record.workMin;
+        weekMin += plannedShiftMin(day);
+        weekMin += requestAdjustMin(day);
         const c      = dowToCol(day.dayOfWeekNum);
         const colCls = c === 0 ? 'col-sun' : c === 6 ? 'col-sat' : '';
         const todCls = day.workDate === today ? 'today' : '';
@@ -87,7 +142,13 @@ function renderCalendar() {
         // 변경 후 근무 시간이 없으면 휴무 근태(연차/병가 등)
         const isLeaveDay = activeOtherReq != null && !activeOtherReq.changeShiftOnHhmm;
 
-        // 1. 계획/변경 근태코드
+        const hasApprovedLeave = isLeaveDay || (day.requests || []).some(
+            r => r.requestCategory === 'LEAVE' && r.status === 'APPROVED'
+        );
+        const isAbsent = day.workDayType === 'WORK' &&
+            (!day.record || !day.record.checkIn) && !hasApprovedLeave;
+
+        // 1. 계획/변경 근태코드 (결근이면 표시 안 함)
         const dispShiftName = (activeOtherReq && activeOtherReq.changeShiftName)
             ? activeOtherReq.changeShiftName : day.shiftName;
         const dispOnHhmm  = activeOtherReq ? activeOtherReq.changeShiftOnHhmm  : day.workOnHhmm;
@@ -96,43 +157,27 @@ function renderCalendar() {
             ? (dispOnHhmm ? 'WORK' : 'OFF')
             : day.workDayType;
 
-        if (dispShiftName) {
+        if (dispShiftName && !isAbsent) {
             const timePart = (dispWorkDayType === 'WORK' && dispOnHhmm && dispOffHhmm)
                 ? `<span class="shift-time"> ${dispOnHhmm}~${dispOffHhmm}</span>`
                 : '';
             inner += `<span class="shift-badge"><span class="${shiftCls(dispWorkDayType)}">${dispShiftName}</span>${timePart}</span>`;
         }
 
-        // 2. 실 출퇴근 시간 (휴무 근태이면 표시 안 함)
-        if (!isLeaveDay && day.record && (day.record.checkIn || day.record.checkOut)) {
-            const ci = day.record.checkIn  || '--:--';
-            const co = day.record.checkOut || '--:--';
-            inner += `<span class="rec-badge">출 ${ci} / 퇴 ${co}</span>`;
-        }
-
-        // 3. 지각 (휴무 근태이면 표시 안 함)
+        // 2. 지각 (휴무 근태이면 표시 안 함)
         if (!isLeaveDay && day.record && day.record.lateYn === 'Y') {
             inner += `<span class="late-badge">지각 ${day.record.lateMin}분</span>`;
         }
 
-        // 4. 조출 (휴무 근태이면 표시 안 함)
-        const early = earlyMin(day);
-        if (!isLeaveDay && early > 0) {
-            inner += `<span class="early-badge">조출 ${early}분</span>`;
-        }
         if (hasShiftMismatch(day)) {
             inner += `<span class="mismatch-badge">근태코드 불일치</span>`;
         }
 
-        const hasApprovedLeave = isLeaveDay || (day.requests || []).some(
-            r => r.requestCategory === 'LEAVE' && r.status === 'APPROVED'
-        );
-        if (day.workDayType === 'WORK' &&
-                (!day.record || !day.record.checkIn) && !hasApprovedLeave) {
+        if (isAbsent) {
             inner += `<span class="absent-badge">결근</span>`;
         }
 
-        // 5. 근태신청 (연장, 연차, 반차 등)
+        // 4. 근태신청 (연장, 연차, 반차 등)
         (day.requests || []).forEach(r => {
             const typeLabel = (r.requestCategory === 'OTHER' && r.changeShiftName)
                 ? r.changeShiftName
@@ -146,6 +191,18 @@ function renderCalendar() {
             inner += `<span class="req-badge"><span class="${reqCls(r.status)}">${typeLabel} ${statusLabel(r.status)}</span>${timeStr}</span>`;
         });
 
+        // 5. 실 출퇴근 시간 (맨 아래, 휴무 근태이면 표시 안 함)
+        if (!isLeaveDay && day.record && (day.record.checkIn || day.record.checkOut)) {
+            const ci = day.record.checkIn  || '--:--';
+            const co = day.record.checkOut || '--:--';
+            inner += `<span class="rec-badge">출 ${ci} / 퇴 ${co}</span>`;
+        }
+
+        // 6. 익일 근무 (전날 연장근무가 자정을 넘어 이어지는 경우)
+        (overnightMap[day.workDate] || []).forEach(r => {
+            inner += `<span class="overnight-badge">익일근무 ~${r.endTime}</span>`;
+        });
+
         html += `<td class="${colCls} ${todCls} ${monthCls}" onclick="openModal('${day.workDate}')">${inner}</td>`;
         col++;
     });
@@ -155,7 +212,7 @@ function renderCalendar() {
 
     const totalMin = DAYS
         .filter(d => d.inCurrentMonth)
-        .reduce((sum, d) => sum + (d.record && d.record.workMin ? d.record.workMin : 0), 0);
+        .reduce((sum, d) => sum + plannedShiftMin(d) + requestAdjustMin(d), 0);
     const th = Math.floor(totalMin / 60), tm = totalMin % 60;
     const totalTxt = totalMin > 0
         ? th + '시간' + (tm > 0 ? ' ' + tm + '분' : '')
@@ -269,8 +326,13 @@ async function doModalSave() {
     if (workCode === '조출연장' && start && start >= '09:00') {
         showToast('조출연장은 시작시간이 09:00 이전이어야 합니다.', 'error'); return;
     }
-    if (workCode === '연장' && end && end <= '18:00') {
-        showToast('연장근무는 종료시간이 18:00 이후여야 합니다.', 'error'); return;
+    if (workCode === '연장' && end) {
+        const endMin = toMinute(end);
+        const startMin = start ? toMinute(start) : null;
+        const isOvernight = startMin !== null && endMin < startMin;
+        if (!isOvernight && endMin <= toMinute('18:00')) {
+            showToast('연장근무는 종료시간이 18:00 이후여야 합니다.', 'error'); return;
+        }
     }
     if (workCode === '조퇴' || workCode === '외출') {
         const dayInfo = DAYS.find(d => d.workDate === modalDate);

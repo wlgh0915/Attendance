@@ -13,8 +13,9 @@ public class AttendanceReqSummaryDto {
     private String startTime;
     private String endTime;
     private String status;            // DRAFT / SUBMITTED / APPROVED / REJECTED
-    private String changeShiftCode;
-    private String changeShiftName;
-    private String changeShiftOnHhmm;
-    private String changeShiftOffHhmm;
+    private String  changeShiftCode;
+    private String  changeShiftName;
+    private String  changeShiftOnHhmm;
+    private String  changeShiftOffHhmm;
+    private Integer changeShiftWorkMin;
 }

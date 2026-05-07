@@ -21,6 +21,13 @@
             ISNULL(s.SHIFT_NAME, '')                                    AS shiftName,
             CONVERT(VARCHAR(5), s.WORK_ON_HHMM,  108)                  AS workOnHhmm,
             CONVERT(VARCHAR(5), s.WORK_OFF_HHMM, 108)                  AS workOffHhmm,
+            CASE
+                WHEN s.WORK_ON_HHMM IS NOT NULL AND s.WORK_OFF_HHMM IS NOT NULL
+                    THEN DATEDIFF(MINUTE, s.WORK_ON_HHMM, s.WORK_OFF_HHMM)
+                         - ISNULL(DATEDIFF(MINUTE, s.BREAK1_START_HHMM, s.BREAK1_END_HHMM), 0)
+                         - ISNULL(DATEDIFF(MINUTE, s.BREAK2_START_HHMM, s.BREAK2_END_HHMM), 0)
+                ELSE 0
+            END                                                         AS shiftWorkMin,
             CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
                 WHEN 'WEEKDAY' THEN 'WORK'
                 WHEN 'ANYDAY'  THEN 'WORK'
@@ -69,7 +76,14 @@
             o.CHANGE_SHIFT_CODE                              AS changeShiftCode,
             cs.SHIFT_NAME                                    AS changeShiftName,
             CONVERT(VARCHAR(5), cs.WORK_ON_HHMM,  108)      AS changeShiftOnHhmm,
-            CONVERT(VARCHAR(5), cs.WORK_OFF_HHMM, 108)      AS changeShiftOffHhmm
+            CONVERT(VARCHAR(5), cs.WORK_OFF_HHMM, 108)      AS changeShiftOffHhmm,
+            CASE
+                WHEN cs.WORK_ON_HHMM IS NOT NULL AND cs.WORK_OFF_HHMM IS NOT NULL
+                    THEN DATEDIFF(MINUTE, cs.WORK_ON_HHMM, cs.WORK_OFF_HHMM)
+                         - ISNULL(DATEDIFF(MINUTE, cs.BREAK1_START_HHMM, cs.BREAK1_END_HHMM), 0)
+                         - ISNULL(DATEDIFF(MINUTE, cs.BREAK2_START_HHMM, cs.BREAK2_END_HHMM), 0)
+                ELSE NULL
+            END                                              AS changeShiftWorkMin
         FROM HRTATTENDANCEREQUEST01 r
         LEFT JOIN HRTATTENDANCE_GENERAL01 g  ON r.COMPANY = g.COMPANY AND r.REQ_ID = g.REQ_ID
         LEFT JOIN HRTATTENDANCE_OTHER01 o    ON r.COMPANY = o.COMPANY AND r.REQ_ID = o.REQ_ID
