@@ -96,9 +96,15 @@ public class AttendanceRecordController {
             rows.add(row);
         }
 
+        int monthTotalMin = rows.stream()
+                .filter(r -> r.getWorkMin() != null)
+                .mapToInt(AttendanceRecordDto::getWorkMin)
+                .sum();
+
         Map<String, String> empInfo = calendarService.getEmpInfo(company, targetEmp);
 
         model.addAttribute("rows",         rows);
+        model.addAttribute("monthTotalMin", monthTotalMin);
         model.addAttribute("depts",        depts);
         model.addAttribute("emps",         emps);
         model.addAttribute("empInfo",      empInfo);
@@ -122,6 +128,35 @@ public class AttendanceRecordController {
         return ResponseEntity.ok(requestMapper.findShiftCodes(loginUser.getCompany()));
     }
 
+    /* ───────── 날짜별 계획 근태코드 조회 (부서 근무패턴 기반) ───────── */
+    @GetMapping("/planned-shift")
+    @ResponseBody
+    public ResponseEntity<?> getPlannedShift(HttpSession session,
+                                              @RequestParam String empCode,
+                                              @RequestParam String yyyymmdd) {
+        LoginUserDto loginUser = getLoginUser(session);
+        if (loginUser == null) return ResponseEntity.status(401).build();
+        return ResponseEntity.ok(recordService.getPlannedShift(loginUser.getCompany(), empCode, yyyymmdd));
+    }
+
+    @PostMapping("/calculate")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> calculate(@RequestBody AttendanceRecordDto dto,
+                                                         HttpSession session) {
+        LoginUserDto loginUser = getLoginUser(session);
+        if (loginUser == null) return ResponseEntity.status(401).body(fail("로그인이 필요합니다."));
+        if (!"ADMIN".equals(loginUser.getRoleCode()))
+            return ResponseEntity.status(403).body(fail("권한이 없습니다."));
+
+        dto.setCompany(loginUser.getCompany());
+        try {
+            int workMin = recordService.calculateWorkMin(dto);
+            return ResponseEntity.ok(Map.of("success", true, "workMin", workMin));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.ok(fail(e.getMessage()));
+        }
+    }
+
     /* ───────── 실적 저장 (UPSERT) ───────── */
     @PostMapping("/save")
     @ResponseBody
@@ -133,8 +168,12 @@ public class AttendanceRecordController {
             return ResponseEntity.status(403).body(fail("권한이 없습니다."));
 
         dto.setCompany(loginUser.getCompany());
-        recordService.upsert(dto);
-        return ResponseEntity.ok(Map.of("success", true, "message", "저장되었습니다."));
+        try {
+            recordService.upsert(dto);
+            return ResponseEntity.ok(Map.of("success", true, "message", "저장되었습니다."));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.ok(fail(e.getMessage()));
+        }
     }
 
     /* ───────── 실적 삭제 ───────── */

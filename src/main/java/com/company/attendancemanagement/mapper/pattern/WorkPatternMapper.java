@@ -21,6 +21,9 @@ public interface WorkPatternMapper {
 
     List<ShiftCodeDto> findShiftCodes(@Param("company") String company);
 
+    ShiftCodeDto findShiftByCode(@Param("company")   String company,
+                                 @Param("shiftCode") String shiftCode);
+
     int existsPatternCode(@Param("company") String company,
                           @Param("workPatternCode") String workPatternCode);
 

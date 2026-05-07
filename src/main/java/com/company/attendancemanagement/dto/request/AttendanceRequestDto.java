@@ -19,6 +19,7 @@ public class AttendanceRequestDto {
     private String startTimeType;     // N0: 당일 / N1: 익일
     private String endTime;           // HH:MM (일반근태만)
     private String endTimeType;       // N0: 당일 / N1: 익일
+    private Integer requestWorkMin;
     private String status;            // DRAFT / SUBMITTED / APPROVED / REJECTED
     private String requesterCode;     // REQUESTER_EMP_CODE
     private String requesterDeptCode; // REQUESTER_DEPT_CODE

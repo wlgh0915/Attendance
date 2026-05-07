@@ -17,6 +17,8 @@ public class AttendanceRecordDto {
     private String  checkOut;       // HH:mm
     private Integer workMin;
     private String  overnightYn;
+    private String  lateYn;          // 지각 여부 Y/N
+    private Integer lateMin;         // 지각 시간(분)
 
     // 화면 표시용 (컨트롤러에서 세팅)
     private String  dateDisplay;    // "2026-04-28"

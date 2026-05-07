@@ -9,7 +9,10 @@ import com.company.attendancemanagement.mapper.AttendanceCalendarMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -22,8 +25,13 @@ public class AttendanceCalendarServiceImpl implements AttendanceCalendarService 
 
     @Override
     public List<AttendanceDayDto> getCalendar(String company, String empCode, YearMonth ym) {
-        String startDate = ym.atDay(1).toString();
-        String endDate   = ym.atEndOfMonth().toString();
+        LocalDate monthStart = ym.atDay(1);
+        LocalDate monthEnd = ym.atEndOfMonth();
+        LocalDate displayStart = monthStart.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY));
+        LocalDate displayEnd = monthEnd.with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
+
+        String startDate = displayStart.toString();
+        String endDate   = displayEnd.toString();
         String startYmd  = startDate.replace("-", "");
         String endYmd    = endDate.replace("-", "");
 
@@ -44,6 +52,8 @@ public class AttendanceCalendarServiceImpl implements AttendanceCalendarService 
         days.forEach(day -> {
             day.setRequests(reqByDate.getOrDefault(day.getWorkDate(), List.of()));
             day.setRecord(recordByDate.get(day.getWorkDate()));
+            LocalDate workDate = LocalDate.parse(day.getWorkDate());
+            day.setInCurrentMonth(!workDate.isBefore(monthStart) && !workDate.isAfter(monthEnd));
         });
         return days;
     }
@@ -61,5 +71,10 @@ public class AttendanceCalendarServiceImpl implements AttendanceCalendarService 
     @Override
     public List<DepartmentDto> getAccessibleDepts(String company, String deptCode) {
         return calendarMapper.findAccessibleDepts(company, deptCode);
+    }
+
+    @Override
+    public int generateDeptRecordsFromPlan(String company, String deptCode, String yyyymmdd) {
+        return calendarMapper.generateDeptRecordsFromPlan(company, deptCode, yyyymmdd);
     }
 }

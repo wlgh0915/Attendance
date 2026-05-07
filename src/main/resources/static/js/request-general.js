@@ -1,11 +1,24 @@
 const WORK_CODES = {
     OVERTIME: [{value:'연장',label:'연장근로'},{value:'조출연장',label:'조출연장'}],
     HOLIDAY:  [{value:'휴일근무',label:'휴일근무'}],
-    LEAVE:    [{value:'조퇴',label:'조퇴'},{value:'외근',label:'외근'},{value:'외출',label:'외출'},{value:'전반차',label:'전반차'},{value:'후반차',label:'후반차'}]
+    LEAVE:    [{value:'조퇴',label:'조퇴'},{value:'외근',label:'외근'},{value:'외출',label:'외출'},{value:'오전반차',label:'오전반차'},{value:'오후반차',label:'오후반차'}]
 };
 
 let currentCategory = 'OVERTIME';
 let tableData = [];
+
+// 시프트 코드별 시간 정보 (hidden div에서 파싱)
+const shiftCodesData = Array.from(document.querySelectorAll('#shiftTimesData span')).map(sp => ({
+    shiftCode: sp.dataset.code,
+    shiftName: sp.dataset.name,
+    workOnHhmm:  sp.dataset.on  || '',
+    workOffHhmm: sp.dataset.off || '',
+    break1StartHhmm: sp.dataset.break1Start || '',
+    break1EndHhmm: sp.dataset.break1End || '',
+    break2StartHhmm: sp.dataset.break2Start || '',
+    break2EndHhmm: sp.dataset.break2End || '',
+    workMinutes: sp.dataset.workMin ? parseInt(sp.dataset.workMin, 10) : 0
+}));
 
 function switchCategory(el) {
     document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
@@ -41,10 +54,375 @@ function buildWorkCodeOptions(category, selected) {
 }
 
 function statusBadge(status) {
-    const map = {DRAFT:'badge-draft',SUBMITTED:'badge-submit',APPROVED:'badge-approved',REJECTED:'badge-rejected'};
+    const map = {DRAFT:'badge-draft',SUBMITTED:'badge-submit',APPROVED:'badge-approved',REJECTED:'badge-rejected',CANCELED:'badge-rejected'};
     const lbl = {DRAFT:'미상신',SUBMITTED:'승인중',APPROVED:'승인완료',REJECTED:'반려'};
     const s = status||'DRAFT';
+    if (s === 'CANCELED') return '<span class="badge badge-rejected">취소</span>';
     return '<span class="badge '+(map[s]||'badge-draft')+'">'+(lbl[s]||s)+'</span>';
+}
+
+function existingRequestFor(row, workCode) {
+    return (row.requestsByWorkCode && workCode) ? row.requestsByWorkCode[workCode] : null;
+}
+
+function currentRequestForRow(tr, row) {
+    const workCode = tr.querySelector('[data-field="requestWorkCode"]').value;
+    return existingRequestFor(row, workCode);
+}
+
+function isEndAfterStart(startType, startTime, endType, endTime) {
+    if (!startTime || !endTime) return true;
+    const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+    const startMin = (startType === 'N1' ? 1440 : 0) + toMin(startTime);
+    const endMin   = (endType   === 'N1' ? 1440 : 0) + toMin(endTime);
+    return endMin > startMin;
+}
+
+function isSameDay(timeType) {
+    return !timeType || timeType === 'N0';
+}
+
+function validateCheckIn(row, requestCategory) {
+    if (requestCategory === 'HOLIDAY') return true;
+    if (!row.checkIn) {
+        showToast('출근 기록이 없으면 일반 근태를 신청할 수 없습니다.', 'error');
+        return false;
+    }
+    return true;
+}
+
+function formatWorkMin(min) {
+    if (min == null || min === 0) return '-';
+    const h = Math.floor(min / 60), m = min % 60;
+    if (h > 0 && m > 0) return h + '시간 ' + m + '분';
+    if (h > 0) return h + '시간';
+    return m + '분';
+}
+
+// 근무코드에 따른 시간 필드 규칙 계산
+function minutesBetween(startType, startTime, endType, endTime) {
+    if (!startTime || !endTime) return 0;
+    const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+    const startMin = (startType === 'N1' ? 1440 : 0) + toMin(startTime);
+    const endMin = (endType === 'N1' ? 1440 : 0) + toMin(endTime);
+    return Math.max(endMin - startMin, 0);
+}
+
+function breakOverlapMin(row, startMin, endMin) {
+    const overlap = (breakStart, breakEnd) => {
+        if (!breakStart || !breakEnd) return 0;
+        let bs = absoluteMinute('N0', breakStart);
+        let be = absoluteMinute('N0', breakEnd);
+        if (be < bs) be += 1440;
+        if (endMin > 1440 && bs < startMin) {
+            bs += 1440;
+            be += 1440;
+        }
+        return Math.max(0, Math.min(endMin, be) - Math.max(startMin, bs));
+    };
+    return overlap(row.break1StartHhmm, row.break1EndHhmm)
+        + overlap(row.break2StartHhmm, row.break2EndHhmm);
+}
+
+function absoluteMinute(timeType, time) {
+    if (!time) return null;
+    const [h, m] = time.split(':').map(Number);
+    return (timeType === 'N1' ? 1440 : 0) + h * 60 + m;
+}
+
+function selectedWorkMin(tr, state, row) {
+    if (state && state.requestWorkMin != null && state.status !== 'DRAFT') return state.requestWorkMin;
+    const requestWorkCode = tr.querySelector('[data-field="requestWorkCode"]').value;
+    const breakSource = currentCategory === 'HOLIDAY'
+        ? (shiftCodesData.find(s => s.shiftCode === requestWorkCode || s.shiftName === requestWorkCode) || row || {})
+        : (row || {});
+    const startType = tr.querySelector('[data-field="startTimeType"]').value;
+    const startTime = tr.querySelector('[data-field="startTime"]').value;
+    const endType = tr.querySelector('[data-field="endTimeType"]').value;
+    const endTime = tr.querySelector('[data-field="endTime"]').value;
+    const startMin = absoluteMinute(startType, startTime);
+    const endMin = absoluteMinute(endType, endTime);
+    if (startMin == null || endMin == null) return 0;
+    return Math.max(0, endMin - startMin - breakOverlapMin(breakSource, startMin, endMin));
+}
+
+function isActiveRequest(state) {
+    return state && ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(state.status);
+}
+
+function hasActiveRequest(row, ...codes) {
+    return codes.some(code => isActiveRequest(row.requestsByWorkCode && row.requestsByWorkCode[code]));
+}
+
+function hasOverlappingRequest(dto, row) {
+    const start = absoluteMinute(dto.startTimeType, dto.startTime);
+    const end = absoluteMinute(dto.endTimeType, dto.endTime);
+    if (start == null || end == null) return false;
+    return Object.values(row.requestsByWorkCode || {}).some(req => {
+        if (!isActiveRequest(req) || req.requestWorkCode === dto.requestWorkCode) return false;
+        if (requestEffectSign(dto.requestWorkCode) !== requestEffectSign(req.requestWorkCode)) return false;
+        const reqStart = absoluteMinute(req.startTimeType || 'N0', req.startTime);
+        const reqEnd = absoluteMinute(req.endTimeType || 'N0', req.endTime);
+        if (reqStart == null || reqEnd == null) return false;
+        return reqStart < end && start < reqEnd;
+    });
+}
+
+function checkOvertimeLeaveConflict(dto, row) {
+    return true;
+}
+
+function requestEffectSign(workCode) {
+    if (workCode === '연장' || workCode === '조출연장' || workCode === '휴일근무') return 1;
+    if (['조퇴', '외근', '외출', '전반차', '후반차', '오전반차', '오후반차'].includes(workCode)) return -1;
+    return 0;
+}
+
+function isBoundedLeaveCode(workCode) {
+    return ['조퇴', '외출', '전반차', '후반차', '오전반차', '오후반차'].includes(workCode);
+}
+
+function effectiveWorkRange(row) {
+    const baseStart = absoluteMinute('N0', row.shiftOnTime);
+    const baseEndTime = absoluteMinute('N0', row.shiftOffTime);
+    if (baseStart == null || baseEndTime == null) return null;
+    let start = baseStart;
+    let end = baseEndTime <= baseStart ? baseEndTime + 1440 : baseEndTime;
+    Object.values(row.requestsByWorkCode || {}).forEach(req => {
+        if (!isActiveRequest(req)) return;
+        if (req.requestWorkCode === '조출연장') {
+            const reqStart = absoluteMinute(req.startTimeType || 'N0', req.startTime);
+            if (reqStart != null && reqStart < start) start = reqStart;
+        }
+        if (req.requestWorkCode === '연장') {
+            const reqEnd = absoluteMinute(req.endTimeType || 'N0', req.endTime);
+            if (reqEnd != null && reqEnd > end) end = reqEnd;
+        }
+    });
+    return {start, end};
+}
+
+function validateWithinEffectiveWorkTime(dto, row) {
+    if (!isBoundedLeaveCode(dto.requestWorkCode)) return true;
+    const range = effectiveWorkRange(row);
+    if (!range) return true;
+    const start = absoluteMinute(dto.startTimeType, dto.startTime);
+    const end = absoluteMinute(dto.endTimeType, dto.endTime);
+    if (start < range.start) {
+        showToast('시작 시간이 유효 근무 시작 시간 이전입니다.', 'error');
+        return false;
+    }
+    if (end > range.end) {
+        showToast('종료 시간이 유효 근무 종료 시간 이후입니다.', 'error');
+        return false;
+    }
+    return true;
+}
+
+function categoryOfRequest(state) {
+    if (!state || state.existingRequestGroup === 'OTHER') return 'OTHER';
+    if (state.requestWorkCode === '연장' || state.requestWorkCode === '조출연장') return 'OVERTIME';
+    if (state.requestWorkCode === '휴일근무') return 'HOLIDAY';
+    return 'LEAVE';
+}
+
+function requestEffectMin(category, min) {
+    if (category === 'OVERTIME' || category === 'HOLIDAY') return min;
+    if (category === 'LEAVE') return -min;
+    return 0;
+}
+
+function actualAttendanceRange(row) {
+    if (!row || !row.checkIn || !row.checkOut) return null;
+    const start = absoluteMinute('N0', row.checkIn);
+    let end = absoluteMinute('N0', row.checkOut);
+    if (row.overnightYn === 'Y' || end < start) end += 1440;
+    return {start, end};
+}
+
+function actualOverlapMin(row, tr) {
+    const actual = actualAttendanceRange(row);
+    if (!actual) return 0;
+    const startType = tr.querySelector('[data-field="startTimeType"]').value;
+    const startTime = tr.querySelector('[data-field="startTime"]').value;
+    const endType = tr.querySelector('[data-field="endTimeType"]').value;
+    const endTime = tr.querySelector('[data-field="endTime"]').value;
+    const start = absoluteMinute(startType, startTime);
+    const end = absoluteMinute(endType, endTime);
+    if (start == null || end == null) return 0;
+    return Math.max(0, Math.min(end, actual.end) - Math.max(start, actual.start));
+}
+
+function requestEffectForState(state) {
+    if (!isActiveRequest(state) || state.existingRequestGroup === 'OTHER') return 0;
+    return requestEffectMin(categoryOfRequest(state), state.requestWorkMin || 0);
+}
+
+function weeklyBaseWithRequests(row) {
+    return (row.shiftWorkMin || 0) + (row.activeWeeklyRequestEffectMin || 0);
+}
+
+function requestMatches(a, b) {
+    if (!a || !b) return false;
+    if (a.requestId != null && b.requestId != null) return String(a.requestId) === String(b.requestId);
+    return a.requestWorkCode && a.requestWorkCode === b.requestWorkCode;
+}
+
+function activeGeneralRequests(row) {
+    return Object.values((row && row.requestsByWorkCode) || {})
+        .filter(req => isActiveRequest(req) && categoryOfRequest(req) !== 'OTHER');
+}
+
+function requestRange(req) {
+    const start = absoluteMinute(req.startTimeType || 'N0', req.startTime);
+    let end = absoluteMinute(req.endTimeType || 'N0', req.endTime);
+    if (start == null || end == null) return null;
+    if (end < start) end += 1440;
+    return {start, end};
+}
+
+function plannedRange(row) {
+    const start = absoluteMinute('N0', row && row.shiftOnTime);
+    let end = absoluteMinute('N0', row && row.shiftOffTime);
+    if (start == null || end == null) return null;
+    if (end <= start) end += 1440;
+    return {start, end};
+}
+
+function recognizedActualWorkMin(row, currentState, selectedState) {
+    if (!row || !row.checkIn) return 0;
+
+    const plan = plannedRange(row);
+    const actualStart = absoluteMinute('N0', row.checkIn);
+    let actualEnd = null;
+    if (row.checkOut) {
+        actualEnd = absoluteMinute('N0', row.checkOut);
+        if (row.overnightYn === 'Y' || actualEnd < actualStart) actualEnd += 1440;
+    } else if (plan) {
+        actualEnd = plan.end;
+    }
+    if (actualStart == null || actualEnd == null) return 0;
+
+    let total = 0;
+    if (plan && (row.plannedWorkMin || 0) > 0) {
+        const baseStart = Math.max(actualStart, plan.start);
+        const baseEnd = Math.min(actualEnd, plan.end);
+        if (baseEnd > baseStart) {
+            total += Math.max(0, baseEnd - baseStart - breakOverlapMin(row, baseStart, baseEnd));
+        }
+    }
+
+    const actual = row.checkOut ? {start: actualStart, end: actualEnd} : null;
+    const requests = activeGeneralRequests(row).filter(req => !requestMatches(req, currentState));
+    if (selectedState) requests.push(selectedState);
+    requests.forEach(req => {
+        const category = categoryOfRequest(req);
+        if (category === 'OVERTIME' || category === 'HOLIDAY') {
+            if (!actual) return;
+            const reqRange = requestRange(req);
+            if (!reqRange) return;
+            let overlap = Math.max(0, Math.min(actual.end, reqRange.end) - Math.max(actual.start, reqRange.start));
+            if ((req.requestWorkMin || 0) > 0) overlap = Math.min(overlap, req.requestWorkMin);
+            total += overlap;
+        } else if (category === 'LEAVE') {
+            total -= (req.requestWorkMin || row.plannedWorkMin || 0);
+        }
+    });
+
+    return Math.max(0, total);
+}
+
+function workDateIsPastOrToday() {
+    const workDate = document.getElementById('workDate').value;
+    if (!workDate) return false;
+    const today = new Date();
+    const ymd = today.getFullYear() + '-'
+        + String(today.getMonth() + 1).padStart(2, '0') + '-'
+        + String(today.getDate()).padStart(2, '0');
+    return workDate <= ymd;
+}
+
+function dailyExpectedWorkMin(row, currentState, selectedEffectMin) {
+    let total = row.plannedWorkMin || 0;
+    activeGeneralRequests(row).forEach(req => {
+        if (requestMatches(req, currentState)) return;
+        total += requestEffectForState(req);
+    });
+    total += selectedEffectMin || 0;
+    return Math.max(0, total);
+}
+
+function adjustedWeeklyWorkMin(row, currentState, selectedState) {
+    const selectedEffectMin = requestEffectForState(selectedState);
+    const total = weeklyBaseWithRequests(row) - requestEffectForState(currentState) + (selectedEffectMin || 0);
+    return Math.max(total, 0);
+}
+
+function cumulativeEstimatedWorkMin(row, tr, currentState) {
+    const selectedMin = selectedWorkMin(tr, currentState, row);
+    const selectedWorkCode = tr.querySelector('[data-field="requestWorkCode"]').value;
+    const selectedState = selectedWorkCode ? {
+        status: 'DRAFT',
+        existingRequestGroup: 'GENERAL',
+        requestWorkCode: selectedWorkCode,
+        requestWorkMin: selectedMin,
+        startTimeType: tr.querySelector('[data-field="startTimeType"]').value,
+        startTime: tr.querySelector('[data-field="startTime"]').value,
+        endTimeType: tr.querySelector('[data-field="endTimeType"]').value,
+        endTime: tr.querySelector('[data-field="endTime"]').value
+    } : null;
+    return adjustedWeeklyWorkMin(row, currentState, selectedState);
+}
+
+function refreshEstimatedWorkMin(tr, row, state) {
+    const cell = tr.querySelector('[data-field="shiftWorkMin"]');
+    if (cell) cell.textContent = formatWorkMin(cumulativeEstimatedWorkMin(row, tr, state));
+}
+
+function validateWeeklyWorkLimit(tr, row, state) {
+    const total = cumulativeEstimatedWorkMin(row, tr, state);
+    if ((currentCategory === 'OVERTIME' || currentCategory === 'HOLIDAY') && total > 3120) {
+        const over = total - 3120;
+        showToast('주 52시간을 초과하여 신청할 수 없습니다. 초과 시간: '
+            + Math.floor(over / 60) + '시간 ' + (over % 60) + '분', 'error');
+        return false;
+    }
+    return true;
+}
+
+function savedEstimatedWorkMin(row, state, selectedWorkCode) {
+    return adjustedWeeklyWorkMin(row, null, null);
+}
+
+function computeTimeState(category, code, r) {
+    let startTypeDis = false, startDis = false, endTypeDis = false, endDis = false;
+    let startType = r.startTimeType || 'N0', endType = r.endTimeType || 'N0';
+    let startTime = r.startTime || '', endTime = r.endTime || '';
+
+    if (!code) return {startTypeDis, startDis, endTypeDis, endDis, startType, endType, startTime, endTime};
+
+    if (category === 'OVERTIME') {
+        if (code === '연장' && r.shiftOffTime) {
+            startType = 'N0';
+            startTime = r.shiftOffTime;
+            startTypeDis = startDis = true;
+        } else if (code === '조출연장' && r.shiftOnTime) {
+            endType = 'N0';
+            endTime = r.shiftOnTime;
+            endTypeDis = endDis = true;
+        }
+    } else if (category === 'LEAVE') {
+        if (code === '오전반차' || code === '오후반차') {
+            const shift = shiftCodesData.find(s => s.shiftCode === code || s.shiftName === code);
+            if (shift && (shift.workOnHhmm || shift.workOffHhmm)) {
+                startType = 'N0'; startTime = shift.workOnHhmm || startTime;
+                endType   = 'N0'; endTime   = shift.workOffHhmm || endTime;
+            }
+            startTypeDis = startDis = endTypeDis = endDis = true;
+        }
+    }
+
+    return {startTypeDis, startDis, endTypeDis, endDis, startType, endType, startTime, endTime};
 }
 
 function renderTable(rows) {
@@ -52,37 +430,106 @@ function renderTable(rows) {
     if (checkAll) checkAll.checked = false;
     const tbody = document.getElementById('reqTableBody');
     if (!rows || rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="12" class="no-data">조회된 인원이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="16" class="no-data">조회된 인원이 없습니다.</td></tr>';
         tableData = [];
         return;
     }
     tableData = rows;
     tbody.innerHTML = rows.map((r, idx) => {
-        const locked = (r.status === 'SUBMITTED' || r.status === 'APPROVED');
-        const dis = locked ? 'disabled' : '';
-        const reasonVal = (r.reason||'').replace(/"/g,'&quot;');
-        const reasonDetailVal = (r.reasonDetail||'').replace(/"/g,'&quot;');
+        const selectedWorkCode = r.requestWorkCode || '';
+        const existing = existingRequestFor(r, selectedWorkCode) || r;
+        const locked = (existing.status === 'SUBMITTED' || existing.status === 'APPROVED');
+        const disFull = locked ? 'disabled' : '';
+
+        // 잠긴 행은 저장된 값 그대로, 아닌 경우 근무코드 규칙 적용
+        const ts = locked
+            ? { startTypeDis:false, startDis:false, endTypeDis:false, endDis:false,
+                startType: existing.startTimeType||'N0', endType: existing.endTimeType||'N0',
+                startTime: existing.startTime||'', endTime: existing.endTime||'' }
+            : computeTimeState(currentCategory, selectedWorkCode, {...r, ...existing});
+
+        const startTypeDis = locked || ts.startTypeDis ? 'disabled' : '';
+        const startDis     = locked || ts.startDis     ? 'disabled' : '';
+        const endTypeDis   = locked || ts.endTypeDis   ? 'disabled' : '';
+        const endDis       = locked || ts.endDis       ? 'disabled' : '';
+
+        const reasonVal       = (existing.reason||'').replace(/"/g,'&quot;');
+        const reasonDetailVal = (existing.reasonDetail||'').replace(/"/g,'&quot;');
+
         return '<tr data-idx="'+idx+'">'
             + '<td class="td-check" onclick="clickCheckCell(this)"><input type="checkbox" onclick="event.stopPropagation();toggleCheck(this,'+idx+')"></td>'
             + '<td>'+(r.empCode||'')+'</td>'
             + '<td>'+(r.empName||'')+'</td>'
             + '<td>'+(r.deptName||'')+'</td>'
             + '<td>'+(r.workPlanName||'-')+'</td>'
-            + '<td><select data-field="requestWorkCode" '+dis+'>'+buildWorkCodeOptions(currentCategory,r.requestWorkCode)+'</select></td>'
-            + '<td><input type="text" data-field="reason" value="'+reasonVal+'" placeholder="사유" '+dis+'></td>'
-            + '<td><input type="text" data-field="reasonDetail" value="'+reasonDetailVal+'" placeholder="사유 상세 입력" '+dis+'></td>'
+            + '<td>'+formatWorkMin(r.plannedWorkMin || 0)+'</td>'
+            + '<td>'+(r.actualWorkName || r.actualWorkCode || '-')+'</td>'
+            + '<td>'+formatWorkMin(recognizedActualWorkMin(r))+'</td>'
+            + '<td data-field="shiftWorkMin">'+formatWorkMin(savedEstimatedWorkMin(r, existing, selectedWorkCode))+'</td>'
+            + '<td><select data-field="requestWorkCode" onchange="onWorkCodeChange(this,'+idx+')">'+buildWorkCodeOptions(currentCategory,selectedWorkCode)+'</select></td>'
+            + '<td><input type="text" data-field="reason" value="'+reasonVal+'" placeholder="사유" '+disFull+'></td>'
+            + '<td><input type="text" data-field="reasonDetail" value="'+reasonDetailVal+'" placeholder="사유 상세 입력" '+disFull+'></td>'
             + '<td><div style="display:flex;gap:3px;">'
-            + '<select data-field="startTimeType" style="width:52px;" '+dis+'>'+buildDayTypeOptions(r.startTimeType)+'</select>'
-            + '<select data-field="startTime" style="flex:1;" '+dis+'>'+buildTimeOptions(r.startTime)+'</select>'
+            + '<select data-field="startTimeType" style="width:52px;" '+startTypeDis+' onchange="onTimeChange(this,'+idx+')">'+buildDayTypeOptions(ts.startType)+'</select>'
+            + '<select data-field="startTime" style="flex:1;" '+startDis+' onchange="onTimeChange(this,'+idx+')">'+buildTimeOptions(ts.startTime)+'</select>'
             + '</div></td>'
             + '<td><div style="display:flex;gap:3px;">'
-            + '<select data-field="endTimeType" style="width:52px;" '+dis+'>'+buildDayTypeOptions(r.endTimeType)+'</select>'
-            + '<select data-field="endTime" style="flex:1;" '+dis+'>'+buildTimeOptions(r.endTime)+'</select>'
+            + '<select data-field="endTimeType" style="width:52px;" '+endTypeDis+' onchange="onTimeChange(this,'+idx+')">'+buildDayTypeOptions(ts.endType)+'</select>'
+            + '<select data-field="endTime" style="flex:1;" '+endDis+' onchange="onTimeChange(this,'+idx+')">'+buildTimeOptions(ts.endTime)+'</select>'
             + '</div></td>'
-            + '<td>'+statusBadge(r.status)+'</td>'
-            + '<td>'+(r.requesterName||'')+'</td>'
+            + '<td data-field="status">'+statusBadge(existing.status)+'</td>'
+            + '<td data-field="requesterName">'+(existing.requesterName||'')+'</td>'
             + '</tr>';
     }).join('');
+}
+
+// 근무코드 변경 시 시간 필드 잠금/해제
+function onWorkCodeChange(select, idx) {
+    const tr = select.closest('tr');
+    const r  = tableData[idx];
+    applyRequestState(tr, r, select.value);
+}
+
+function applyRequestState(tr, r, workCode) {
+    const existing = existingRequestFor(r, workCode);
+    const state = existing || {};
+    const locked = (state.status === 'SUBMITTED' || state.status === 'APPROVED');
+    const ts = locked
+        ? { startTypeDis:false, startDis:false, endTypeDis:false, endDis:false,
+            startType: state.startTimeType||'N0', endType: state.endTimeType||'N0',
+            startTime: state.startTime||'', endTime: state.endTime||'' }
+        : computeTimeState(currentCategory, workCode, {...r, ...state});
+
+    const startTypeEl = tr.querySelector('[data-field="startTimeType"]');
+    const startEl     = tr.querySelector('[data-field="startTime"]');
+    const endTypeEl   = tr.querySelector('[data-field="endTimeType"]');
+    const endEl       = tr.querySelector('[data-field="endTime"]');
+    const reasonEl    = tr.querySelector('[data-field="reason"]');
+    const detailEl    = tr.querySelector('[data-field="reasonDetail"]');
+
+    reasonEl.value = state.reason || '';
+    detailEl.value = state.reasonDetail || '';
+    reasonEl.disabled = locked;
+    detailEl.disabled = locked;
+    startTypeEl.disabled = locked || ts.startTypeDis;
+    startEl.disabled     = locked || ts.startDis;
+    endTypeEl.disabled   = locked || ts.endTypeDis;
+    endEl.disabled       = locked || ts.endDis;
+
+    startTypeEl.value = ts.startType;
+    startEl.value     = ts.startTime;
+    endTypeEl.value   = ts.endType;
+    endEl.value       = ts.endTime;
+    tr.querySelector('[data-field="status"]').innerHTML = statusBadge(state.status);
+    tr.querySelector('[data-field="requesterName"]').textContent = state.requesterName || '';
+    refreshEstimatedWorkMin(tr, r, state);
+}
+
+function onTimeChange(select, idx) {
+    const tr = select.closest('tr');
+    const row = tableData[idx];
+    const state = currentRequestForRow(tr, row) || null;
+    refreshEstimatedWorkMin(tr, row, state);
 }
 
 function clickCheckAllCell() {
@@ -127,13 +574,15 @@ function getSelectedRows() {
 function rowToDto(tr) {
     const idx = parseInt(tr.dataset.idx);
     const d = tableData[idx];
+    const requestWorkCode = tr.querySelector('[data-field="requestWorkCode"]').value;
+    const existing = currentRequestForRow(tr, d);
     return {
-        requestId:       d.requestId||null,
+        requestId:       existing && existing.status !== 'REJECTED' ? existing.requestId : null,
         empCode:         d.empCode,
         deptCode:        d.deptCode,
         workDate:        document.getElementById('workDate').value,
         requestCategory: currentCategory,
-        requestWorkCode: tr.querySelector('[data-field="requestWorkCode"]').value,
+        requestWorkCode: requestWorkCode,
         reason:          tr.querySelector('[data-field="reason"]').value,
         reasonDetail:    tr.querySelector('[data-field="reasonDetail"]').value,
         startTimeType:   tr.querySelector('[data-field="startTimeType"]').value,
@@ -154,7 +603,11 @@ async function doSearch() {
 
     const params = new URLSearchParams({requestCategory:currentCategory, workDate, deptCode, empCode});
     const res = await fetch('/attendance/request/general/search?'+params);
-    if (!res.ok) { showToast('조회 중 오류가 발생했습니다.','error'); return; }
+    if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        showToast((err && err.message) || '조회 중 오류가 발생했습니다.','error');
+        return;
+    }
     renderTable(await res.json());
 }
 
@@ -164,7 +617,23 @@ async function doSave() {
     for (const tr of selected) {
         const dto = rowToDto(tr);
         if (!dto.requestWorkCode) { showToast('신청근무를 선택하세요.','error'); return; }
+        if (!validateCheckIn(tableData[parseInt(tr.dataset.idx)], currentCategory)) return;
         if (!dto.startTime || !dto.endTime) { showToast('시작/종료 시간을 선택하세요.','error'); return; }
+        if (dto.requestWorkCode === '조출연장' && dto.startTime >= '09:00') {
+            showToast('조출연장은 시작시간이 09:00 이전이어야 합니다.','error'); return;
+        }
+        if (dto.requestWorkCode === '연장' && isSameDay(dto.endTimeType) && dto.endTime <= '18:00') {
+            showToast('연장근무는 종료시간이 18:00 이후여야 합니다.','error'); return;
+        }
+        if (!validateWithinEffectiveWorkTime(dto, tableData[parseInt(tr.dataset.idx)])) return;
+        if (!checkOvertimeLeaveConflict(dto, tableData[parseInt(tr.dataset.idx)])) return;
+        if (hasOverlappingRequest(dto, tableData[parseInt(tr.dataset.idx)])) {
+            showToast('같은 시간대에 이미 다른 근태 신청이 있습니다.', 'error'); return;
+        }
+        if (!validateWeeklyWorkLimit(tr, tableData[parseInt(tr.dataset.idx)], currentRequestForRow(tr, tableData[parseInt(tr.dataset.idx)]))) return;
+        if (!isEndAfterStart(dto.startTimeType, dto.startTime, dto.endTimeType, dto.endTime)) {
+            showToast('종료 시간이 시작 시간보다 앞설 수 없습니다.','error'); return;
+        }
         const res = await fetch('/attendance/request/save', {
             method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(dto)
         });
@@ -181,7 +650,7 @@ async function doDelete() {
     if (selected.length === 0) { showToast('선택된 행이 없습니다.','error'); return; }
     if (!confirm('선택한 근태신청을 삭제하시겠습니까?')) return;
     for (const tr of selected) {
-        const requestId = tableData[parseInt(tr.dataset.idx)].requestId;
+        const requestId = rowToDto(tr).requestId;
         if (!requestId) { showToast('저장되지 않은 행은 삭제할 수 없습니다.','error'); return; }
         const res = await fetch('/attendance/request/delete', {
             method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({requestId})
@@ -198,10 +667,28 @@ async function doSubmit() {
     if (selected.length === 0) { showToast('선택된 행이 없습니다.','error'); return; }
     for (const tr of selected) {
         const idx = parseInt(tr.dataset.idx);
-        let requestId = tableData[idx].requestId;
-        if (!requestId) {
-            const dto = rowToDto(tr);
-            if (!dto.requestWorkCode) { showToast('신청근무를 선택하세요.','error'); return; }
+        const dto = rowToDto(tr);
+        let requestId = dto.requestId;
+        const existing = currentRequestForRow(tr, tableData[idx]);
+        if (!dto.requestWorkCode) { showToast('신청근무를 선택하세요.','error'); return; }
+        if (!validateCheckIn(tableData[idx], currentCategory)) return;
+        if (!dto.startTime || !dto.endTime) { showToast('시작/종료 시간을 선택하세요.','error'); return; }
+        if (dto.requestWorkCode === '조출연장' && dto.startTime >= '09:00') {
+            showToast('조출연장은 시작시간이 09:00 이전이어야 합니다.','error'); return;
+        }
+        if (dto.requestWorkCode === '연장' && isSameDay(dto.endTimeType) && dto.endTime <= '18:00') {
+            showToast('연장근무는 종료시간이 18:00 이후여야 합니다.','error'); return;
+        }
+        if (!validateWithinEffectiveWorkTime(dto, tableData[parseInt(tr.dataset.idx)])) return;
+        if (!checkOvertimeLeaveConflict(dto, tableData[parseInt(tr.dataset.idx)])) return;
+        if (hasOverlappingRequest(dto, tableData[parseInt(tr.dataset.idx)])) {
+            showToast('같은 시간대에 이미 다른 근태 신청이 있습니다.', 'error'); return;
+        }
+        if (!validateWeeklyWorkLimit(tr, tableData[parseInt(tr.dataset.idx)], currentRequestForRow(tr, tableData[parseInt(tr.dataset.idx)]))) return;
+        if (!isEndAfterStart(dto.startTimeType, dto.startTime, dto.endTimeType, dto.endTime)) {
+            showToast('종료 시간이 시작 시간보다 앞설 수 없습니다.','error'); return;
+        }
+        if (!requestId || !existing || existing.status === 'DRAFT' || existing.status === 'REJECTED') {
             const sr = await fetch('/attendance/request/save', {
                 method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(dto)
             });
@@ -225,7 +712,7 @@ async function doCancelSubmit() {
     if (selected.length === 0) { showToast('선택된 행이 없습니다.','error'); return; }
     if (!confirm('상신을 취소하시겠습니까?')) return;
     for (const tr of selected) {
-        const requestId = tableData[parseInt(tr.dataset.idx)].requestId;
+        const requestId = rowToDto(tr).requestId;
         if (!requestId) { showToast('저장된 신청건만 상신취소할 수 있습니다.','error'); return; }
         const res = await fetch('/attendance/request/cancel-submit', {
             method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({requestId})
@@ -244,3 +731,4 @@ function showToast(msg, type) {
 }
 
 document.addEventListener('DOMContentLoaded', doSearch);
+

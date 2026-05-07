@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/default_layout}">
+<head>
+    <meta charset="UTF-8">
+    <title>근태신청내역</title>
+    <link rel="stylesheet" th:href="@{/css/request-history.css}">
+</head>
+<body>
+<div layout:fragment="content">
+<div class="hist-page">
+    <div class="page-title">근태신청내역</div>
+
+    <form class="search-panel" method="get" th:action="@{/attendance/request/history}">
+        <div class="search-group">
+            <label>기간</label>
+            <div class="date-range">
+                <input type="date" name="fromDate" th:value="${search.fromDate}">
+                <span>~</span>
+                <input type="date" name="toDate" th:value="${search.toDate}">
+            </div>
+        </div>
+
+        <div class="search-group" th:if="${canViewAll}">
+            <label>부서</label>
+            <select name="deptCode">
+                <option value="">전체</option>
+                <option th:each="dept : ${depts}"
+                        th:value="${dept.deptCode}"
+                        th:text="${dept.deptName}"
+                        th:selected="${dept.deptCode == search.deptCode}">
+                </option>
+            </select>
+        </div>
+
+        <div class="search-group" th:if="${canViewAll}">
+            <label>사번</label>
+            <input type="text" name="empCode" placeholder="전체" th:value="${search.empCode}">
+        </div>
+
+        <div class="search-group">
+            <label>유형</label>
+            <select name="requestCategory">
+                <option value="ALL" th:selected="${search.requestCategory == null || search.requestCategory == '' || search.requestCategory == 'ALL'}">전체</option>
+                <option value="OVERTIME" th:selected="${search.requestCategory == 'OVERTIME'}">연장근로</option>
+                <option value="HOLIDAY" th:selected="${search.requestCategory == 'HOLIDAY'}">휴일근무</option>
+                <option value="LEAVE" th:selected="${search.requestCategory == 'LEAVE'}">조퇴/외출/반차</option>
+                <option value="OTHER" th:selected="${search.requestCategory == 'OTHER'}">기타근태</option>
+            </select>
+        </div>
+
+        <div class="search-group">
+            <label>상태</label>
+            <select name="status">
+                <option value="ALL" th:selected="${search.status == null || search.status == '' || search.status == 'ALL'}">전체</option>
+                <option value="DRAFT" th:selected="${search.status == 'DRAFT'}">미상신</option>
+                <option value="SUBMITTED" th:selected="${search.status == 'SUBMITTED'}">승인중</option>
+                <option value="APPROVED" th:selected="${search.status == 'APPROVED'}">승인</option>
+                <option value="REJECTED" th:selected="${search.status == 'REJECTED'}">반려</option>
+                <option value="CANCELED" th:selected="${search.status == 'CANCELED'}">취소</option>
+            </select>
+        </div>
+
+        <button class="btn-search" type="submit">조회</button>
+    </form>
+
+    <div class="hist-summary">
+        <span th:text="${'총 ' + #lists.size(rows) + '건'}">총 0건</span>
+    </div>
+
+    <div class="hist-table-wrap">
+        <table class="hist-table">
+            <thead>
+            <tr>
+                <th>근무일</th>
+                <th>대상자</th>
+                <th>부서</th>
+                <th>신청유형</th>
+                <th>시간</th>
+                <th>근무분</th>
+                <th>사유</th>
+                <th>상태</th>
+                <th>신청자</th>
+                <th>신청일시</th>
+                <th>상세</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:if="${#lists.isEmpty(rows)}">
+                <td colspan="11" class="no-data">조회된 신청내역이 없습니다.</td>
+            </tr>
+            <tr th:each="row : ${rows}">
+                <td th:text="${row.workDate}"></td>
+                <td>
+                    <span th:text="${row.empName ?: '-'}"></span>
+                    <span class="sub-text" th:text="${row.empCode}"></span>
+                </td>
+                <td th:text="${row.deptName ?: row.deptCode}"></td>
+                <td>
+                    <span class="type-badge" th:text="${row.requestWorkCode ?: row.requestCategory}"></span>
+                </td>
+                <td>
+                    <span th:if="${row.startTime != null || row.endTime != null}"
+                          th:text="${(row.startTimeType == 'N1' ? '익일 ' : '') + (row.startTime ?: '--:--') + ' ~ ' + (row.endTimeType == 'N1' ? '익일 ' : '') + (row.endTime ?: '--:--')}"></span>
+                    <span th:if="${row.startTime == null && row.endTime == null}">-</span>
+                </td>
+                <td th:text="${row.requestWorkMin != null ? row.requestWorkMin : '-'}"></td>
+                <td>
+                    <span th:text="${row.reason ?: '-'}"></span>
+                    <span class="sub-text" th:if="${row.reasonDetail != null and row.reasonDetail != ''}"
+                          th:text="${row.reasonDetail}"></span>
+                </td>
+                <td>
+                    <span th:class="${'status-badge st-' + row.status}"
+                          th:text="${row.status == 'DRAFT' ? '미상신' :
+                                    row.status == 'SUBMITTED' ? '승인중' :
+                                    row.status == 'APPROVED' ? '승인' :
+                                    row.status == 'REJECTED' ? '반려' :
+                                    row.status == 'CANCELED' ? '취소' : row.status}">
+                    </span>
+                </td>
+                <td>
+                    <span th:text="${row.requesterName ?: '-'}"></span>
+                    <span class="sub-text" th:text="${row.requesterCode}"></span>
+                </td>
+                <td th:text="${row.requestedAt ?: '-'}"></td>
+                <td>
+                    <button type="button" class="btn-detail" th:attr="data-request-id=${row.requestId}" onclick="openHistoryDetail(this)">
+                        상세
+                    </button>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="detailModal" class="detail-drawer">
+    <div class="detail-drawer-header">
+        <span class="modal-title">근태신청 상세</span>
+        <button type="button" class="btn-drawer-close" onclick="closeHistoryDetail()">×</button>
+    </div>
+    <div class="detail-section">
+        <h4>신청 정보</h4>
+        <div class="detail-grid" id="detailInfo"></div>
+    </div>
+    <div class="detail-section">
+        <h4>결재선</h4>
+        <table class="chain-table">
+            <thead>
+            <tr>
+                <th>순번</th>
+                <th>구분</th>
+                <th>결재자</th>
+                <th>상태</th>
+                <th>처리일시</th>
+                <th>반려사유</th>
+            </tr>
+            </thead>
+            <tbody id="chainBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script th:src="@{/js/request-history.js}"></script>
+</div>
+</body>
+</html>

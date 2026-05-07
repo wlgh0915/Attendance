@@ -32,8 +32,8 @@ function toggleActionBar() {
 }
 
 function reqStatusBadge(status) {
-    const map = { DRAFT:'badge-draft', SUBMITTED:'badge-submitted', APPROVED:'badge-approved', REJECTED:'badge-rejected' };
-    const lbl = { DRAFT:'미상신', SUBMITTED:'승인중', APPROVED:'승인완료', REJECTED:'반려' };
+    const map = { DRAFT:'badge-draft', SUBMITTED:'badge-submitted', APPROVED:'badge-approved', REJECTED:'badge-rejected', CANCELED:'badge-rejected' };
+    const lbl = { DRAFT:'미상신', SUBMITTED:'승인중', APPROVED:'승인완료', REJECTED:'반려', CANCELED:'취소' };
     const s = status || 'DRAFT';
     return '<span class="badge '+(map[s]||'badge-draft')+'">'+(lbl[s]||s)+'</span>';
 }
@@ -234,7 +234,7 @@ async function openDetail(requestId) {
 
     const reqTypeName = escapeHtml(d.reqType || '-');
     const groupName = d.reqGroup === 'OTHER' ? '기타근태' : '일반근태';
-    const statusLabel = { DRAFT:'미상신', SUBMITTED:'승인중', APPROVED:'승인완료', REJECTED:'반려' };
+    const statusLabel = { DRAFT:'미상신', SUBMITTED:'승인중', APPROVED:'승인완료', REJECTED:'반려', CANCELED:'취소' };
 
     let timeInfo = '';
     if (d.reqGroup === 'GENERAL') {
@@ -245,6 +245,13 @@ async function openDetail(requestId) {
         timeInfo = '<div class="lbl">변경근무</div><div class="val">'+escapeHtml(d.changeShiftName || d.changeShiftCode || '-')+'</div>';
     }
 
+    const attendanceInfo =
+        '<div class="lbl">출근</div><div class="val">'+escapeHtml(d.recordCheckIn || '-')+'</div>'
+        + '<div class="lbl">퇴근</div><div class="val">'+escapeHtml(d.recordCheckOut || '-')+'</div>'
+        + '<div class="lbl">실근무분</div><div class="val">'+escapeHtml(d.recordWorkMin ?? '-')+'</div>'
+        + '<div class="lbl">익일퇴근</div><div class="val">'+escapeHtml(d.recordOvernightYn || '-')+'</div>'
+        + '<div class="lbl">지각</div><div class="val">'+escapeHtml(d.recordLateYn === 'Y' ? ('Y (' + (d.recordLateMin ?? 0) + '분)') : (d.recordLateYn || '-'))+'</div>';
+
     document.getElementById('detailInfo').innerHTML =
         '<div class="lbl">신청번호</div><div class="val">'+escapeHtml(d.requestId)+'</div>'
         + '<div class="lbl">근태구분</div><div class="val">'+groupName+' / '+reqTypeName+'</div>'
@@ -252,6 +259,7 @@ async function openDetail(requestId) {
         + '<div class="lbl">대상자</div><div class="val">'+escapeHtml(d.targetEmpName)+' ('+escapeHtml(d.targetEmpCode)+') / '+escapeHtml(d.targetDeptName)+'</div>'
         + '<div class="lbl">신청자</div><div class="val">'+escapeHtml(d.requesterEmpName)+' ('+escapeHtml(d.requesterEmpCode)+')</div>'
         + timeInfo
+        + attendanceInfo
         + '<div class="lbl">사유</div><div class="val">'+escapeHtml(d.reason || '-')+'</div>'
         + '<div class="lbl">사유상세</div><div class="val">'+escapeHtml(d.reasonDetail || '-')+'</div>'
         + '<div class="lbl">신청상태</div><div class="val">'+escapeHtml(statusLabel[d.requestStatus] || d.requestStatus || '-')+'</div>';

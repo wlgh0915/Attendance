@@ -53,6 +53,8 @@ public class AttendanceApprovalServiceImpl implements AttendanceApprovalService 
 
         if ("Y".equals(myStep.getIsFinal())) {
             requestMapper.updateStatus(requestId, "APPROVED");
+            requestMapper.applyApprovedOtherRequestToAttendance(requestId);
+            requestMapper.applyApprovedHolidayRequestToAttendance(requestId);
         }
     }
 

@@ -9,11 +9,13 @@
         INSERT INTO HRTATTENDANCE_APPROVAL01 (
             COMPANY, REQ_ID, STEP_NO,
             STEP_TYPE, APPROVER_EMP_CODE, IS_FINAL,
-            STATUS, CREATED_AT, UPDATED_AT
+            STATUS, DECISION_AT, CREATED_AT, UPDATED_AT
         ) VALUES (
             #{company}, #{requestId}, #{stepNo},
             #{stepType}, #{approverEmpCode}, #{isFinal},
-            #{status}, GETDATE(), GETDATE()
+            #{status},
+            CASE WHEN #{status} IN ('APPROVED', 'REJECTED') THEN GETDATE() ELSE NULL END,
+            GETDATE(), GETDATE()
         )
     </insert>
 

@@ -57,6 +57,9 @@ public class WorkPatternServiceImpl implements WorkPatternService {
 
         validateBusinessRules(request.getMaster(), request.getDetails(), shiftMap);
 
+        // CYCLE_COUNT는 detail 행 수로 자동 결정 (SEQ 모듈러 연산의 기준)
+        request.getMaster().setCycleCount(request.getDetails().size());
+
         if (workPatternMapper.existsPatternCode(company, patternCode) > 0) {
             workPatternMapper.updatePatternMaster(request.getMaster());
             workPatternMapper.deletePatternDetails(company, patternCode);
@@ -142,8 +145,8 @@ public class WorkPatternServiceImpl implements WorkPatternService {
 
             int workMinutes = shift.getWorkMinutes() == null ? 0 : shift.getWorkMinutes();
 
-            if (workMinutes > 480) {
-                throw new IllegalArgumentException(targetDate + " : 하루 근무시간은 8시간을 초과할 수 없습니다.");
+            if (workMinutes > 720) {
+                throw new IllegalArgumentException(targetDate + " : 하루 근무시간은 12시간을 초과할 수 없습니다.");
             }
 
             if (!isOff && !isHoliday) {

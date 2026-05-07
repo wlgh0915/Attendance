@@ -77,6 +77,17 @@
         ORDER BY SORT_SEQ, SHIFT_CODE
     </select>
 
+    <select id="findShiftByCode" resultType="com.company.attendancemanagement.dto.pattern.ShiftCodeDto">
+        SELECT SHIFT_CODE      AS shiftCode,
+               SHIFT_NAME      AS shiftName,
+               WORK_TYPE_CODE  AS workTypeCode,
+               WORK_DAY_TYPE   AS workDayType,
+               CONVERT(VARCHAR(5), WORK_ON_HHMM, 108) AS workOnHhmm
+        FROM HRTSHIFTMASTER01
+        WHERE COMPANY    = #{company}
+          AND SHIFT_CODE = #{shiftCode}
+    </select>
+
     <select id="existsPatternCode" resultType="int">
         SELECT COUNT(*)
         FROM HRTWORKPATTERNMASTER01

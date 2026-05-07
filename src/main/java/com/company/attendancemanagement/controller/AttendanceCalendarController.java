@@ -12,11 +12,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -26,6 +29,7 @@ import java.util.Map;
 public class AttendanceCalendarController {
 
     private final AttendanceCalendarService calendarService;
+    private static final DateTimeFormatter YMD = DateTimeFormatter.BASIC_ISO_DATE;
 
     @GetMapping
     public String calendarPage(HttpSession session, Model model,
@@ -106,7 +110,42 @@ public class AttendanceCalendarController {
         return ResponseEntity.ok(emps);
     }
 
+    @PostMapping("/generate-records")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> generateDeptRecords(@RequestParam String deptCode,
+                                                                   @RequestParam String workDate,
+                                                                   HttpSession session) {
+        LoginUserDto loginUser = getLoginUser(session);
+        if (loginUser == null) return ResponseEntity.status(401).body(fail("로그인이 필요합니다."));
+        if (!"ADMIN".equals(loginUser.getRoleCode())) {
+            return ResponseEntity.status(403).body(fail("권한이 없습니다."));
+        }
+
+        List<DepartmentDto> accessible = calendarService.getAccessibleDepts(
+                loginUser.getCompany(), loginUser.getDeptCode());
+        boolean allowed = accessible.stream().anyMatch(d -> d.getDeptCode().equals(deptCode));
+        if (!allowed) return ResponseEntity.status(403).body(fail("접근할 수 없는 부서입니다."));
+
+        String yyyymmdd;
+        try {
+            yyyymmdd = LocalDate.parse(workDate).format(YMD);
+        } catch (Exception e) {
+            return ResponseEntity.ok(fail("일자를 확인해주세요."));
+        }
+
+        int count = calendarService.generateDeptRecordsFromPlan(loginUser.getCompany(), deptCode, yyyymmdd);
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "count", count,
+                "message", count + "건 반영되었습니다."
+        ));
+    }
+
     private LoginUserDto getLoginUser(HttpSession session) {
         return (LoginUserDto) session.getAttribute(SessionConst.LOGIN_USER);
+    }
+
+    private Map<String, Object> fail(String message) {
+        return Map.of("success", false, "message", message);
     }
 }

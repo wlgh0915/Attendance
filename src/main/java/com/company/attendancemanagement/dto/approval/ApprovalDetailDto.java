@@ -27,5 +27,11 @@ public class ApprovalDetailDto {
     private String endTimeType;      // N0: 당일 / N1: 익일
     private String changeShiftCode;
     private String changeShiftName;
+    private String recordCheckIn;
+    private String recordCheckOut;
+    private Integer recordWorkMin;
+    private String recordOvernightYn;
+    private String recordLateYn;
+    private Integer recordLateMin;
     private List<ApprovalLineDto> approvalChain;
 }

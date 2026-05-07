@@ -9,6 +9,7 @@ public class AttendanceRequestSearchDto {
     private String company;
     private String requestCategory;   // OVERTIME / HOLIDAY / LEAVE / OTHER
     private String workDate;
+    private String today;
     private String deptCode;
     private String empCode;           // 선택 필터 (없으면 null)
     private String workPlanFilter;    // OTHER용: 전체=null, 특정 shift code
