@@ -41,7 +41,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         boolean isAdmin      = "ADMIN".equals(loginUser.getRoleCode());
         boolean canViewAll   = isAdmin || isDeptLeader;
 
-        List<DepartmentDto> depts = isAdmin
+        List<DepartmentDto> depts = canViewAll
                 ? requestMapper.findAccessibleDepts(loginUser.getCompany(), loginUser.getDeptCode())
                 : requestMapper.findDeptListForDropdown(loginUser.getCompany());
         List<ShiftCodeDto> shiftCodes = requestMapper.findShiftCodes(loginUser.getCompany());
@@ -69,12 +69,18 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
 
         if (!canViewAll) {
             search.setDeptCode(loginUser.getDeptCode());
-        } else if (isAdmin) {
+        } else {
             List<DepartmentDto> accessible = requestMapper.findAccessibleDepts(
                     loginUser.getCompany(), loginUser.getDeptCode());
-            boolean ok = accessible.stream()
-                    .anyMatch(d -> d.getDeptCode().equals(search.getDeptCode()));
-            if (!ok) search.setDeptCode(loginUser.getDeptCode());
+            List<String> accessibleDeptCodes = accessible.stream()
+                    .map(DepartmentDto::getDeptCode)
+                    .toList();
+            search.setAccessibleDeptCodes(accessibleDeptCodes);
+            if (search.getDeptCode() != null && !search.getDeptCode().isBlank()) {
+                boolean ok = accessibleDeptCodes.stream()
+                        .anyMatch(code -> code.equals(search.getDeptCode()));
+                if (!ok) search.setDeptCode(loginUser.getDeptCode());
+            }
         }
 
         return mergeRequestsByEmployee(requestMapper.searchEmployees(search), search.getRequestCategory());
@@ -92,7 +98,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         search.setCanViewAll(canViewAll);
         search.setLoginEmpCode(loginUser.getEmpCode());
 
-        if (isAdmin) {
+        if (canViewAll) {
             List<DepartmentDto> accessible = requestMapper.findAccessibleDepts(
                     loginUser.getCompany(), loginUser.getDeptCode());
             search.setAccessibleDeptCodes(accessible.stream()
@@ -103,7 +109,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         if (!canViewAll) {
             search.setDeptCode(null);
             search.setEmpCode(null);
-        } else if (isAdmin && search.getDeptCode() != null && !search.getDeptCode().isBlank()) {
+        } else if (search.getDeptCode() != null && !search.getDeptCode().isBlank()) {
             boolean ok = search.getAccessibleDeptCodes().stream()
                     .anyMatch(code -> code.equals(search.getDeptCode()));
             if (!ok) search.setDeptCode(loginUser.getDeptCode());
@@ -126,9 +132,8 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
                 || loginUser.getEmpCode().equals(request.getEmpCode());
 
         if (!allowed && (isAdmin || isDeptLeader)) {
-            List<DepartmentDto> accessible = isAdmin
-                    ? requestMapper.findAccessibleDepts(loginUser.getCompany(), loginUser.getDeptCode())
-                    : requestMapper.findDeptListForDropdown(loginUser.getCompany());
+            List<DepartmentDto> accessible = requestMapper.findAccessibleDepts(
+                    loginUser.getCompany(), loginUser.getDeptCode());
             allowed = accessible.stream().anyMatch(d -> d.getDeptCode().equals(request.getDeptCode()));
         }
         if (!allowed) {

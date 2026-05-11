@@ -193,8 +193,6 @@ async function doSearch() {
     const empCode       = empEl  ? empEl.value  : '';
     const workPlanFilter= workPlanEl ? workPlanEl.value : '';
     if (!workDate) { showToast('근무일을 선택하세요.','error'); return; }
-    if (!deptCode) { showToast('부서를 선택하세요.','error'); return; }
-
     const params = new URLSearchParams({workDate, deptCode, empCode, workPlanFilter});
     const res = await fetch('/attendance/request/other/search?'+params);
     if (!res.ok) { showToast('조회 중 오류가 발생했습니다.','error'); return; }

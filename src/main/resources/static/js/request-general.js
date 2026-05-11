@@ -599,8 +599,6 @@ async function doSearch() {
     const deptCode = deptEl ? deptEl.value : '';
     const empCode  = empEl  ? empEl.value  : '';
     if (!workDate) { showToast('근무일을 선택하세요.','error'); return; }
-    if (!deptCode) { showToast('부서를 선택하세요.','error'); return; }
-
     const params = new URLSearchParams({requestCategory:currentCategory, workDate, deptCode, empCode});
     const res = await fetch('/attendance/request/general/search?'+params);
     if (!res.ok) {

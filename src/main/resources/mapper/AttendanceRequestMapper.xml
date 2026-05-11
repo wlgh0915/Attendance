@@ -498,7 +498,17 @@
                ON actualShift.COMPANY = h.COMPANY
               AND actualShift.SHIFT_CODE = COALESCE(NULLIF(ar.ACTUAL_SHIFT_CODE, ''), NULLIF(ar.SHIFT_CODE, ''), s.SHIFT_CODE)
         WHERE h.COMPANY = #{company}
-          AND h.DEPT_CODE = #{deptCode}
+          <choose>
+              <when test="deptLeader and (deptCode == null or deptCode == '') and accessibleDeptCodes != null and accessibleDeptCodes.size() > 0">
+                  AND h.DEPT_CODE IN
+                  <foreach collection="accessibleDeptCodes" item="deptCodeItem" open="(" separator="," close=")">
+                      #{deptCodeItem}
+                  </foreach>
+              </when>
+              <otherwise>
+                  AND h.DEPT_CODE = #{deptCode}
+              </otherwise>
+          </choose>
           AND h.RETIRE_DATE IS NULL
           <if test="!deptLeader">
               AND h.EMP_CODE = #{loginEmpCode}
