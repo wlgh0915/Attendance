@@ -63,7 +63,11 @@ function plannedShiftMin(day) {
     const approvedOther = (day.requests || []).find(
         r => r.requestCategory === 'OTHER' && r.status === 'APPROVED'
     );
-    if (approvedOther) return approvedOther.changeShiftWorkMin || 0;
+    if (approvedOther) {
+        // 연차/병가 등 근무시간 없는 시프트로 변경된 경우: 원래 계획 근무시간 유지
+        if (!approvedOther.changeShiftOnHhmm) return day.shiftWorkMin || 0;
+        return approvedOther.changeShiftWorkMin || 0;
+    }
     return day.shiftWorkMin || 0;
 }
 
@@ -85,39 +89,42 @@ function requestAdjustMin(day) {
     return adj;
 }
 
-function weekTotalCell(weekMin) {
-    if (weekMin <= 0) return '<td class="week-total">-</td>';
-    const h    = Math.floor(weekMin / 60);
-    const m    = weekMin % 60;
+function fmtMin(min) {
+    if (min < 0) return '-';
+    const h = Math.floor(min / 60), m = min % 60;
+    return h + '시간' + (m > 0 ? ' ' + m + '분' : '');
+}
+
+function weekTotalCell(weekMin, weekActualMin) {
+    if (weekMin < 0) return '<td class="week-total">-</td><td class="week-total">-</td>';
     const over = weekMin > 3120;
-    const txt  = h + '시간' + (m > 0 ? ' ' + m + '분' : '');
-    return `<td class="week-total${over ? ' over' : ''}">${txt}</td>`;
+    return `<td class="week-total${over ? ' over' : ''}">${fmtMin(weekMin)}</td>`
+         + `<td class="week-total">${fmtMin(weekActualMin)}</td>`;
 }
 
 function renderCalendar() {
     if (!DAYS.length) return;
     const firstCol = dowToCol(DAYS[0].dayOfWeekNum);
     const tbody = document.getElementById('calBody');
-    let html = '', col = 0, weekMin = 0;
+    let html = '', col = 0, weekMin = 0, weekActualMin = 0;
 
-    // 전날 연장근무가 자정을 넘어 이어지는 경우: nextDate → 익일 요청 목록
+    // 자정을 넘는 연장근무: 신청한 당일에 표시
     const overnightMap = {};
     DAYS.forEach(day => {
         (day.requests || []).forEach(r => {
             if (['연장', '조출연장'].includes(r.requestWorkCode) && r.startTime && r.endTime &&
                     toMinute(r.endTime) < toMinute(r.startTime) &&
                     ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(r.status)) {
-                const nextDate = getNextDate(day.workDate);
-                if (!overnightMap[nextDate]) overnightMap[nextDate] = [];
-                overnightMap[nextDate].push(r);
+                if (!overnightMap[day.workDate]) overnightMap[day.workDate] = [];
+                overnightMap[day.workDate].push(r);
             }
         });
     });
 
-    const openRow = () => { html += '<tr>'; col = 0; weekMin = 0; };
+    const openRow = () => { html += '<tr>'; col = 0; weekMin = 0; weekActualMin = 0; };
     const endRow  = () => {
         while (col < 7) { html += '<td class="empty"></td>'; col++; }
-        html += weekTotalCell(weekMin) + '</tr>';
+        html += weekTotalCell(weekMin, weekActualMin) + '</tr>';
     };
 
     openRow();
@@ -125,15 +132,6 @@ function renderCalendar() {
 
     DAYS.forEach(day => {
         if (col === 7) { endRow(); openRow(); }
-        weekMin += plannedShiftMin(day);
-        weekMin += requestAdjustMin(day);
-        const c      = dowToCol(day.dayOfWeekNum);
-        const colCls = c === 0 ? 'col-sun' : c === 6 ? 'col-sat' : '';
-        const todCls = day.workDate === today ? 'today' : '';
-        const monthCls = day.inCurrentMonth ? '' : 'out-month';
-        const dn     = parseInt(day.workDate.slice(8));
-
-        let inner = `<div class="date-num">${dn}</div>`;
 
         // 활성 기타근태(근무변경) 신청
         const activeOtherReq = (day.requests || []).find(
@@ -147,6 +145,25 @@ function renderCalendar() {
         );
         const isAbsent = day.workDayType === 'WORK' &&
             (!day.record || !day.record.checkIn) && !hasApprovedLeave;
+
+        // 결근일은 주간합계에서 제외
+        if (!isAbsent) {
+            weekMin += plannedShiftMin(day);
+            weekMin += requestAdjustMin(day);
+        }
+        // 실근무 합산: 출근 기록 있는 날 + 연차 등 LEAVE 승인된 날(workMin 저장된 경우)
+        const hasLeaveApproval = (day.requests || []).some(r => r.requestCategory === 'LEAVE' && r.status === 'APPROVED');
+        if (day.record && day.record.workMin != null && (day.record.checkIn || hasLeaveApproval)) {
+            weekActualMin += day.record.workMin;
+        }
+
+        const c      = dowToCol(day.dayOfWeekNum);
+        const colCls = c === 0 ? 'col-sun' : c === 6 ? 'col-sat' : '';
+        const todCls = day.workDate === today ? 'today' : '';
+        const monthCls = day.inCurrentMonth ? '' : 'out-month';
+        const dn     = parseInt(day.workDate.slice(8));
+
+        let inner = `<div class="date-num">${dn}</div>`;
 
         // 1. 계획/변경 근태코드 (결근이면 표시 안 함)
         const dispShiftName = (activeOtherReq && activeOtherReq.changeShiftName)
@@ -164,7 +181,14 @@ function renderCalendar() {
             inner += `<span class="shift-badge"><span class="${shiftCls(dispWorkDayType)}">${dispShiftName}</span>${timePart}</span>`;
         }
 
-        // 2. 지각 (휴무 근태이면 표시 안 함)
+        // 2. 실 출퇴근 시간 (계획근태코드 바로 아래, 휴무 근태이면 표시 안 함)
+        if (!isLeaveDay && day.record && (day.record.checkIn || day.record.checkOut)) {
+            const ci = day.record.checkIn  || '--:--';
+            const co = day.record.checkOut || '--:--';
+            inner += `<span class="rec-badge">출 ${ci} / 퇴 ${co}</span>`;
+        }
+
+        // 3. 지각 (휴무 근태이면 표시 안 함)
         if (!isLeaveDay && day.record && day.record.lateYn === 'Y') {
             inner += `<span class="late-badge">지각 ${day.record.lateMin}분</span>`;
         }
@@ -177,8 +201,8 @@ function renderCalendar() {
             inner += `<span class="absent-badge">결근</span>`;
         }
 
-        // 4. 근태신청 (연장, 연차, 반차 등)
-        (day.requests || []).forEach(r => {
+        // 4. 근태신청 (연장, 연차, 반차 등) - 취소 제외
+        (day.requests || []).filter(r => r.status !== 'CANCELED').forEach(r => {
             const typeLabel = (r.requestCategory === 'OTHER' && r.changeShiftName)
                 ? r.changeShiftName
                 : (r.requestWorkCode || catLabel(r.requestCategory));
@@ -190,13 +214,6 @@ function renderCalendar() {
             }
             inner += `<span class="req-badge"><span class="${reqCls(r.status)}">${typeLabel} ${statusLabel(r.status)}</span>${timeStr}</span>`;
         });
-
-        // 5. 실 출퇴근 시간 (맨 아래, 휴무 근태이면 표시 안 함)
-        if (!isLeaveDay && day.record && (day.record.checkIn || day.record.checkOut)) {
-            const ci = day.record.checkIn  || '--:--';
-            const co = day.record.checkOut || '--:--';
-            inner += `<span class="rec-badge">출 ${ci} / 퇴 ${co}</span>`;
-        }
 
         // 6. 익일 근무 (전날 연장근무가 자정을 넘어 이어지는 경우)
         (overnightMap[day.workDate] || []).forEach(r => {
@@ -212,12 +229,24 @@ function renderCalendar() {
 
     const totalMin = DAYS
         .filter(d => d.inCurrentMonth)
-        .reduce((sum, d) => sum + plannedShiftMin(d) + requestAdjustMin(d), 0);
-    const th = Math.floor(totalMin / 60), tm = totalMin % 60;
-    const totalTxt = totalMin > 0
-        ? th + '시간' + (tm > 0 ? ' ' + tm + '분' : '')
-        : '-';
-    document.getElementById('monthTotal').textContent = '월 총 근무시간: ' + totalTxt;
+        .reduce((sum, d) => {
+            const aOther = (d.requests || []).find(
+                r => r.requestCategory === 'OTHER' && ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(r.status)
+            );
+            const isLvDay = aOther != null && !aOther.changeShiftOnHhmm;
+            const hasLeave = isLvDay || (d.requests || []).some(
+                r => r.requestCategory === 'LEAVE' && r.status === 'APPROVED'
+            );
+            const absent = d.workDayType === 'WORK' && (!d.record || !d.record.checkIn) && !hasLeave;
+            if (absent) return sum;
+            return sum + plannedShiftMin(d) + requestAdjustMin(d);
+        }, 0);
+    const totalActualMin = DAYS
+        .filter(d => d.inCurrentMonth && d.record && d.record.workMin != null
+            && (d.record.checkIn || (d.requests || []).some(r => r.requestCategory === 'LEAVE' && r.status === 'APPROVED')))
+        .reduce((sum, d) => sum + d.record.workMin, 0);
+    document.getElementById('monthTotal').textContent =
+        '월 총 근무시간: 예상 ' + fmtMin(totalMin) + ' / 실 ' + fmtMin(totalActualMin);
 }
 
 /* ───────── 부서/사원 변경 ───────── */

@@ -41,7 +41,8 @@
 .cal-grid th { background: #2c3e50; color: #fff; text-align: center; padding: 10px 0; font-size: 13px; font-weight: 600; }
 .cal-grid th.th-sun { color: #ff8a80; }
 .cal-grid th.th-sat { color: #80d8ff; }
-.cal-grid th.th-week { color: #aab4be; font-size: 11px; width: 80px; }
+.cal-grid th.th-week { color: #aab4be; font-size: 11px; width: 160px; }
+.cal-grid th.th-week-sub { color: #aab4be; font-size: 10px; width: 80px; padding: 4px 0; }
 .cal-grid td { width: 14.28%; min-height: 130px; height: 130px; border: 1px solid #e8eaed; vertical-align: top; padding: 6px; cursor: pointer; transition: background 0.15s; }
 .week-total { width: 80px; min-width: 80px; text-align: center; vertical-align: middle; font-size: 11px; font-weight: 700; color: #2c3e50; background: #f0f4f8; cursor: default; border: 1px solid #e8eaed; }
 .week-total.over { color: #e74c3c; background: #fde8e8; }
