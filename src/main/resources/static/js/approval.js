@@ -55,6 +55,13 @@ function requestTypeName(r) {
     return r.reqType || '';
 }
 
+function dateDisplay(r) {
+    if (r.reqGroup === 'OTHER' && r.endDate && r.endDate !== r.targetDate) {
+        return r.targetDate + ' ~ ' + r.endDate;
+    }
+    return r.targetDate || '-';
+}
+
 function dayTypeLabel(type) {
     return type === 'N1' ? '익일' : '당일';
 }
@@ -90,7 +97,7 @@ function renderTable(rows) {
             : '';
         return '<tr data-idx="'+idx+'">'
             + '<td class="td-check" onclick="clickCheckCell(this)">'+chk+'</td>'
-            + '<td>'+escapeHtml(r.targetDate)+'</td>'
+            + '<td>'+escapeHtml(dateDisplay(r))+'</td>'
             + '<td>'+escapeHtml(r.targetEmpCode)+'</td>'
             + '<td>'+escapeHtml(r.targetEmpName)+'</td>'
             + '<td>'+escapeHtml(r.targetDeptName)+'</td>'
@@ -255,7 +262,7 @@ async function openDetail(requestId) {
     document.getElementById('detailInfo').innerHTML =
         '<div class="lbl">신청번호</div><div class="val">'+escapeHtml(d.requestId)+'</div>'
         + '<div class="lbl">근태구분</div><div class="val">'+groupName+' / '+reqTypeName+'</div>'
-        + '<div class="lbl">근무일</div><div class="val">'+escapeHtml(d.targetDate)+'</div>'
+        + '<div class="lbl">근무일</div><div class="val">'+escapeHtml(dateDisplay(d))+'</div>'
         + '<div class="lbl">대상자</div><div class="val">'+escapeHtml(d.targetEmpName)+' ('+escapeHtml(d.targetEmpCode)+') / '+escapeHtml(d.targetDeptName)+'</div>'
         + '<div class="lbl">신청자</div><div class="val">'+escapeHtml(d.requesterEmpName)+' ('+escapeHtml(d.requesterEmpCode)+')</div>'
         + timeInfo

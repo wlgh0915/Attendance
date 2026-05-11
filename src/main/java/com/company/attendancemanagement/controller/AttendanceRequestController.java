@@ -113,6 +113,19 @@ public class AttendanceRequestController {
         }
     }
 
+    @PostMapping("/other/range-non-work-days")
+    @ResponseBody
+    public ResponseEntity<?> hasOtherRangeNonWorkDays(@RequestBody AttendanceRequestDto dto, HttpSession session) {
+        LoginUserDto loginUser = getLoginUser(session);
+        if (loginUser == null) return ResponseEntity.status(401).build();
+        try {
+            boolean hasNonWorkDays = requestService.hasOtherRangeNonWorkDays(dto, loginUser);
+            return ResponseEntity.ok(Map.of("hasNonWorkDays", hasNonWorkDays));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
     @PostMapping("/save")
     @ResponseBody
     public ResponseEntity<?> save(@RequestBody AttendanceRequestDto dto, HttpSession session) {

@@ -11,6 +11,7 @@
         SELECT
             r.REQ_ID                                         AS requestId,
             CONVERT(VARCHAR(10), r.TARGET_DATE, 23)          AS targetDate,
+            CONVERT(VARCHAR(10), ISNULL(o.END_DATE, r.TARGET_DATE), 23) AS endDate,
             r.REQ_TYPE                                       AS reqType,
             r.REQ_GROUP                                      AS reqGroup,
             r.REASON                                         AS reason,
@@ -71,7 +72,7 @@
               AND r.REQ_GROUP = 'OTHER'
           </if>
           <if test="fromDate != null and fromDate != ''">
-              AND r.TARGET_DATE >= CAST(#{fromDate} AS DATE)
+              AND ISNULL(o.END_DATE, r.TARGET_DATE) >= CAST(#{fromDate} AS DATE)
           </if>
           <if test="toDate != null and toDate != ''">
               AND r.TARGET_DATE &lt;= CAST(#{toDate} AS DATE)
@@ -88,6 +89,7 @@
         SELECT
             r.REQ_ID                                         AS requestId,
             CONVERT(VARCHAR(10), r.TARGET_DATE, 23)          AS targetDate,
+            CONVERT(VARCHAR(10), ISNULL(o.END_DATE, r.TARGET_DATE), 23) AS endDate,
             r.REQ_TYPE                                       AS reqType,
             r.REQ_GROUP                                      AS reqGroup,
             r.REASON                                         AS reason,

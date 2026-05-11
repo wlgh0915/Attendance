@@ -28,10 +28,10 @@
         <div class="search-group">
             <label>부서</label>
             <select id="deptCode" th:disabled="${!canViewAll}">
+                <option th:if="${canViewAll}" value="">전체</option>
                 <option th:each="dept : ${depts}"
                         th:value="${dept.deptCode}"
-                        th:text="${dept.deptName}"
-                        th:selected="${dept.deptCode == myDeptCode}">
+                        th:text="${dept.deptName}">
                 </option>
             </select>
         </div>
@@ -52,9 +52,9 @@
                 <th style="width:75px;">성명</th>
                 <th style="width:100px;">부서</th>
                 <th style="width:90px;">근무계획</th>
-                <th style="width:80px;">예정근무</th>
+                <th style="width:80px;" class="holiday-hidden">예정근무</th>
                 <th style="width:90px;">실제근태</th>
-                <th style="width:80px;">실근무</th>
+                <th style="width:80px;" class="holiday-hidden">실근무</th>
                 <th style="width:90px;">예상근로시간</th>
                 <th style="width:120px;">신청근무</th>
                 <th style="width:120px;">사유</th>

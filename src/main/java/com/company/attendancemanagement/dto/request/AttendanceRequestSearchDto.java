@@ -3,6 +3,8 @@ package com.company.attendancemanagement.dto.request;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
+
 @Getter
 @Setter
 public class AttendanceRequestSearchDto {
@@ -15,4 +17,5 @@ public class AttendanceRequestSearchDto {
     private String workPlanFilter;    // OTHER용: 전체=null, 특정 shift code
     private boolean deptLeader;       // 컨트롤러에서 세팅
     private String loginEmpCode;      // 비부서장일 때 본인만 조회
+    private List<String> accessibleDeptCodes;
 }

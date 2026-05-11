@@ -71,17 +71,60 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
 
         int actualInMin = toMinutes(checkIn);
         int actualOutMin = toActualOutMinute(dto, actualInMin);
-        int minutes = actualOutMin - actualInMin;
+
+        List<Map<String, Object>> overtimes = recordMapper.findApprovedOvertimeRequests(
+                dto.getCompany(), dto.getEmpCode(), dto.getYyyymmdd());
+
         Map<String, Object> planned = recordMapper.findPlannedShift(
                 dto.getCompany(), dto.getEmpCode(), dto.getYyyymmdd());
 
         if (planned == null
                 || planned.get("workOnHhmm") == null
                 || planned.get("workOffHhmm") == null) {
-            return Math.max(0, minutes);
+            // OFF/HOLIDAY 날: 휴일근무 승인 범위 내로 cap
+            Map<String, Object> holidayWork = overtimes.stream()
+                    .filter(r -> "휴일근무".equals(r.get("reqType")))
+                    .findFirst().orElse(null);
+            if (holidayWork != null
+                    && holidayWork.get("startTime") != null
+                    && holidayWork.get("endTime") != null) {
+                int approvedStart = toMinutes(holidayWork.get("startTime").toString());
+                int approvedEnd   = toMinutes(holidayWork.get("endTime").toString());
+                int effIn  = Math.max(actualInMin, approvedStart);
+                int effOut = Math.min(actualOutMin, approvedEnd);
+                return Math.max(0, effOut - effIn);
+            }
+            return Math.max(0, actualOutMin - actualInMin);
         }
 
-        minutes -= breakOverlapMin(planned, actualInMin, actualOutMin);
+        // 출근 유효 시작 시간: 조출연장 승인 시 승인 시작 시간, 미승인 시 계획 출근시간으로 cap
+        Map<String, Object> earlyApproval = overtimes.stream()
+                .filter(r -> "조출연장".equals(r.get("reqType")))
+                .findFirst().orElse(null);
+
+        int effectiveInMin = actualInMin;
+        if (earlyApproval != null && earlyApproval.get("startTime") != null) {
+            int approvedEarlyStart = toMinutes(earlyApproval.get("startTime").toString());
+            effectiveInMin = Math.max(actualInMin, approvedEarlyStart);
+        } else if (earlyApproval == null) {
+            int plannedOnMin = toMinutes(planned.get("workOnHhmm").toString());
+            effectiveInMin = Math.max(actualInMin, plannedOnMin);
+        }
+
+        // 연장 미승인 시 계획 퇴근시간 이후 시간은 인정하지 않음
+        boolean hasOvertimeApproval = overtimes.stream()
+                .anyMatch(r -> "연장".equals(r.get("reqType")));
+        int effectiveOutMin = actualOutMin;
+        if (!hasOvertimeApproval) {
+            int plannedOffMin = toMinutes(planned.get("workOffHhmm").toString());
+            if (actualOutMin > 1440 && plannedOffMin < toMinutes(planned.get("workOnHhmm").toString())) {
+                plannedOffMin += 1440;
+            }
+            effectiveOutMin = Math.min(actualOutMin, plannedOffMin);
+        }
+
+        int minutes = effectiveOutMin - effectiveInMin;
+        minutes -= breakOverlapMin(planned, effectiveInMin, effectiveOutMin);
         return Math.max(0, minutes);
     }
 

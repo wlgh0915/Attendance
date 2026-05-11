@@ -23,6 +23,8 @@ public interface AttendanceRequestService {
 
     AttendanceRequestDto saveRequest(AttendanceRequestDto dto, LoginUserDto loginUser);
 
+    boolean hasOtherRangeNonWorkDays(AttendanceRequestDto dto, LoginUserDto loginUser);
+
     void deleteRequest(String requestId, LoginUserDto loginUser);
 
     void submitRequest(String requestId, LoginUserDto loginUser);

@@ -27,6 +27,10 @@ public interface AttendanceRequestMapper {
 
     int countActiveSameWorkRequest(AttendanceRequestDto dto);
 
+    int countOtherRangeNonWorkDays(AttendanceRequestDto dto);
+
+    int countActiveGeneralRequestInOtherRange(AttendanceRequestDto dto);
+
     int insertRequestHeader(AttendanceRequestDto dto);
 
     int insertGeneralDetail(AttendanceRequestDto dto);
@@ -73,6 +77,8 @@ public interface AttendanceRequestMapper {
                                                   @Param("shiftCodeOrName") String shiftCodeOrName);
 
     Map<String, Object> findEffectiveWorkTimeInfo(AttendanceRequestDto dto);
+
+    Integer findNextDayWorkStartLimitMin(AttendanceRequestDto dto);
 
     /** 조퇴↔연장 충돌 신청 존재 여부 확인 */
     int countAttendanceCheckIn(@Param("company") String company,

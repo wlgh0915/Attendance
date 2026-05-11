@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -52,6 +53,10 @@ public class AttendanceApprovalServiceImpl implements AttendanceApprovalService 
         approvalMapper.updateStepApproved(requestId, myStep.getStepNo());
 
         if ("Y".equals(myStep.getIsFinal())) {
+            AttendanceRequestDto request = requestMapper.findByRequestId(requestId);
+            if (request != null && "OTHER".equals(request.getRequestCategory())) {
+                validateOtherRequestAvailable(request);
+            }
             requestMapper.updateStatus(requestId, "APPROVED");
             requestMapper.applyApprovedOtherRequestToAttendance(requestId);
             requestMapper.applyApprovedHolidayRequestToAttendance(requestId);
@@ -77,6 +82,32 @@ public class AttendanceApprovalServiceImpl implements AttendanceApprovalService 
         if (request == null) throw new IllegalArgumentException("존재하지 않는 근태신청입니다.");
         if (!"SUBMITTED".equals(request.getStatus())) {
             throw new IllegalArgumentException("현재 결재 처리할 수 없는 신청입니다.");
+        }
+        if ("OTHER".equals(request.getRequestCategory())) {
+            validateOtherRequestDateRange(request);
+        }
+    }
+
+    private void validateOtherRequestDateRange(AttendanceRequestDto request) {
+        if (request.getWorkDate() == null || request.getWorkDate().isBlank()
+                || request.getEndDate() == null || request.getEndDate().isBlank()) {
+            throw new IllegalArgumentException("기타 근태 신청 기간이 올바르지 않습니다.");
+        }
+        if (LocalDate.parse(request.getEndDate()).isBefore(LocalDate.parse(request.getWorkDate()))) {
+            throw new IllegalArgumentException("종료 날짜는 근무일보다 빠를 수 없습니다.");
+        }
+    }
+
+    private void validateOtherRequestAvailable(AttendanceRequestDto request) {
+        validateOtherRequestDateRange(request);
+        if (requestMapper.countOtherRangeNonWorkDays(request) > 0) {
+            throw new IllegalArgumentException("기타 근태 기간에는 휴무일/휴일을 포함할 수 없습니다.");
+        }
+        if (requestMapper.countActiveGeneralRequestInOtherRange(request) > 0) {
+            throw new IllegalArgumentException("기타 근태 기간에 이미 일반 근태 신청이 있습니다.");
+        }
+        if (requestMapper.countActiveSameWorkRequest(request) > 0) {
+            throw new IllegalArgumentException("기타 근태 기간에 이미 기타 근태 신청이 있습니다.");
         }
     }
 

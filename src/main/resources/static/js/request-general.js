@@ -24,7 +24,18 @@ function switchCategory(el) {
     document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
     el.classList.add('active');
     currentCategory = el.dataset.cat;
+    updateHolidayColumnVisibility();
     doSearch();
+}
+
+function updateHolidayColumnVisibility() {
+    document.querySelectorAll('.holiday-hidden').forEach(el => {
+        el.style.display = currentCategory === 'HOLIDAY' ? 'none' : '';
+    });
+}
+
+function visibleColumnCount() {
+    return currentCategory === 'HOLIDAY' ? 14 : 16;
 }
 
 function buildTimeOptions(selected) {
@@ -82,8 +93,13 @@ function isSameDay(timeType) {
     return !timeType || timeType === 'N0';
 }
 
-function validateCheckIn(row, requestCategory) {
+function isHalfDayCode(workCode) {
+    return ['오전반차', '오후반차', '전반차', '후반차'].includes(workCode);
+}
+
+function validateCheckIn(row, requestCategory, workCode) {
     if (requestCategory === 'HOLIDAY') return true;
+    if (isHalfDayCode(workCode)) return true;
     if (!row.checkIn) {
         showToast('출근 기록이 없으면 일반 근태를 신청할 수 없습니다.', 'error');
         return false;
@@ -214,6 +230,17 @@ function validateWithinEffectiveWorkTime(dto, row) {
     }
     if (end > range.end) {
         showToast('종료 시간이 유효 근무 종료 시간 이후입니다.', 'error');
+        return false;
+    }
+    return true;
+}
+
+function validateNotPastNextDayWorkStart(dto, row) {
+    const end = absoluteMinute(dto.endTimeType, dto.endTime);
+    const limit = row && row.nextDayWorkStartLimitMin;
+    if (end == null || end <= 1440 || limit == null) return true;
+    if (end > limit) {
+        showToast('익일 종료 시간은 다음날 예정 출근 또는 조출 신청 시작 시간을 넘길 수 없습니다.', 'error');
         return false;
     }
     return true;
@@ -412,12 +439,13 @@ function computeTimeState(category, code, r) {
             endTypeDis = endDis = true;
         }
     } else if (category === 'LEAVE') {
-        if (code === '오전반차' || code === '오후반차') {
-            const shift = shiftCodesData.find(s => s.shiftCode === code || s.shiftName === code);
-            if (shift && (shift.workOnHhmm || shift.workOffHhmm)) {
-                startType = 'N0'; startTime = shift.workOnHhmm || startTime;
-                endType   = 'N0'; endTime   = shift.workOffHhmm || endTime;
-            }
+        if (code === '오전반차' || code === '전반차') {
+            startType = 'N0'; startTime = '09:00';
+            endType   = 'N0'; endTime   = '13:00';
+            startTypeDis = startDis = endTypeDis = endDis = true;
+        } else if (code === '오후반차' || code === '후반차') {
+            startType = 'N0'; startTime = '14:00';
+            endType   = 'N0'; endTime   = '18:00';
             startTypeDis = startDis = endTypeDis = endDis = true;
         }
     }
@@ -428,9 +456,10 @@ function computeTimeState(category, code, r) {
 function renderTable(rows) {
     const checkAll = document.getElementById('checkAll');
     if (checkAll) checkAll.checked = false;
+    updateHolidayColumnVisibility();
     const tbody = document.getElementById('reqTableBody');
     if (!rows || rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="16" class="no-data">조회된 인원이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="'+visibleColumnCount()+'" class="no-data">조회된 인원이 없습니다.</td></tr>';
         tableData = [];
         return;
     }
@@ -462,9 +491,9 @@ function renderTable(rows) {
             + '<td>'+(r.empName||'')+'</td>'
             + '<td>'+(r.deptName||'')+'</td>'
             + '<td>'+(r.workPlanName||'-')+'</td>'
-            + '<td>'+formatWorkMin(r.plannedWorkMin || 0)+'</td>'
+            + '<td class="holiday-hidden">'+formatWorkMin(r.plannedWorkMin || 0)+'</td>'
             + '<td>'+(r.actualWorkName || r.actualWorkCode || '-')+'</td>'
-            + '<td>'+formatWorkMin(recognizedActualWorkMin(r))+'</td>'
+            + '<td class="holiday-hidden">'+formatWorkMin(recognizedActualWorkMin(r))+'</td>'
             + '<td data-field="shiftWorkMin">'+formatWorkMin(savedEstimatedWorkMin(r, existing, selectedWorkCode))+'</td>'
             + '<td><select data-field="requestWorkCode" onchange="onWorkCodeChange(this,'+idx+')">'+buildWorkCodeOptions(currentCategory,selectedWorkCode)+'</select></td>'
             + '<td><input type="text" data-field="reason" value="'+reasonVal+'" placeholder="사유" '+disFull+'></td>'
@@ -481,6 +510,7 @@ function renderTable(rows) {
             + '<td data-field="requesterName">'+(existing.requesterName||'')+'</td>'
             + '</tr>';
     }).join('');
+    updateHolidayColumnVisibility();
 }
 
 // 근무코드 변경 시 시간 필드 잠금/해제
@@ -599,8 +629,6 @@ async function doSearch() {
     const deptCode = deptEl ? deptEl.value : '';
     const empCode  = empEl  ? empEl.value  : '';
     if (!workDate) { showToast('근무일을 선택하세요.','error'); return; }
-    if (!deptCode) { showToast('부서를 선택하세요.','error'); return; }
-
     const params = new URLSearchParams({requestCategory:currentCategory, workDate, deptCode, empCode});
     const res = await fetch('/attendance/request/general/search?'+params);
     if (!res.ok) {
@@ -617,7 +645,7 @@ async function doSave() {
     for (const tr of selected) {
         const dto = rowToDto(tr);
         if (!dto.requestWorkCode) { showToast('신청근무를 선택하세요.','error'); return; }
-        if (!validateCheckIn(tableData[parseInt(tr.dataset.idx)], currentCategory)) return;
+        if (!validateCheckIn(tableData[parseInt(tr.dataset.idx)], currentCategory, dto.requestWorkCode)) return;
         if (!dto.startTime || !dto.endTime) { showToast('시작/종료 시간을 선택하세요.','error'); return; }
         if (dto.requestWorkCode === '조출연장' && dto.startTime >= '09:00') {
             showToast('조출연장은 시작시간이 09:00 이전이어야 합니다.','error'); return;
@@ -634,6 +662,7 @@ async function doSave() {
         if (!isEndAfterStart(dto.startTimeType, dto.startTime, dto.endTimeType, dto.endTime)) {
             showToast('종료 시간이 시작 시간보다 앞설 수 없습니다.','error'); return;
         }
+        if (!validateNotPastNextDayWorkStart(dto, tableData[parseInt(tr.dataset.idx)])) return;
         const res = await fetch('/attendance/request/save', {
             method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(dto)
         });
@@ -671,7 +700,7 @@ async function doSubmit() {
         let requestId = dto.requestId;
         const existing = currentRequestForRow(tr, tableData[idx]);
         if (!dto.requestWorkCode) { showToast('신청근무를 선택하세요.','error'); return; }
-        if (!validateCheckIn(tableData[idx], currentCategory)) return;
+        if (!validateCheckIn(tableData[idx], currentCategory, dto.requestWorkCode)) return;
         if (!dto.startTime || !dto.endTime) { showToast('시작/종료 시간을 선택하세요.','error'); return; }
         if (dto.requestWorkCode === '조출연장' && dto.startTime >= '09:00') {
             showToast('조출연장은 시작시간이 09:00 이전이어야 합니다.','error'); return;
@@ -688,6 +717,7 @@ async function doSubmit() {
         if (!isEndAfterStart(dto.startTimeType, dto.startTime, dto.endTimeType, dto.endTime)) {
             showToast('종료 시간이 시작 시간보다 앞설 수 없습니다.','error'); return;
         }
+        if (!validateNotPastNextDayWorkStart(dto, tableData[parseInt(tr.dataset.idx)])) return;
         if (!requestId || !existing || existing.status === 'DRAFT' || existing.status === 'REJECTED') {
             const sr = await fetch('/attendance/request/save', {
                 method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(dto)
@@ -730,5 +760,8 @@ function showToast(msg, type) {
     setTimeout(() => { t.style.display = 'none'; }, 3000);
 }
 
-document.addEventListener('DOMContentLoaded', doSearch);
+document.addEventListener('DOMContentLoaded', () => {
+    updateHolidayColumnVisibility();
+    doSearch();
+});
 

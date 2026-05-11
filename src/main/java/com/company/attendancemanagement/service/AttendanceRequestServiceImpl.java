@@ -41,7 +41,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         boolean isAdmin      = "ADMIN".equals(loginUser.getRoleCode());
         boolean canViewAll   = isAdmin || isDeptLeader;
 
-        List<DepartmentDto> depts = isAdmin
+        List<DepartmentDto> depts = canViewAll
                 ? requestMapper.findAccessibleDepts(loginUser.getCompany(), loginUser.getDeptCode())
                 : requestMapper.findDeptListForDropdown(loginUser.getCompany());
         List<ShiftCodeDto> shiftCodes = requestMapper.findShiftCodes(loginUser.getCompany());
@@ -69,12 +69,18 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
 
         if (!canViewAll) {
             search.setDeptCode(loginUser.getDeptCode());
-        } else if (isAdmin) {
+        } else {
             List<DepartmentDto> accessible = requestMapper.findAccessibleDepts(
                     loginUser.getCompany(), loginUser.getDeptCode());
-            boolean ok = accessible.stream()
-                    .anyMatch(d -> d.getDeptCode().equals(search.getDeptCode()));
-            if (!ok) search.setDeptCode(loginUser.getDeptCode());
+            List<String> accessibleDeptCodes = accessible.stream()
+                    .map(DepartmentDto::getDeptCode)
+                    .toList();
+            search.setAccessibleDeptCodes(accessibleDeptCodes);
+            if (search.getDeptCode() != null && !search.getDeptCode().isBlank()) {
+                boolean ok = accessibleDeptCodes.stream()
+                        .anyMatch(code -> code.equals(search.getDeptCode()));
+                if (!ok) search.setDeptCode(loginUser.getDeptCode());
+            }
         }
 
         return mergeRequestsByEmployee(requestMapper.searchEmployees(search), search.getRequestCategory());
@@ -92,7 +98,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         search.setCanViewAll(canViewAll);
         search.setLoginEmpCode(loginUser.getEmpCode());
 
-        if (isAdmin) {
+        if (canViewAll) {
             List<DepartmentDto> accessible = requestMapper.findAccessibleDepts(
                     loginUser.getCompany(), loginUser.getDeptCode());
             search.setAccessibleDeptCodes(accessible.stream()
@@ -103,7 +109,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         if (!canViewAll) {
             search.setDeptCode(null);
             search.setEmpCode(null);
-        } else if (isAdmin && search.getDeptCode() != null && !search.getDeptCode().isBlank()) {
+        } else if (search.getDeptCode() != null && !search.getDeptCode().isBlank()) {
             boolean ok = search.getAccessibleDeptCodes().stream()
                     .anyMatch(code -> code.equals(search.getDeptCode()));
             if (!ok) search.setDeptCode(loginUser.getDeptCode());
@@ -126,9 +132,8 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
                 || loginUser.getEmpCode().equals(request.getEmpCode());
 
         if (!allowed && (isAdmin || isDeptLeader)) {
-            List<DepartmentDto> accessible = isAdmin
-                    ? requestMapper.findAccessibleDepts(loginUser.getCompany(), loginUser.getDeptCode())
-                    : requestMapper.findDeptListForDropdown(loginUser.getCompany());
+            List<DepartmentDto> accessible = requestMapper.findAccessibleDepts(
+                    loginUser.getCompany(), loginUser.getDeptCode());
             allowed = accessible.stream().anyMatch(d -> d.getDeptCode().equals(request.getDeptCode()));
         }
         if (!allowed) {
@@ -174,6 +179,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
 
     private void clearDisplayRequest(AttendanceEmpRowDto row) {
         row.setRequestId(null);
+        row.setEndDate(null);
         row.setExistingRequestGroup(null);
         row.setRequestWorkCode(null);
         row.setReason(null);
@@ -220,6 +226,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             return;
         }
         target.setRequestId(source.getRequestId());
+        target.setEndDate(source.getEndDate());
         target.setExistingRequestGroup(source.getExistingRequestGroup());
         target.setRequestWorkCode(source.getRequestWorkCode());
         target.setReason(source.getReason());
@@ -237,6 +244,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
     private AttendanceEmpRowDto copyRequestInfo(AttendanceEmpRowDto source) {
         AttendanceEmpRowDto copy = new AttendanceEmpRowDto();
         copy.setRequestId(source.getRequestId());
+        copy.setEndDate(source.getEndDate());
         copy.setExistingRequestGroup(source.getExistingRequestGroup());
         copy.setRequestWorkCode(source.getRequestWorkCode());
         copy.setReason(source.getReason());
@@ -253,6 +261,13 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
     }
 
     @Override
+    public boolean hasOtherRangeNonWorkDays(AttendanceRequestDto dto, LoginUserDto loginUser) {
+        dto.setCompany(loginUser.getCompany());
+        normalizeOtherRequestDateRange(dto);
+        return requestMapper.countOtherRangeNonWorkDays(dto) > 0;
+    }
+
+    @Override
     @Transactional
     public AttendanceRequestDto saveRequest(AttendanceRequestDto dto, LoginUserDto loginUser) {
         dto.setCompany(loginUser.getCompany());
@@ -262,8 +277,16 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         dto.setRequesterDeptCode(loginUser.getDeptCode());
 
         boolean isOther = "OTHER".equals(dto.getRequestCategory());
+        if (isOther) {
+            normalizeOtherRequestDateRange(dto);
+            validateOtherRangeAvailable(dto);
+        }
 
-        if (!isOther && !"HOLIDAY".equals(dto.getRequestCategory()) && requestMapper.countAttendanceCheckIn(
+        applyFixedHalfDayTime(dto);
+
+        if (!isOther && !"HOLIDAY".equals(dto.getRequestCategory())
+                && !isHalfDayRequest(dto.getRequestWorkCode())
+                && requestMapper.countAttendanceCheckIn(
                 dto.getCompany(), dto.getEmpCode(), dto.getWorkDate()) == 0) {
             throw new IllegalArgumentException("출근 기록이 없으면 일반 근태를 신청할 수 없습니다.");
         }
@@ -330,6 +353,53 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         return dto;
     }
 
+    private void normalizeOtherRequestDateRange(AttendanceRequestDto dto) {
+        if (dto.getWorkDate() == null || dto.getWorkDate().isBlank()) {
+            throw new IllegalArgumentException("시작 날짜를 선택하세요.");
+        }
+        if (dto.getEndDate() == null || dto.getEndDate().isBlank()) {
+            dto.setEndDate(dto.getWorkDate());
+        }
+        LocalDate startDate = LocalDate.parse(dto.getWorkDate());
+        LocalDate endDate = LocalDate.parse(dto.getEndDate());
+        if (endDate.isBefore(startDate)) {
+            throw new IllegalArgumentException("종료 날짜는 근무일보다 빠를 수 없습니다.");
+        }
+    }
+
+    private void validateOtherRangeAvailable(AttendanceRequestDto dto) {
+        if (requestMapper.countOtherRangeNonWorkDays(dto) > 0) {
+            throw new IllegalArgumentException("기타 근태 기간에는 휴무일/휴일을 포함할 수 없습니다.");
+        }
+        if (requestMapper.countActiveGeneralRequestInOtherRange(dto) > 0) {
+            throw new IllegalArgumentException("기타 근태 기간에 이미 일반 근태 신청이 있습니다.");
+        }
+        if (requestMapper.countActiveSameWorkRequest(dto) > 0) {
+            throw new IllegalArgumentException("기타 근태 기간에 이미 기타 근태 신청이 있습니다.");
+        }
+    }
+
+    private void applyFixedHalfDayTime(AttendanceRequestDto dto) {
+        if ("오전반차".equals(dto.getRequestWorkCode()) || "전반차".equals(dto.getRequestWorkCode())) {
+            dto.setStartTimeType("N0");
+            dto.setStartTime("09:00");
+            dto.setEndTimeType("N0");
+            dto.setEndTime("13:00");
+        } else if ("오후반차".equals(dto.getRequestWorkCode()) || "후반차".equals(dto.getRequestWorkCode())) {
+            dto.setStartTimeType("N0");
+            dto.setStartTime("14:00");
+            dto.setEndTimeType("N0");
+            dto.setEndTime("18:00");
+        }
+    }
+
+    private boolean isHalfDayRequest(String workCode) {
+        return "오전반차".equals(workCode)
+                || "오후반차".equals(workCode)
+                || "전반차".equals(workCode)
+                || "후반차".equals(workCode);
+    }
+
     private int validateRequestTimeRange(AttendanceRequestDto dto) {
         if (dto.getStartTime() == null || dto.getStartTime().isBlank()
                 || dto.getEndTime() == null || dto.getEndTime().isBlank()) {
@@ -340,6 +410,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         if (end <= start) {
             throw new IllegalArgumentException("종료 시간이 시작 시간보다 늦어야 합니다.");
         }
+        validateNotPastNextDayWorkStart(dto, end);
         int workMin = end - start;
         Map<String, Object> shiftInfo = null;
         if ("HOLIDAY".equals(dto.getRequestCategory())) {
@@ -353,6 +424,16 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             workMin -= breakOverlapMin(shiftInfo, start, end);
         }
         return Math.max(0, workMin);
+    }
+
+    private void validateNotPastNextDayWorkStart(AttendanceRequestDto dto, int endMin) {
+        if (endMin <= 1440) {
+            return;
+        }
+        Integer limitMin = requestMapper.findNextDayWorkStartLimitMin(dto);
+        if (limitMin != null && endMin > limitMin) {
+            throw new IllegalArgumentException("익일 종료 시간은 다음날 예정 출근 또는 조출 신청 시작 시간을 넘길 수 없습니다.");
+        }
     }
 
     private boolean isSameDay(String timeType) {
@@ -516,6 +597,10 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
     public void submitRequest(String requestId, LoginUserDto loginUser) {
         AttendanceRequestDto existing = requestMapper.findByRequestId(requestId);
         if (existing == null) throw new IllegalArgumentException("존재하지 않는 근태신청입니다.");
+        if ("OTHER".equals(existing.getRequestCategory())) {
+            normalizeOtherRequestDateRange(existing);
+            validateOtherRangeAvailable(existing);
+        }
         if ("APPROVED".equals(existing.getStatus())) {
             throw new IllegalArgumentException("이미 승인완료된 신청입니다.");
         }

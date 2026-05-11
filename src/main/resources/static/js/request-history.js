@@ -41,6 +41,9 @@ async function openHistoryDetail(btn) {
     }
 
     const groupName = d.reqGroup === 'OTHER' ? '기타근태' : '일반근태';
+    const targetDateText = d.reqGroup === 'OTHER' && d.endDate && d.endDate !== d.targetDate
+        ? d.targetDate + ' ~ ' + d.endDate
+        : (d.targetDate || '-');
     let timeInfo = '';
     if (d.reqGroup === 'GENERAL') {
         const start = dayTypeLabel(d.startTimeType) + ' ' + (d.startTime || '-');
@@ -58,7 +61,7 @@ async function openHistoryDetail(btn) {
     document.getElementById('detailInfo').innerHTML =
         '<div class="lbl">신청번호</div><div class="val">' + escapeHtml(d.requestId) + '</div>'
         + '<div class="lbl">근무구분</div><div class="val">' + escapeHtml(groupName + ' / ' + (d.reqType || '-')) + '</div>'
-        + '<div class="lbl">근무일</div><div class="val">' + escapeHtml(d.targetDate || '-') + '</div>'
+        + '<div class="lbl">근무일</div><div class="val">' + escapeHtml(targetDateText) + '</div>'
         + '<div class="lbl">대상자</div><div class="val">' + escapeHtml((d.targetEmpName || '-') + ' (' + (d.targetEmpCode || '-') + ') / ' + (d.targetDeptName || '-')) + '</div>'
         + '<div class="lbl">신청자</div><div class="val">' + escapeHtml((d.requesterEmpName || '-') + ' (' + (d.requesterEmpCode || '-') + ')') + '</div>'
         + timeInfo

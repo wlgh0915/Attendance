@@ -61,7 +61,14 @@
     <table class="cal-grid">
         <thead>
         <tr>
-            <th class="th-sun">일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th class="th-sat">토</th><th class="th-week">주간합계</th>
+            <th class="th-sun" rowspan="2">일</th>
+            <th rowspan="2">월</th><th rowspan="2">화</th><th rowspan="2">수</th><th rowspan="2">목</th><th rowspan="2">금</th>
+            <th class="th-sat" rowspan="2">토</th>
+            <th class="th-week" colspan="2">주간합계</th>
+        </tr>
+        <tr>
+            <th class="th-week-sub">예상</th>
+            <th class="th-week-sub">실근무</th>
         </tr>
         </thead>
         <tbody id="calBody"></tbody>

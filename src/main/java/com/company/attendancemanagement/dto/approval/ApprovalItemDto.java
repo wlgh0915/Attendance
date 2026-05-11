@@ -8,6 +8,7 @@ import lombok.Setter;
 public class ApprovalItemDto {
     private String  requestId;
     private String  targetDate;
+    private String  endDate;
     private String  reqType;
     private String  reqGroup;
     private String  reason;

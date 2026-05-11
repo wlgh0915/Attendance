@@ -8,6 +8,7 @@ import lombok.Setter;
 public class AttendanceRequestHistoryDto {
     private String requestId;
     private String workDate;
+    private String endDate;
     private String requestCategory;
     private String requestWorkCode;
     private String empCode;
