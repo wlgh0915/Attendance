@@ -268,7 +268,11 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
 
         boolean isOther = "OTHER".equals(dto.getRequestCategory());
 
-        if (!isOther && !"HOLIDAY".equals(dto.getRequestCategory()) && requestMapper.countAttendanceCheckIn(
+        applyFixedHalfDayTime(dto);
+
+        if (!isOther && !"HOLIDAY".equals(dto.getRequestCategory())
+                && !isHalfDayRequest(dto.getRequestWorkCode())
+                && requestMapper.countAttendanceCheckIn(
                 dto.getCompany(), dto.getEmpCode(), dto.getWorkDate()) == 0) {
             throw new IllegalArgumentException("출근 기록이 없으면 일반 근태를 신청할 수 없습니다.");
         }
@@ -333,6 +337,27 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             }
         }
         return dto;
+    }
+
+    private void applyFixedHalfDayTime(AttendanceRequestDto dto) {
+        if ("오전반차".equals(dto.getRequestWorkCode()) || "전반차".equals(dto.getRequestWorkCode())) {
+            dto.setStartTimeType("N0");
+            dto.setStartTime("09:00");
+            dto.setEndTimeType("N0");
+            dto.setEndTime("13:00");
+        } else if ("오후반차".equals(dto.getRequestWorkCode()) || "후반차".equals(dto.getRequestWorkCode())) {
+            dto.setStartTimeType("N0");
+            dto.setStartTime("14:00");
+            dto.setEndTimeType("N0");
+            dto.setEndTime("18:00");
+        }
+    }
+
+    private boolean isHalfDayRequest(String workCode) {
+        return "오전반차".equals(workCode)
+                || "오후반차".equals(workCode)
+                || "전반차".equals(workCode)
+                || "후반차".equals(workCode);
     }
 
     private int validateRequestTimeRange(AttendanceRequestDto dto) {
