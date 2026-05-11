@@ -279,6 +279,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         boolean isOther = "OTHER".equals(dto.getRequestCategory());
         if (isOther) {
             normalizeOtherRequestDateRange(dto);
+            validateOtherRangeAvailable(dto);
         }
 
         applyFixedHalfDayTime(dto);
@@ -363,6 +364,18 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         LocalDate endDate = LocalDate.parse(dto.getEndDate());
         if (endDate.isBefore(startDate)) {
             throw new IllegalArgumentException("종료 날짜는 근무일보다 빠를 수 없습니다.");
+        }
+    }
+
+    private void validateOtherRangeAvailable(AttendanceRequestDto dto) {
+        if (requestMapper.countOtherRangeNonWorkDays(dto) > 0) {
+            throw new IllegalArgumentException("기타 근태 기간에는 휴무일/휴일을 포함할 수 없습니다.");
+        }
+        if (requestMapper.countActiveGeneralRequestInOtherRange(dto) > 0) {
+            throw new IllegalArgumentException("기타 근태 기간에 이미 일반 근태 신청이 있습니다.");
+        }
+        if (requestMapper.countActiveSameWorkRequest(dto) > 0) {
+            throw new IllegalArgumentException("기타 근태 기간에 이미 기타 근태 신청이 있습니다.");
         }
     }
 
@@ -586,6 +599,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         if (existing == null) throw new IllegalArgumentException("존재하지 않는 근태신청입니다.");
         if ("OTHER".equals(existing.getRequestCategory())) {
             normalizeOtherRequestDateRange(existing);
+            validateOtherRangeAvailable(existing);
         }
         if ("APPROVED".equals(existing.getStatus())) {
             throw new IllegalArgumentException("이미 승인완료된 신청입니다.");

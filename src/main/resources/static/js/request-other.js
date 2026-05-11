@@ -202,7 +202,8 @@ async function confirmNonWorkDaysIncluded(dto) {
     }
     const json = await res.json();
     if (json.hasNonWorkDays) {
-        return confirm('선택한 기간에 주말/공휴일이 포함되어 있습니다. 포함해서 신청하시겠습니까?');
+        showToast('기타근태 기간에는 휴무일/휴일을 포함할 수 없습니다.', 'error');
+        return false;
     }
     return true;
 }

@@ -879,6 +879,21 @@
         ]]>
     </select>
 
+    <select id="countActiveGeneralRequestInOtherRange"
+            parameterType="com.company.attendancemanagement.dto.request.AttendanceRequestDto"
+            resultType="int">
+        SELECT COUNT(*)
+        FROM HRTATTENDANCEREQUEST01 r
+        WHERE r.COMPANY = #{company}
+          AND r.TARGET_EMP_CODE = #{empCode}
+          AND r.STATUS IN ('DRAFT', 'SUBMITTED', 'APPROVED')
+          AND r.REQ_GROUP = 'GENERAL'
+          AND r.TARGET_DATE BETWEEN CAST(#{workDate} AS DATE) AND CAST(#{endDate} AS DATE)
+          <if test="requestId != null and requestId != ''">
+              AND r.REQ_ID &lt;&gt; #{requestId}
+          </if>
+    </select>
+
     <insert id="insertRequestHeader"
             parameterType="com.company.attendancemanagement.dto.request.AttendanceRequestDto">
         INSERT INTO HRTATTENDANCEREQUEST01 (
