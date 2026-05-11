@@ -74,8 +74,9 @@ function renderTable(rows) {
     const checkAll = document.getElementById('checkAll');
     if (checkAll) checkAll.checked = false;
     const tbody = document.getElementById('reqTableBody');
+    const workDate = document.getElementById('workDate').value;
     if (!rows || rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" class="no-data">조회된 인원이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" class="no-data">조회된 인원이 없습니다.</td></tr>';
         tableData = [];
         return;
     }
@@ -90,6 +91,7 @@ function renderTable(rows) {
         const checkDis = blockedByOtherRequest ? 'disabled' : '';
         const reasonVal = (existing.reason||'').replace(/"/g,'&quot;');
         const reasonDetailVal = (existing.reasonDetail||'').replace(/"/g,'&quot;');
+        const endDateVal = existing.endDate || r.endDate || workDate;
         const statusHtml = blockedByOtherRequest
             ? '<span class="badge badge-submitted">신청있음</span>'
             : statusBadge(existing.status);
@@ -100,6 +102,7 @@ function renderTable(rows) {
             + '<td>'+(r.deptName||'')+'</td>'
             + '<td>'+(r.workPlanName||'-')+'</td>'
             + '<td data-field="shiftWorkMin">'+formatWorkMin(cumulativeEstimatedWorkMin(r))+'</td>'
+            + '<td><input type="date" data-field="endDate" min="'+workDate+'" value="'+endDateVal+'" '+dis+'></td>'
             + '<td><select data-field="requestWorkCode" '+dis+' onchange="onWorkCodeChange(this,'+idx+')">'+buildShiftOptions(selectedWorkCode)+'</select></td>'
             + '<td><input type="text" data-field="reason" value="'+reasonVal+'" placeholder="사유" '+dis+'></td>'
             + '<td><input type="text" data-field="reasonDetail" value="'+reasonDetailVal+'" placeholder="사유 상세 입력" '+dis+'></td>'
@@ -117,10 +120,13 @@ function onWorkCodeChange(select, idx) {
     const tr = select.closest('tr');
     const reasonEl = tr.querySelector('[data-field="reason"]');
     const detailEl = tr.querySelector('[data-field="reasonDetail"]');
+    const endDateEl = tr.querySelector('[data-field="endDate"]');
     reasonEl.value = state.reason || '';
     detailEl.value = state.reasonDetail || '';
+    endDateEl.value = state.endDate || document.getElementById('workDate').value;
     reasonEl.disabled = locked;
     detailEl.disabled = locked;
+    endDateEl.disabled = locked;
     tr.querySelector('[data-field="shiftWorkMin"]').textContent = formatWorkMin(cumulativeEstimatedWorkMin(r));
     tr.querySelector('[data-field="status"]').innerHTML = statusBadge(state.status);
     tr.querySelector('[data-field="requesterName"]').textContent = state.requesterName || '';
@@ -175,6 +181,7 @@ function rowToDto(tr) {
         empCode:         d.empCode,
         deptCode:        d.deptCode,
         workDate:        document.getElementById('workDate').value,
+        endDate:         tr.querySelector('[data-field="endDate"]').value || document.getElementById('workDate').value,
         requestCategory: 'OTHER',
         requestWorkCode: requestWorkCode,
         reason:          tr.querySelector('[data-field="reason"]').value,
@@ -182,6 +189,22 @@ function rowToDto(tr) {
         startTime:       null,
         endTime:         null
     };
+}
+
+async function confirmNonWorkDaysIncluded(dto) {
+    const res = await fetch('/attendance/request/other/range-non-work-days', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(dto)
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        showToast((err && err.message) || '기간 확인 중 오류가 발생했습니다.', 'error');
+        return false;
+    }
+    const json = await res.json();
+    if (json.hasNonWorkDays) {
+        return confirm('선택한 기간에 주말/공휴일이 포함되어 있습니다. 포함해서 신청하시겠습니까?');
+    }
+    return true;
 }
 
 async function doSearch() {
@@ -205,6 +228,9 @@ async function doSave() {
     for (const tr of selected) {
         const dto = rowToDto(tr);
         if (!dto.requestWorkCode) { showToast('변경 근무계획을 선택하세요.','error'); return; }
+        if (!dto.endDate) { showToast('종료 날짜를 선택하세요.','error'); return; }
+        if (dto.endDate < dto.workDate) { showToast('종료 날짜는 근무일보다 빠를 수 없습니다.','error'); return; }
+        if (!await confirmNonWorkDaysIncluded(dto)) return;
         const res = await fetch('/attendance/request/save', {
             method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(dto)
         });
@@ -243,6 +269,9 @@ async function doSubmit() {
         const existing = currentRequestForRow(tr, tableData[idx]);
         if (!requestId || !existing || existing.status === 'DRAFT' || existing.status === 'REJECTED') {
             if (!dto.requestWorkCode) { showToast('변경 근무계획을 선택하세요.','error'); return; }
+            if (!dto.endDate) { showToast('종료 날짜를 선택하세요.','error'); return; }
+            if (dto.endDate < dto.workDate) { showToast('종료 날짜는 근무일보다 빠를 수 없습니다.','error'); return; }
+            if (!await confirmNonWorkDaysIncluded(dto)) return;
             const sr = await fetch('/attendance/request/save', {
                 method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(dto)
             });

@@ -34,6 +34,7 @@ public class AttendanceEmpRowDto {
     private Integer nextDayWorkStartLimitMin;
 
     private String requestId;
+    private String endDate;
     private String existingRequestGroup;
     private String requestWorkCode;
     private String reason;

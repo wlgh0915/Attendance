@@ -11,6 +11,7 @@ public class AttendanceRequestDto {
     private String empCode;           // TARGET_EMP_CODE
     private String deptCode;          // TARGET_DEPT_CODE
     private String workDate;          // TARGET_DATE
+    private String endDate;
     private String requestCategory;   // OVERTIME / HOLIDAY / LEAVE → REQ_GROUP=GENERAL; OTHER → REQ_GROUP=OTHER
     private String requestWorkCode;   // REQ_TYPE (GENERAL) or CHANGE_SHIFT_CODE (OTHER)
     private String reason;

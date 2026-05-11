@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -77,6 +78,19 @@ public class AttendanceApprovalServiceImpl implements AttendanceApprovalService 
         if (request == null) throw new IllegalArgumentException("존재하지 않는 근태신청입니다.");
         if (!"SUBMITTED".equals(request.getStatus())) {
             throw new IllegalArgumentException("현재 결재 처리할 수 없는 신청입니다.");
+        }
+        if ("OTHER".equals(request.getRequestCategory())) {
+            validateOtherRequestDateRange(request);
+        }
+    }
+
+    private void validateOtherRequestDateRange(AttendanceRequestDto request) {
+        if (request.getWorkDate() == null || request.getWorkDate().isBlank()
+                || request.getEndDate() == null || request.getEndDate().isBlank()) {
+            throw new IllegalArgumentException("기타 근태 신청 기간이 올바르지 않습니다.");
+        }
+        if (LocalDate.parse(request.getEndDate()).isBefore(LocalDate.parse(request.getWorkDate()))) {
+            throw new IllegalArgumentException("종료 날짜는 근무일보다 빠를 수 없습니다.");
         }
     }
 

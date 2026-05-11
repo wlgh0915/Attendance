@@ -27,6 +27,8 @@ public interface AttendanceRequestMapper {
 
     int countActiveSameWorkRequest(AttendanceRequestDto dto);
 
+    int countOtherRangeNonWorkDays(AttendanceRequestDto dto);
+
     int insertRequestHeader(AttendanceRequestDto dto);
 
     int insertGeneralDetail(AttendanceRequestDto dto);

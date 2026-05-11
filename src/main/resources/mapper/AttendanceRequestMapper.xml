@@ -59,6 +59,7 @@
             ar.OVERNIGHT_YN                                        AS overnightYn,
             nextLimit.nextDayWorkStartLimitMin                     AS nextDayWorkStartLimitMin,
             r.REQ_ID                                              AS requestId,
+            CONVERT(VARCHAR(10), ISNULL(o.END_DATE, r.TARGET_DATE), 23) AS endDate,
             r.REQ_GROUP                                           AS existingRequestGroup,
             CASE WHEN r.REQ_GROUP = 'OTHER' THEN o.CHANGE_SHIFT_CODE
                  ELSE r.REQ_TYPE END                              AS requestWorkCode,
@@ -137,7 +138,8 @@
                 JOIN HRTATTENDANCE_OTHER01 oto ON oto.COMPANY = otr.COMPANY AND oto.REQ_ID = otr.REQ_ID
                 WHERE otr.COMPANY         = h.COMPANY
                   AND otr.TARGET_EMP_CODE = h.EMP_CODE
-                  AND otr.TARGET_DATE     = wd.WORK_DATE
+                  AND otr.TARGET_DATE     &lt;= wd.WORK_DATE
+                  AND oto.END_DATE        &gt;= wd.WORK_DATE
                   AND otr.REQ_GROUP       = 'OTHER'
                   AND otr.STATUS IN ('DRAFT', 'SUBMITTED', 'APPROVED')
             ) oReq
@@ -274,7 +276,8 @@
                 JOIN HRTATTENDANCE_OTHER01 awoto ON awoto.COMPANY = awotr.COMPANY AND awoto.REQ_ID = awotr.REQ_ID
                 WHERE awotr.COMPANY         = h.COMPANY
                   AND awotr.TARGET_EMP_CODE = h.EMP_CODE
-                  AND awotr.TARGET_DATE     = awd.WORK_DATE
+                  AND awotr.TARGET_DATE     &lt;= awd.WORK_DATE
+                  AND awoto.END_DATE        &gt;= awd.WORK_DATE
                   AND awotr.REQ_GROUP       = 'OTHER'
                   AND awotr.STATUS IN ('DRAFT', 'SUBMITTED', 'APPROVED')
             ) awoReq
@@ -489,12 +492,22 @@
         LEFT JOIN HRTATTENDANCEREQUEST01 r
                ON h.COMPANY = r.COMPANY
               AND h.EMP_CODE = r.TARGET_EMP_CODE
-              AND r.TARGET_DATE = CAST(#{workDate} AS DATE)
               AND r.STATUS &lt;&gt; 'CANCELED'
+              AND (
+                    r.TARGET_DATE = CAST(#{workDate} AS DATE)
+                    OR EXISTS (
+                        SELECT 1
+                        FROM HRTATTENDANCE_OTHER01 xo
+                        WHERE xo.COMPANY = r.COMPANY
+                          AND xo.REQ_ID = r.REQ_ID
+                          AND CAST(#{workDate} AS DATE) BETWEEN xo.START_DATE AND xo.END_DATE
+                    )
+              )
         LEFT JOIN HRTATTENDANCE_GENERAL01 g
                ON r.COMPANY = g.COMPANY AND r.REQ_ID = g.REQ_ID
         LEFT JOIN HRTATTENDANCE_OTHER01 o
                ON r.COMPANY = o.COMPANY AND r.REQ_ID = o.REQ_ID
+              AND CAST(#{workDate} AS DATE) BETWEEN o.START_DATE AND o.END_DATE
         LEFT JOIN HRIMASTER01 re
                ON r.COMPANY = re.COMPANY AND r.REQUESTER_EMP_CODE = re.EMP_CODE
         LEFT JOIN HRTDAILYATTENDANCE01 ar
@@ -529,10 +542,17 @@
                             FROM HRTATTENDANCEREQUEST01 er
                             WHERE er.COMPANY = h.COMPANY
                               AND er.TARGET_EMP_CODE = h.EMP_CODE
-                              AND er.TARGET_DATE = CAST(#{workDate} AS DATE)
+                              AND er.TARGET_DATE &lt;= CAST(#{workDate} AS DATE)
                               AND er.STATUS IN ('DRAFT', 'SUBMITTED', 'APPROVED')
                               AND (
-                                    er.REQ_GROUP = 'OTHER'
+                                    (er.REQ_GROUP = 'OTHER'
+                                     AND EXISTS (
+                                         SELECT 1
+                                         FROM HRTATTENDANCE_OTHER01 eo
+                                         WHERE eo.COMPANY = er.COMPANY
+                                           AND eo.REQ_ID = er.REQ_ID
+                                           AND eo.END_DATE &gt;= CAST(#{workDate} AS DATE)
+                                     ))
                                     OR (er.REQ_GROUP = 'GENERAL'
                                         AND er.REQ_TYPE NOT IN ('연장', '조출연장', '휴일근무'))
                               )
@@ -649,6 +669,7 @@
             r.TARGET_EMP_CODE                                 AS empCode,
             r.TARGET_DEPT_CODE                                AS deptCode,
             CONVERT(VARCHAR(10), r.TARGET_DATE, 23)           AS workDate,
+            CONVERT(VARCHAR(10), ISNULL(o.END_DATE, r.TARGET_DATE), 23) AS endDate,
             r.REQ_GROUP                                       AS requestCategory,
             CASE WHEN r.REQ_GROUP = 'OTHER' THEN o.CHANGE_SHIFT_CODE
                  ELSE r.REQ_TYPE END                          AS requestWorkCode,
@@ -672,6 +693,7 @@
         SELECT
             r.REQ_ID                                          AS requestId,
             CONVERT(VARCHAR(10), r.TARGET_DATE, 23)           AS workDate,
+            CONVERT(VARCHAR(10), ISNULL(o.END_DATE, r.TARGET_DATE), 23) AS endDate,
             CASE
                 WHEN r.REQ_GROUP = 'OTHER' THEN 'OTHER'
                 WHEN r.REQ_TYPE IN ('연장', '조출연장') THEN 'OVERTIME'
@@ -703,7 +725,8 @@
         LEFT JOIN HRIMASTER01 re ON r.COMPANY = re.COMPANY AND r.REQUESTER_EMP_CODE = re.EMP_CODE
         LEFT JOIN ORGDEPTMASTER01 td ON r.COMPANY = td.COMPANY AND r.TARGET_DEPT_CODE = td.DEPT_CODE
         WHERE r.COMPANY = #{company}
-          AND r.TARGET_DATE BETWEEN CAST(#{fromDate} AS DATE) AND CAST(#{toDate} AS DATE)
+          AND r.TARGET_DATE &lt;= CAST(#{toDate} AS DATE)
+          AND ISNULL(o.END_DATE, r.TARGET_DATE) &gt;= CAST(#{fromDate} AS DATE)
           <if test="!canViewAll">
               AND (r.REQUESTER_EMP_CODE = #{loginEmpCode} OR r.TARGET_EMP_CODE = #{loginEmpCode})
           </if>
@@ -747,6 +770,7 @@
         SELECT
             r.REQ_ID                                         AS requestId,
             CONVERT(VARCHAR(10), r.TARGET_DATE, 23)          AS targetDate,
+            CONVERT(VARCHAR(10), ISNULL(o.END_DATE, r.TARGET_DATE), 23) AS endDate,
             r.REQ_TYPE                                       AS reqType,
             r.REQ_GROUP                                      AS reqGroup,
             r.REASON                                         AS reason,
@@ -792,7 +816,6 @@
                ON r.COMPANY = o.COMPANY AND r.REQ_ID = o.REQ_ID
         WHERE r.COMPANY = #{company}
           AND r.TARGET_EMP_CODE = #{empCode}
-          AND r.TARGET_DATE = CAST(#{workDate} AS DATE)
           AND r.STATUS IN ('DRAFT', 'SUBMITTED', 'APPROVED')
           <if test="requestId != null and requestId != ''">
               AND r.REQ_ID &lt;&gt; #{requestId}
@@ -800,15 +823,62 @@
           <choose>
               <when test="'OTHER'.equals(requestCategory)">
                   AND r.REQ_GROUP = 'OTHER'
+                  AND r.TARGET_DATE &lt;= CAST(#{endDate} AS DATE)
+                  AND ISNULL(o.END_DATE, r.TARGET_DATE) &gt;= CAST(#{workDate} AS DATE)
               </when>
               <otherwise>
                   AND r.REQ_GROUP = 'GENERAL'
                   AND r.REQ_TYPE = #{requestWorkCode}
+                  AND r.TARGET_DATE = CAST(#{workDate} AS DATE)
               </otherwise>
           </choose>
     </select>
 
     <!-- 헤더(공통) INSERT -->
+    <select id="countOtherRangeNonWorkDays"
+            parameterType="com.company.attendancemanagement.dto.request.AttendanceRequestDto"
+            resultType="int">
+        <![CDATA[
+        SELECT COUNT(*)
+        FROM (
+            SELECT DATEADD(DAY, n.n, CAST(#{workDate} AS DATE)) AS WORK_DATE
+            FROM (
+                SELECT TOP (DATEDIFF(DAY, CAST(#{workDate} AS DATE), CAST(#{endDate} AS DATE)) + 1)
+                       ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1 AS n
+                FROM sys.all_objects
+            ) n
+        ) days
+        JOIN HRIDEPTTRANSFER01 tr
+               ON tr.COMPANY = #{company}
+              AND tr.EMP_CODE = #{empCode}
+              AND tr.START_DATE <= days.WORK_DATE
+              AND (tr.END_DATE IS NULL OR tr.END_DATE >= days.WORK_DATE)
+        JOIN ORGDEPTMASTER01 dept
+               ON dept.COMPANY = tr.COMPANY
+              AND dept.DEPT_CODE = tr.DEPT_CODE
+        JOIN HRTWORKPATTERNMASTER01 pm
+               ON pm.COMPANY = dept.COMPANY
+              AND pm.WORK_PATTERN_CODE = dept.WORK_PATTERN_CODE
+              AND pm.USE_YN = 'Y'
+        JOIN HRTWORKPATTERNDETAIL01 pd
+               ON pd.COMPANY = pm.COMPANY
+              AND pd.WORK_PATTERN_CODE = pm.WORK_PATTERN_CODE
+              AND pd.SEQ = (
+                  (DATEDIFF(DAY, pm.START_DATE, days.WORK_DATE) % pm.CYCLE_COUNT
+                   + pm.CYCLE_COUNT) % pm.CYCLE_COUNT + 1
+              )
+        LEFT JOIN HRTSHIFTMASTER01 s
+               ON s.COMPANY = pd.COMPANY
+              AND s.SHIFT_CODE = pd.SHIFT_CODE
+        WHERE CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+                  WHEN 'WEEKDAY' THEN 'WORK'
+                  WHEN 'ANYDAY'  THEN 'WORK'
+                  WHEN 'WEEKEND' THEN 'OFF'
+                  ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+              END IN ('OFF', 'HOLIDAY')
+        ]]>
+    </select>
+
     <insert id="insertRequestHeader"
             parameterType="com.company.attendancemanagement.dto.request.AttendanceRequestDto">
         INSERT INTO HRTATTENDANCEREQUEST01 (
@@ -856,7 +926,7 @@
         ) VALUES (
             #{company}, #{requestId},
             #{requestWorkCode},
-            CAST(#{workDate} AS DATE), CAST(#{workDate} AS DATE),
+            CAST(#{workDate} AS DATE), CAST(#{endDate} AS DATE),
             GETDATE(), GETDATE()
         )
     </insert>
@@ -866,6 +936,7 @@
             parameterType="com.company.attendancemanagement.dto.request.AttendanceRequestDto">
         UPDATE HRTATTENDANCEREQUEST01
         SET REQ_TYPE      = CASE WHEN REQ_GROUP = 'OTHER' THEN 'SHIFT_CHANGE' ELSE #{requestWorkCode} END,
+            TARGET_DATE   = CAST(#{workDate} AS DATE),
             REASON        = #{reason},
             REASON_DETAIL = #{reasonDetail},
             STATUS        = #{status},
@@ -893,6 +964,8 @@
             parameterType="com.company.attendancemanagement.dto.request.AttendanceRequestDto">
         UPDATE HRTATTENDANCE_OTHER01
         SET CHANGE_SHIFT_CODE = #{requestWorkCode},
+            START_DATE        = CAST(#{workDate} AS DATE),
+            END_DATE          = CAST(#{endDate} AS DATE),
             UPDATED_AT        = GETDATE()
         WHERE REQ_ID  = #{requestId}
           AND COMPANY = #{company}
@@ -922,13 +995,18 @@
         USING (
             SELECT r.COMPANY,
                    r.TARGET_EMP_CODE AS EMP_CODE,
-                   CONVERT(VARCHAR(8), r.TARGET_DATE, 112) AS YYYYMMDD,
+                   CONVERT(VARCHAR(8), DATEADD(DAY, n.n, o.START_DATE), 112) AS YYYYMMDD,
                    r.TARGET_DEPT_CODE AS DEPT_CODE,
                    o.CHANGE_SHIFT_CODE
             FROM HRTATTENDANCEREQUEST01 r
             JOIN HRTATTENDANCE_OTHER01 o
               ON r.COMPANY = o.COMPANY
              AND r.REQ_ID = o.REQ_ID
+            CROSS APPLY (
+                SELECT TOP (DATEDIFF(DAY, o.START_DATE, o.END_DATE) + 1)
+                       ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1 AS n
+                FROM sys.all_objects
+            ) n
             WHERE r.REQ_ID = #{requestId}
               AND r.REQ_GROUP = 'OTHER'
               AND r.STATUS = 'APPROVED'

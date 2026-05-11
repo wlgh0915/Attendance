@@ -91,7 +91,7 @@
                 <td colspan="11" class="no-data">조회된 신청내역이 없습니다.</td>
             </tr>
             <tr th:each="row : ${rows}">
-                <td th:text="${row.workDate}"></td>
+                <td th:text="${row.requestCategory == 'OTHER' and row.endDate != null and row.endDate != row.workDate ? row.workDate + ' ~ ' + row.endDate : row.workDate}"></td>
                 <td>
                     <span th:text="${row.empName ?: '-'}"></span>
                     <span class="sub-text" th:text="${row.empCode}"></span>

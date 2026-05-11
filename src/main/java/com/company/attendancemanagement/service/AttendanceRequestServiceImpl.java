@@ -179,6 +179,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
 
     private void clearDisplayRequest(AttendanceEmpRowDto row) {
         row.setRequestId(null);
+        row.setEndDate(null);
         row.setExistingRequestGroup(null);
         row.setRequestWorkCode(null);
         row.setReason(null);
@@ -225,6 +226,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             return;
         }
         target.setRequestId(source.getRequestId());
+        target.setEndDate(source.getEndDate());
         target.setExistingRequestGroup(source.getExistingRequestGroup());
         target.setRequestWorkCode(source.getRequestWorkCode());
         target.setReason(source.getReason());
@@ -242,6 +244,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
     private AttendanceEmpRowDto copyRequestInfo(AttendanceEmpRowDto source) {
         AttendanceEmpRowDto copy = new AttendanceEmpRowDto();
         copy.setRequestId(source.getRequestId());
+        copy.setEndDate(source.getEndDate());
         copy.setExistingRequestGroup(source.getExistingRequestGroup());
         copy.setRequestWorkCode(source.getRequestWorkCode());
         copy.setReason(source.getReason());
@@ -258,6 +261,13 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
     }
 
     @Override
+    public boolean hasOtherRangeNonWorkDays(AttendanceRequestDto dto, LoginUserDto loginUser) {
+        dto.setCompany(loginUser.getCompany());
+        normalizeOtherRequestDateRange(dto);
+        return requestMapper.countOtherRangeNonWorkDays(dto) > 0;
+    }
+
+    @Override
     @Transactional
     public AttendanceRequestDto saveRequest(AttendanceRequestDto dto, LoginUserDto loginUser) {
         dto.setCompany(loginUser.getCompany());
@@ -267,6 +277,9 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         dto.setRequesterDeptCode(loginUser.getDeptCode());
 
         boolean isOther = "OTHER".equals(dto.getRequestCategory());
+        if (isOther) {
+            normalizeOtherRequestDateRange(dto);
+        }
 
         applyFixedHalfDayTime(dto);
 
@@ -337,6 +350,20 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             }
         }
         return dto;
+    }
+
+    private void normalizeOtherRequestDateRange(AttendanceRequestDto dto) {
+        if (dto.getWorkDate() == null || dto.getWorkDate().isBlank()) {
+            throw new IllegalArgumentException("시작 날짜를 선택하세요.");
+        }
+        if (dto.getEndDate() == null || dto.getEndDate().isBlank()) {
+            dto.setEndDate(dto.getWorkDate());
+        }
+        LocalDate startDate = LocalDate.parse(dto.getWorkDate());
+        LocalDate endDate = LocalDate.parse(dto.getEndDate());
+        if (endDate.isBefore(startDate)) {
+            throw new IllegalArgumentException("종료 날짜는 근무일보다 빠를 수 없습니다.");
+        }
     }
 
     private void applyFixedHalfDayTime(AttendanceRequestDto dto) {
@@ -557,6 +584,9 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
     public void submitRequest(String requestId, LoginUserDto loginUser) {
         AttendanceRequestDto existing = requestMapper.findByRequestId(requestId);
         if (existing == null) throw new IllegalArgumentException("존재하지 않는 근태신청입니다.");
+        if ("OTHER".equals(existing.getRequestCategory())) {
+            normalizeOtherRequestDateRange(existing);
+        }
         if ("APPROVED".equals(existing.getStatus())) {
             throw new IllegalArgumentException("이미 승인완료된 신청입니다.");
         }
