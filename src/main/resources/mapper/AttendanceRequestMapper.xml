@@ -43,14 +43,21 @@
                        - ISNULL(DATEDIFF(MINUTE, s.BREAK2_START_HHMM, s.BREAK2_END_HHMM), 0))
                  ELSE 0
             END                                                   AS plannedWorkMin,
-            ar.WORK_MIN                                           AS actualWorkMin,
+            CASE WHEN absenceInfo.isAbsent = 1 THEN 0 ELSE ar.WORK_MIN END AS actualWorkMin,
             weekly.weekWorkMin                                     AS shiftWorkMin,
             weeklyReq.activeWeeklyRequestEffectMin + weeklyActualAdj.weekActualAdjustmentMin AS activeWeeklyRequestEffectMin,
-            COALESCE(NULLIF(ar.ACTUAL_SHIFT_CODE, ''), NULLIF(ar.SHIFT_CODE, ''), '') AS actualWorkCode,
-            ISNULL(actualShift.SHIFT_NAME, '')                     AS actualWorkName,
+            CASE WHEN absenceInfo.isAbsent = 1
+                 THEN 'ABSENT'
+                 ELSE COALESCE(NULLIF(ar.ACTUAL_SHIFT_CODE, ''), NULLIF(ar.SHIFT_CODE, ''), '')
+            END                                                   AS actualWorkCode,
+            CASE WHEN absenceInfo.isAbsent = 1
+                 THEN '결근'
+                 ELSE ISNULL(actualShift.SHIFT_NAME, '')
+            END                                                   AS actualWorkName,
             LEFT(CONVERT(VARCHAR(8), ar.CHECK_IN, 108), 5)         AS checkIn,
             LEFT(CONVERT(VARCHAR(8), ar.CHECK_OUT, 108), 5)        AS checkOut,
             ar.OVERNIGHT_YN                                        AS overnightYn,
+            nextLimit.nextDayWorkStartLimitMin                     AS nextDayWorkStartLimitMin,
             r.REQ_ID                                              AS requestId,
             r.REQ_GROUP                                           AS existingRequestGroup,
             CASE WHEN r.REQ_GROUP = 'OTHER' THEN o.CHANGE_SHIFT_CODE
@@ -494,6 +501,95 @@
                ON h.COMPANY = ar.COMPANY
               AND h.EMP_CODE = ar.EMP_CODE
               AND ar.YYYYMMDD = REPLACE(#{workDate}, '-', '')
+        OUTER APPLY (
+            SELECT CASE
+                       WHEN CAST(#{workDate} AS DATE) > CAST(#{today} AS DATE) THEN 0
+                       WHEN ar.CHECK_IN IS NOT NULL THEN 0
+                       WHEN EXISTS (
+                            SELECT 1
+                            FROM HRTSHIFTMASTER01 exs
+                            WHERE exs.COMPANY = h.COMPANY
+                              AND exs.SHIFT_CODE = COALESCE(NULLIF(ar.ACTUAL_SHIFT_CODE, ''), NULLIF(ar.SHIFT_CODE, ''))
+                              AND (
+                                    ISNULL(exs.WORK_DAY_TYPE, '') IN ('OFF', 'HOLIDAY')
+                                    OR exs.SHIFT_NAME LIKE '%휴가%'
+                                    OR exs.SHIFT_NAME LIKE '%반차%'
+                                    OR exs.SHIFT_NAME LIKE '%출장%'
+                                    OR exs.SHIFT_NAME LIKE '%외출%'
+                              )
+                       ) THEN 0
+                       WHEN CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+                                WHEN 'WEEKDAY' THEN 'WORK'
+                                WHEN 'ANYDAY'  THEN 'WORK'
+                                WHEN 'WEEKEND' THEN 'OFF'
+                                ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+                            END IN ('OFF', 'HOLIDAY') THEN 0
+                       WHEN EXISTS (
+                            SELECT 1
+                            FROM HRTATTENDANCEREQUEST01 er
+                            WHERE er.COMPANY = h.COMPANY
+                              AND er.TARGET_EMP_CODE = h.EMP_CODE
+                              AND er.TARGET_DATE = CAST(#{workDate} AS DATE)
+                              AND er.STATUS IN ('DRAFT', 'SUBMITTED', 'APPROVED')
+                              AND (
+                                    er.REQ_GROUP = 'OTHER'
+                                    OR (er.REQ_GROUP = 'GENERAL'
+                                        AND er.REQ_TYPE NOT IN ('연장', '조출연장', '휴일근무'))
+                              )
+                       ) THEN 0
+                       ELSE 1
+                   END AS isAbsent
+        ) absenceInfo
+        OUTER APPLY (
+            SELECT MIN(limitSrc.LIMIT_MIN) AS nextDayWorkStartLimitMin
+            FROM (
+                SELECT 1440 + DATEDIFF(MINUTE, CAST('00:00' AS TIME), ns.WORK_ON_HHMM) AS LIMIT_MIN
+                FROM HRIDEPTTRANSFER01 ntr
+                JOIN ORGDEPTMASTER01 ndept
+                       ON ndept.COMPANY   = h.COMPANY
+                      AND ndept.DEPT_CODE = ntr.DEPT_CODE
+                JOIN HRTWORKPATTERNMASTER01 npm
+                       ON npm.COMPANY           = ndept.COMPANY
+                      AND npm.WORK_PATTERN_CODE = ndept.WORK_PATTERN_CODE
+                      AND npm.USE_YN            = 'Y'
+                JOIN HRTWORKPATTERNDETAIL01 npd
+                       ON npd.COMPANY           = npm.COMPANY
+                      AND npd.WORK_PATTERN_CODE = npm.WORK_PATTERN_CODE
+                      AND npd.SEQ = (
+                          (DATEDIFF(DAY, npm.START_DATE, DATEADD(DAY, 1, CAST(#{workDate} AS DATE))) % npm.CYCLE_COUNT
+                           + npm.CYCLE_COUNT) % npm.CYCLE_COUNT + 1
+                      )
+                JOIN HRTSHIFTMASTER01 ns
+                       ON ns.COMPANY = npd.COMPANY AND ns.SHIFT_CODE = npd.SHIFT_CODE
+                WHERE ntr.COMPANY    = h.COMPANY
+                  AND ntr.EMP_CODE   = h.EMP_CODE
+                  AND ntr.START_DATE &lt;= DATEADD(DAY, 1, CAST(#{workDate} AS DATE))
+                  AND (ntr.END_DATE IS NULL OR ntr.END_DATE &gt;= DATEADD(DAY, 1, CAST(#{workDate} AS DATE)))
+                  AND ns.WORK_ON_HHMM IS NOT NULL
+                  AND CASE ISNULL(npd.WORK_DAY_TYPE, ISNULL(ns.WORK_DAY_TYPE, ''))
+                          WHEN 'WEEKDAY' THEN 'WORK'
+                          WHEN 'ANYDAY'  THEN 'WORK'
+                          WHEN 'WEEKEND' THEN 'OFF'
+                          ELSE ISNULL(npd.WORK_DAY_TYPE, ISNULL(ns.WORK_DAY_TYPE, ''))
+                      END NOT IN ('OFF', 'HOLIDAY')
+
+                UNION ALL
+
+                SELECT 1440
+                       + CASE WHEN ISNULL(ng.START_TIME_TYPE, 'N0') = 'N1' THEN 1440 ELSE 0 END
+                       + DATEDIFF(MINUTE, CAST('00:00' AS TIME), ng.START_TIME) AS LIMIT_MIN
+                FROM HRTATTENDANCEREQUEST01 nr
+                JOIN HRTATTENDANCE_GENERAL01 ng
+                       ON ng.COMPANY = nr.COMPANY AND ng.REQ_ID = nr.REQ_ID
+                WHERE nr.COMPANY = h.COMPANY
+                  AND nr.TARGET_EMP_CODE = h.EMP_CODE
+                  AND nr.TARGET_DATE = DATEADD(DAY, 1, CAST(#{workDate} AS DATE))
+                  AND nr.REQ_GROUP = 'GENERAL'
+                  AND nr.REQ_TYPE = '조출연장'
+                  AND nr.STATUS IN ('DRAFT', 'SUBMITTED', 'APPROVED')
+                  AND ng.START_TIME IS NOT NULL
+            ) limitSrc
+        ) nextLimit
         LEFT JOIN HRTSHIFTMASTER01 actualShift
                ON actualShift.COMPANY = h.COMPANY
               AND actualShift.SHIFT_CODE = COALESCE(NULLIF(ar.ACTUAL_SHIFT_CODE, ''), NULLIF(ar.SHIFT_CODE, ''), s.SHIFT_CODE)
@@ -1059,6 +1155,62 @@
               AND r.REQ_TYPE IN ('연장', '조출연장')
               AND (#{requestId} IS NULL OR #{requestId} = '' OR r.REQ_ID <> #{requestId})
         ) ot
+        ]]>
+    </select>
+
+    <select id="findNextDayWorkStartLimitMin"
+            parameterType="com.company.attendancemanagement.dto.request.AttendanceRequestDto"
+            resultType="int">
+        <![CDATA[
+        SELECT MIN(limitSrc.LIMIT_MIN)
+        FROM (
+            SELECT 1440 + DATEDIFF(MINUTE, CAST('00:00' AS TIME), s.WORK_ON_HHMM) AS LIMIT_MIN
+            FROM HRIDEPTTRANSFER01 tr
+            JOIN ORGDEPTMASTER01 dept
+                   ON dept.COMPANY   = #{company}
+                  AND dept.DEPT_CODE = tr.DEPT_CODE
+            JOIN HRTWORKPATTERNMASTER01 pm
+                   ON pm.COMPANY           = dept.COMPANY
+                  AND pm.WORK_PATTERN_CODE = dept.WORK_PATTERN_CODE
+                  AND pm.USE_YN            = 'Y'
+            JOIN HRTWORKPATTERNDETAIL01 pd
+                   ON pd.COMPANY           = pm.COMPANY
+                  AND pd.WORK_PATTERN_CODE = pm.WORK_PATTERN_CODE
+                  AND pd.SEQ = (
+                      (DATEDIFF(DAY, pm.START_DATE, DATEADD(DAY, 1, CAST(#{workDate} AS DATE))) % pm.CYCLE_COUNT
+                       + pm.CYCLE_COUNT) % pm.CYCLE_COUNT + 1
+                  )
+            JOIN HRTSHIFTMASTER01 s
+                   ON s.COMPANY = pd.COMPANY AND s.SHIFT_CODE = pd.SHIFT_CODE
+            WHERE tr.COMPANY    = #{company}
+              AND tr.EMP_CODE   = #{empCode}
+              AND tr.START_DATE <= DATEADD(DAY, 1, CAST(#{workDate} AS DATE))
+              AND (tr.END_DATE IS NULL OR tr.END_DATE >= DATEADD(DAY, 1, CAST(#{workDate} AS DATE)))
+              AND s.WORK_ON_HHMM IS NOT NULL
+              AND CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+                      WHEN 'WEEKDAY' THEN 'WORK'
+                      WHEN 'ANYDAY'  THEN 'WORK'
+                      WHEN 'WEEKEND' THEN 'OFF'
+                      ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+                  END NOT IN ('OFF', 'HOLIDAY')
+
+            UNION ALL
+
+            SELECT 1440
+                   + CASE WHEN ISNULL(g.START_TIME_TYPE, 'N0') = 'N1' THEN 1440 ELSE 0 END
+                   + DATEDIFF(MINUTE, CAST('00:00' AS TIME), g.START_TIME) AS LIMIT_MIN
+            FROM HRTATTENDANCEREQUEST01 r
+            JOIN HRTATTENDANCE_GENERAL01 g
+                   ON g.COMPANY = r.COMPANY AND g.REQ_ID = r.REQ_ID
+            WHERE r.COMPANY = #{company}
+              AND r.TARGET_EMP_CODE = #{empCode}
+              AND r.TARGET_DATE = DATEADD(DAY, 1, CAST(#{workDate} AS DATE))
+              AND r.REQ_GROUP = 'GENERAL'
+              AND r.REQ_TYPE = '조출연장'
+              AND r.STATUS IN ('DRAFT', 'SUBMITTED', 'APPROVED')
+              AND g.START_TIME IS NOT NULL
+              AND (#{requestId} IS NULL OR #{requestId} = '' OR r.REQ_ID <> #{requestId})
+        ) limitSrc
         ]]>
     </select>
 

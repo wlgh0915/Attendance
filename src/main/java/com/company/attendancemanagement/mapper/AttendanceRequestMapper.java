@@ -74,6 +74,8 @@ public interface AttendanceRequestMapper {
 
     Map<String, Object> findEffectiveWorkTimeInfo(AttendanceRequestDto dto);
 
+    Integer findNextDayWorkStartLimitMin(AttendanceRequestDto dto);
+
     /** 조퇴↔연장 충돌 신청 존재 여부 확인 */
     int countAttendanceCheckIn(@Param("company") String company,
                                @Param("empCode") String empCode,

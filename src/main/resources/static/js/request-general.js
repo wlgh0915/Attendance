@@ -219,6 +219,17 @@ function validateWithinEffectiveWorkTime(dto, row) {
     return true;
 }
 
+function validateNotPastNextDayWorkStart(dto, row) {
+    const end = absoluteMinute(dto.endTimeType, dto.endTime);
+    const limit = row && row.nextDayWorkStartLimitMin;
+    if (end == null || end <= 1440 || limit == null) return true;
+    if (end > limit) {
+        showToast('익일 종료 시간은 다음날 예정 출근 또는 조출 신청 시작 시간을 넘길 수 없습니다.', 'error');
+        return false;
+    }
+    return true;
+}
+
 function categoryOfRequest(state) {
     if (!state || state.existingRequestGroup === 'OTHER') return 'OTHER';
     if (state.requestWorkCode === '연장' || state.requestWorkCode === '조출연장') return 'OVERTIME';
@@ -632,6 +643,7 @@ async function doSave() {
         if (!isEndAfterStart(dto.startTimeType, dto.startTime, dto.endTimeType, dto.endTime)) {
             showToast('종료 시간이 시작 시간보다 앞설 수 없습니다.','error'); return;
         }
+        if (!validateNotPastNextDayWorkStart(dto, tableData[parseInt(tr.dataset.idx)])) return;
         const res = await fetch('/attendance/request/save', {
             method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(dto)
         });
@@ -686,6 +698,7 @@ async function doSubmit() {
         if (!isEndAfterStart(dto.startTimeType, dto.startTime, dto.endTimeType, dto.endTime)) {
             showToast('종료 시간이 시작 시간보다 앞설 수 없습니다.','error'); return;
         }
+        if (!validateNotPastNextDayWorkStart(dto, tableData[parseInt(tr.dataset.idx)])) return;
         if (!requestId || !existing || existing.status === 'DRAFT' || existing.status === 'REJECTED') {
             const sr = await fetch('/attendance/request/save', {
                 method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(dto)

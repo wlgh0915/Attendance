@@ -345,6 +345,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         if (end <= start) {
             throw new IllegalArgumentException("종료 시간이 시작 시간보다 늦어야 합니다.");
         }
+        validateNotPastNextDayWorkStart(dto, end);
         int workMin = end - start;
         Map<String, Object> shiftInfo = null;
         if ("HOLIDAY".equals(dto.getRequestCategory())) {
@@ -358,6 +359,16 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             workMin -= breakOverlapMin(shiftInfo, start, end);
         }
         return Math.max(0, workMin);
+    }
+
+    private void validateNotPastNextDayWorkStart(AttendanceRequestDto dto, int endMin) {
+        if (endMin <= 1440) {
+            return;
+        }
+        Integer limitMin = requestMapper.findNextDayWorkStartLimitMin(dto);
+        if (limitMin != null && endMin > limitMin) {
+            throw new IllegalArgumentException("익일 종료 시간은 다음날 예정 출근 또는 조출 신청 시작 시간을 넘길 수 없습니다.");
+        }
     }
 
     private boolean isSameDay(String timeType) {
