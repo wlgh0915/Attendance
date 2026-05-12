@@ -749,6 +749,7 @@
             END                                               AS requestCategory,
             CASE WHEN r.REQ_GROUP = 'OTHER' THEN o.CHANGE_SHIFT_CODE
                  ELSE r.REQ_TYPE END                          AS requestWorkCode,
+            cs.SHIFT_NAME                                     AS changeShiftName,
             r.TARGET_EMP_CODE                                 AS empCode,
             te.EMP_NAME                                       AS empName,
             r.TARGET_DEPT_CODE                                AS deptCode,
@@ -771,6 +772,7 @@
         LEFT JOIN HRIMASTER01 te ON r.COMPANY = te.COMPANY AND r.TARGET_EMP_CODE = te.EMP_CODE
         LEFT JOIN HRIMASTER01 re ON r.COMPANY = re.COMPANY AND r.REQUESTER_EMP_CODE = re.EMP_CODE
         LEFT JOIN ORGDEPTMASTER01 td ON r.COMPANY = td.COMPANY AND r.TARGET_DEPT_CODE = td.DEPT_CODE
+        LEFT JOIN HRTSHIFTMASTER01 cs ON r.COMPANY = cs.COMPANY AND o.CHANGE_SHIFT_CODE = cs.SHIFT_CODE
         WHERE r.COMPANY = #{company}
           AND r.TARGET_DATE &lt;= CAST(#{toDate} AS DATE)
           AND ISNULL(o.END_DATE, r.TARGET_DATE) &gt;= CAST(#{fromDate} AS DATE)

@@ -97,7 +97,7 @@
                 </td>
                 <td th:text="${row.deptName ?: row.deptCode}"></td>
                 <td>
-                    <span class="type-badge" th:text="${row.requestWorkCode ?: row.requestCategory}"></span>
+                    <span class="type-badge" th:text="${row.requestCategory == 'OTHER' ? (row.changeShiftName ?: row.requestWorkCode ?: row.requestCategory) : (row.requestWorkCode ?: row.requestCategory)}"></span>
                 </td>
                 <td>
                     <span th:if="${row.startTime != null || row.endTime != null}"
