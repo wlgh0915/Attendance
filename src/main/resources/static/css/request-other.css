@@ -1,4 +1,4 @@
-.req-page { max-width: 1200px; padding: 20px 24px; margin: 0 auto; }
+.req-page { max-width: 1720px; padding: 20px 24px; margin: 0 auto; }
 .page-title { font-size: 18px; font-weight: 700; color: #2c3e50; margin-bottom: 18px; }
 
 .search-panel {
@@ -14,7 +14,7 @@
 .btn-search:hover { background: #1a252f; }
 
 .req-table-wrap { overflow-x: auto; margin-bottom: 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
-.req-table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 1050px; }
+.req-table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 1460px; }
 .req-table thead th {
     background: #2c3e50; color: #fff; padding: 9px 8px;
     text-align: center; border-right: 1px solid #3d5166; white-space: nowrap;
