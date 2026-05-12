@@ -25,7 +25,6 @@
         <div class="search-group" th:if="${canViewAll}">
             <label>부서</label>
             <select name="deptCode">
-                <option value="">전체</option>
                 <option th:each="dept : ${depts}"
                         th:value="${dept.deptCode}"
                         th:text="${dept.deptName}"

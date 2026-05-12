@@ -662,7 +662,7 @@
         ) nextLimit
         WHERE h.COMPANY = #{company}
           <choose>
-              <when test="deptLeader and (deptCode == null or deptCode == '') and accessibleDeptCodes != null and accessibleDeptCodes.size() > 0">
+              <when test="deptLeader and accessibleDeptCodes != null and accessibleDeptCodes.size() > 0">
                   AND h.DEPT_CODE IN
                   <foreach collection="accessibleDeptCodes" item="deptCodeItem" open="(" separator="," close=")">
                       #{deptCodeItem}
@@ -777,10 +777,7 @@
           <if test="!canViewAll">
               AND (r.REQUESTER_EMP_CODE = #{loginEmpCode} OR r.TARGET_EMP_CODE = #{loginEmpCode})
           </if>
-          <if test="canViewAll and deptCode != null and deptCode != ''">
-              AND r.TARGET_DEPT_CODE = #{deptCode}
-          </if>
-          <if test="canViewAll and (deptCode == null or deptCode == '') and accessibleDeptCodes != null and accessibleDeptCodes.size() > 0">
+          <if test="canViewAll and accessibleDeptCodes != null and accessibleDeptCodes.size() > 0">
               AND r.TARGET_DEPT_CODE IN
               <foreach collection="accessibleDeptCodes" item="deptCodeItem" open="(" separator="," close=")">
                   #{deptCodeItem}

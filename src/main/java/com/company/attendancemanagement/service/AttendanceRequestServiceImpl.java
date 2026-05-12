@@ -75,12 +75,17 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             List<String> accessibleDeptCodes = accessible.stream()
                     .map(DepartmentDto::getDeptCode)
                     .toList();
-            search.setAccessibleDeptCodes(accessibleDeptCodes);
-            if (search.getDeptCode() != null && !search.getDeptCode().isBlank()) {
+            if (search.getDeptCode() == null || search.getDeptCode().isBlank()) {
+                search.setDeptCode(loginUser.getDeptCode());
+            } else {
                 boolean ok = accessibleDeptCodes.stream()
                         .anyMatch(code -> code.equals(search.getDeptCode()));
                 if (!ok) search.setDeptCode(loginUser.getDeptCode());
             }
+            search.setAccessibleDeptCodes(requestMapper.findAccessibleDepts(
+                            loginUser.getCompany(), search.getDeptCode()).stream()
+                    .map(DepartmentDto::getDeptCode)
+                    .toList());
         }
 
         return mergeRequestsByEmployee(requestMapper.searchEmployees(search), search.getRequestCategory());
@@ -101,7 +106,18 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         if (canViewAll) {
             List<DepartmentDto> accessible = requestMapper.findAccessibleDepts(
                     loginUser.getCompany(), loginUser.getDeptCode());
-            search.setAccessibleDeptCodes(accessible.stream()
+            List<String> accessibleDeptCodes = accessible.stream()
+                    .map(DepartmentDto::getDeptCode)
+                    .toList();
+            if (search.getDeptCode() == null || search.getDeptCode().isBlank()) {
+                search.setDeptCode(loginUser.getDeptCode());
+            } else {
+                boolean ok = accessibleDeptCodes.stream()
+                        .anyMatch(code -> code.equals(search.getDeptCode()));
+                if (!ok) search.setDeptCode(loginUser.getDeptCode());
+            }
+            search.setAccessibleDeptCodes(requestMapper.findAccessibleDepts(
+                            loginUser.getCompany(), search.getDeptCode()).stream()
                     .map(DepartmentDto::getDeptCode)
                     .toList());
         }
@@ -109,10 +125,6 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         if (!canViewAll) {
             search.setDeptCode(null);
             search.setEmpCode(null);
-        } else if (search.getDeptCode() != null && !search.getDeptCode().isBlank()) {
-            boolean ok = search.getAccessibleDeptCodes().stream()
-                    .anyMatch(code -> code.equals(search.getDeptCode()));
-            if (!ok) search.setDeptCode(loginUser.getDeptCode());
         }
 
         return requestMapper.findHistory(search);

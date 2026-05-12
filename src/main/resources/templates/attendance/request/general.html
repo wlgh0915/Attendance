@@ -28,10 +28,10 @@
         <div class="search-group">
             <label>부서</label>
             <select id="deptCode" th:disabled="${!canViewAll}">
-                <option th:if="${canViewAll}" value="">전체</option>
                 <option th:each="dept : ${depts}"
                         th:value="${dept.deptCode}"
-                        th:text="${dept.deptName}">
+                        th:text="${dept.deptName}"
+                        th:selected="${dept.deptCode == myDeptCode}">
                 </option>
             </select>
         </div>
