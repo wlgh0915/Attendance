@@ -66,6 +66,11 @@ function dayTypeLabel(type) {
     return type === 'N1' ? '익일' : '당일';
 }
 
+function formatCheckOut(d) {
+    if (!d.recordCheckOut) return '-';
+    return (String(d.recordOvernightYn || '').trim().toUpperCase() === 'Y' ? '익일 ' : '') + d.recordCheckOut;
+}
+
 function startDisplay(r) {
     if (r.reqGroup === 'OTHER') return '-';
     if (!r.startTime) return '-';
@@ -239,7 +244,7 @@ async function openDetail(requestId) {
     }
     const d = await res.json();
 
-    const reqTypeName = escapeHtml(d.reqType || '-');
+    const reqTypeName = escapeHtml(d.reqGroup === 'OTHER' ? (d.changeShiftName || d.changeShiftCode || '-') : (d.reqType || '-'));
     const groupName = d.reqGroup === 'OTHER' ? '기타근태' : '일반근태';
     const statusLabel = { DRAFT:'미상신', SUBMITTED:'승인중', APPROVED:'승인완료', REJECTED:'반려', CANCELED:'취소' };
 
@@ -254,17 +259,15 @@ async function openDetail(requestId) {
 
     const attendanceInfo =
         '<div class="lbl">출근</div><div class="val">'+escapeHtml(d.recordCheckIn || '-')+'</div>'
-        + '<div class="lbl">퇴근</div><div class="val">'+escapeHtml(d.recordCheckOut || '-')+'</div>'
-        + '<div class="lbl">실근무분</div><div class="val">'+escapeHtml(d.recordWorkMin ?? '-')+'</div>'
-        + '<div class="lbl">익일퇴근</div><div class="val">'+escapeHtml(d.recordOvernightYn || '-')+'</div>'
-        + '<div class="lbl">지각</div><div class="val">'+escapeHtml(d.recordLateYn === 'Y' ? ('Y (' + (d.recordLateMin ?? 0) + '분)') : (d.recordLateYn || '-'))+'</div>';
+        + '<div class="lbl">퇴근</div><div class="val">'+escapeHtml(formatCheckOut(d))+'</div>'
+        + '<div class="lbl">실근무분</div><div class="val">'+escapeHtml(d.recordWorkMin ?? '-')+'</div>';
 
     document.getElementById('detailInfo').innerHTML =
         '<div class="lbl">신청번호</div><div class="val">'+escapeHtml(d.requestId)+'</div>'
         + '<div class="lbl">근태구분</div><div class="val">'+groupName+' / '+reqTypeName+'</div>'
         + '<div class="lbl">근무일</div><div class="val">'+escapeHtml(dateDisplay(d))+'</div>'
         + '<div class="lbl">대상자</div><div class="val">'+escapeHtml(d.targetEmpName)+' ('+escapeHtml(d.targetEmpCode)+') / '+escapeHtml(d.targetDeptName)+'</div>'
-        + '<div class="lbl">신청자</div><div class="val">'+escapeHtml(d.requesterEmpName)+' ('+escapeHtml(d.requesterEmpCode)+')</div>'
+        + '<div class="lbl">신청자</div><div class="val">'+escapeHtml(d.requesterEmpName || '-')+' ('+escapeHtml(d.requesterEmpCode || '-')+') / '+escapeHtml(d.requesterDeptName || '-')+'</div>'
         + timeInfo
         + attendanceInfo
         + '<div class="lbl">사유</div><div class="val">'+escapeHtml(d.reason || '-')+'</div>'

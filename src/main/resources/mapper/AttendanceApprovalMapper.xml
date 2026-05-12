@@ -100,6 +100,7 @@
             td.DEPT_NAME                                     AS targetDeptName,
             re.EMP_CODE                                      AS requesterEmpCode,
             re.EMP_NAME                                      AS requesterEmpName,
+            rd.DEPT_NAME                                     AS requesterDeptName,
             LEFT(CONVERT(VARCHAR(8), g.START_TIME, 108), 5) AS startTime,
             ISNULL(g.START_TIME_TYPE, 'N0')                  AS startTimeType,
             LEFT(CONVERT(VARCHAR(8), g.END_TIME,   108), 5) AS endTime,
@@ -116,6 +117,7 @@
         JOIN  HRIMASTER01 te ON r.COMPANY = te.COMPANY AND r.TARGET_EMP_CODE   = te.EMP_CODE
         LEFT JOIN ORGDEPTMASTER01 td ON te.COMPANY = td.COMPANY AND te.DEPT_CODE = td.DEPT_CODE
         JOIN  HRIMASTER01 re ON r.COMPANY = re.COMPANY AND r.REQUESTER_EMP_CODE = re.EMP_CODE
+        LEFT JOIN ORGDEPTMASTER01 rd ON re.COMPANY = rd.COMPANY AND re.DEPT_CODE = rd.DEPT_CODE
         LEFT JOIN HRTATTENDANCE_GENERAL01 g ON r.COMPANY = g.COMPANY AND r.REQ_ID = g.REQ_ID
         LEFT JOIN HRTATTENDANCE_OTHER01   o ON r.COMPANY = o.COMPANY AND r.REQ_ID = o.REQ_ID
         LEFT JOIN HRTSHIFTMASTER01        s ON r.COMPANY = s.COMPANY AND o.CHANGE_SHIFT_CODE = s.SHIFT_CODE

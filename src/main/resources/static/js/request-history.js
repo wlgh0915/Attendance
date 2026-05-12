@@ -16,7 +16,7 @@ function statusLabel(v) {
     return {
         DRAFT: '미상신',
         SUBMITTED: '승인중',
-        APPROVED: '승인',
+        APPROVED: '승인완료',
         REJECTED: '반려',
         CANCELED: '취소',
         PENDING: '대기'
@@ -24,7 +24,20 @@ function statusLabel(v) {
 }
 
 function stepTypeLabel(v) {
-    return v === 'AGREE' ? '합의' : '승인';
+    const map = { SUBMIT:'상신', APPROVE:'결재', CC:'참조', AGREE:'합의' };
+    return map[v] || v || '-';
+}
+
+function stepStatusBadge(status) {
+    const map = { PENDING:'st-PENDING', APPROVED:'st-APPROVED', REJECTED:'st-REJECTED' };
+    const lbl = { PENDING:'대기', APPROVED:'승인', REJECTED:'반려' };
+    const s = status || 'PENDING';
+    return '<span class="status-badge '+(map[s]||'st-PENDING')+'">'+escapeHtml(lbl[s]||s)+'</span>';
+}
+
+function formatCheckOut(d) {
+    if (!d.recordCheckOut) return '-';
+    return (String(d.recordOvernightYn || '').trim().toUpperCase() === 'Y' ? '익일 ' : '') + d.recordCheckOut;
 }
 
 async function openHistoryDetail(btn) {
@@ -54,37 +67,31 @@ async function openHistoryDetail(btn) {
             + escapeHtml(d.changeShiftName || d.changeShiftCode || '-') + '</div>';
     }
 
-    const lateText = d.recordLateYn === 'Y'
-        ? 'Y (' + (d.recordLateMin ?? 0) + '분)'
-        : (d.recordLateYn || '-');
-
     document.getElementById('detailInfo').innerHTML =
         '<div class="lbl">신청번호</div><div class="val">' + escapeHtml(d.requestId) + '</div>'
-        + '<div class="lbl">근무구분</div><div class="val">' + escapeHtml(groupName + ' / ' + (d.reqType || '-')) + '</div>'
+        + '<div class="lbl">근태구분</div><div class="val">' + escapeHtml(groupName + ' / ' + (d.reqGroup === 'OTHER' ? (d.changeShiftName || d.changeShiftCode || '-') : (d.reqType || '-'))) + '</div>'
         + '<div class="lbl">근무일</div><div class="val">' + escapeHtml(targetDateText) + '</div>'
         + '<div class="lbl">대상자</div><div class="val">' + escapeHtml((d.targetEmpName || '-') + ' (' + (d.targetEmpCode || '-') + ') / ' + (d.targetDeptName || '-')) + '</div>'
-        + '<div class="lbl">신청자</div><div class="val">' + escapeHtml((d.requesterEmpName || '-') + ' (' + (d.requesterEmpCode || '-') + ')') + '</div>'
+        + '<div class="lbl">신청자</div><div class="val">' + escapeHtml((d.requesterEmpName || '-') + ' (' + (d.requesterEmpCode || '-') + ') / ' + (d.requesterDeptName || '-')) + '</div>'
         + timeInfo
         + '<div class="lbl">출근</div><div class="val">' + escapeHtml(d.recordCheckIn || '-') + '</div>'
-        + '<div class="lbl">퇴근</div><div class="val">' + escapeHtml(d.recordCheckOut || '-') + '</div>'
+        + '<div class="lbl">퇴근</div><div class="val">' + escapeHtml(formatCheckOut(d)) + '</div>'
         + '<div class="lbl">실근무분</div><div class="val">' + escapeHtml(d.recordWorkMin ?? '-') + '</div>'
-        + '<div class="lbl">익일퇴근</div><div class="val">' + escapeHtml(d.recordOvernightYn || '-') + '</div>'
-        + '<div class="lbl">지각</div><div class="val">' + escapeHtml(lateText) + '</div>'
         + '<div class="lbl">사유</div><div class="val">' + escapeHtml(d.reason || '-') + '</div>'
-        + '<div class="lbl">상세사유</div><div class="val">' + escapeHtml(d.reasonDetail || '-') + '</div>'
-        + '<div class="lbl">상태</div><div class="val">' + escapeHtml(statusLabel(d.requestStatus)) + '</div>';
+        + '<div class="lbl">사유상세</div><div class="val">' + escapeHtml(d.reasonDetail || '-') + '</div>'
+        + '<div class="lbl">신청상태</div><div class="val">' + escapeHtml(statusLabel(d.requestStatus)) + '</div>';
 
     const chain = d.approvalChain || [];
     document.getElementById('chainBody').innerHTML = chain.length === 0
-        ? '<tr><td colspan="6">결재선 정보가 없습니다.</td></tr>'
+        ? '<tr><td colspan="6" style="padding:12px;color:#999;">결재선 정보 없음</td></tr>'
         : chain.map(s =>
             '<tr>'
             + '<td>' + escapeHtml(s.stepNo) + '</td>'
             + '<td>' + escapeHtml(stepTypeLabel(s.stepType)) + '</td>'
             + '<td>' + escapeHtml(s.approverName || s.approverEmpCode || '-') + '</td>'
-            + '<td>' + escapeHtml(statusLabel(s.status)) + '</td>'
+            + '<td>' + stepStatusBadge(s.status) + '</td>'
             + '<td>' + escapeHtml(s.decisionAt || '-') + '</td>'
-            + '<td style="text-align:left;">' + escapeHtml(s.rejectReason || '-') + '</td>'
+            + '<td style="text-align:left;max-width:140px;">' + escapeHtml(s.rejectReason || '-') + '</td>'
             + '</tr>'
         ).join('');
 
