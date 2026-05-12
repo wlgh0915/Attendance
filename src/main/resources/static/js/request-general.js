@@ -317,21 +317,21 @@ function plannedRange(row) {
 }
 
 function recognizedActualWorkMin(row, currentState, selectedState) {
-    if (!row || !row.checkIn) return 0;
+    if (!row) return 0;
 
     const plan = plannedRange(row);
-    const actualStart = absoluteMinute('N0', row.checkIn);
+    const hasCheckIn = !!row.checkIn;
+    const actualStart = hasCheckIn ? absoluteMinute('N0', row.checkIn) : null;
     let actualEnd = null;
-    if (row.checkOut) {
+    if (hasCheckIn && row.checkOut) {
         actualEnd = absoluteMinute('N0', row.checkOut);
         if (row.overnightYn === 'Y' || actualEnd < actualStart) actualEnd += 1440;
-    } else if (plan) {
+    } else if (hasCheckIn && plan) {
         actualEnd = plan.end;
     }
-    if (actualStart == null || actualEnd == null) return 0;
 
-    let total = 0;
-    if (plan && (row.plannedWorkMin || 0) > 0) {
+    let total = hasCheckIn ? 0 : (row.actualWorkMin || 0);
+    if (hasCheckIn && actualStart != null && actualEnd != null && plan && (row.plannedWorkMin || 0) > 0) {
         const baseStart = Math.max(actualStart, plan.start);
         const baseEnd = Math.min(actualEnd, plan.end);
         if (baseEnd > baseStart) {
@@ -339,7 +339,9 @@ function recognizedActualWorkMin(row, currentState, selectedState) {
         }
     }
 
-    const actual = row.checkOut ? {start: actualStart, end: actualEnd} : null;
+    const actual = hasCheckIn && row.checkOut && actualStart != null && actualEnd != null
+        ? {start: actualStart, end: actualEnd}
+        : null;
     const requests = activeGeneralRequests(row).filter(req => !requestMatches(req, currentState));
     if (selectedState) requests.push(selectedState);
     requests.forEach(req => {
