@@ -726,6 +726,7 @@
             ISNULL(g.START_TIME_TYPE, 'N0')                   AS startTimeType,
             LEFT(CONVERT(VARCHAR(8), g.END_TIME,   108), 5)  AS endTime,
             ISNULL(g.END_TIME_TYPE,   'N0')                   AS endTimeType,
+            g.WORK_MIN                                        AS requestWorkMin,
             r.STATUS                                          AS status,
             r.REQUESTER_EMP_CODE                              AS requesterCode
         FROM HRTATTENDANCEREQUEST01 r
@@ -1219,7 +1220,9 @@
     </select>
 
     <select id="findShiftInfoByCodeOrName" resultType="java.util.HashMap">
-        SELECT LEFT(CONVERT(VARCHAR(8), WORK_ON_HHMM,  108), 5) AS workOnHhmm,
+        SELECT SHIFT_NAME AS shiftName,
+               WORK_DAY_TYPE AS workDayType,
+               LEFT(CONVERT(VARCHAR(8), WORK_ON_HHMM,  108), 5) AS workOnHhmm,
                LEFT(CONVERT(VARCHAR(8), WORK_OFF_HHMM, 108), 5) AS workOffHhmm,
                LEFT(CONVERT(VARCHAR(8), BREAK1_START_HHMM, 108), 5) AS break1StartHhmm,
                LEFT(CONVERT(VARCHAR(8), BREAK1_END_HHMM,   108), 5) AS break1EndHhmm,

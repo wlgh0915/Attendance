@@ -599,6 +599,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         if (!"DRAFT".equals(existing.getStatus())) {
             throw new IllegalArgumentException("상신된 근태신청은 삭제할 수 없습니다.");
         }
+        validateWeeklyWorkLimitAfterCancel(existing);
         requestMapper.deleteGeneralDetail(requestId);
         requestMapper.deleteOtherDetail(requestId);
         requestMapper.deleteRequestHeader(requestId);
@@ -714,10 +715,147 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
                 requestMapper.updateStatus(requestId, "DRAFT");
                 return;
             }
+            validateWeeklyWorkLimitAfterCancel(existing);
             requestMapper.updateStatus(requestId, "CANCELED");
             return;
         }
         throw new IllegalArgumentException("승인중 또는 승인완료 상태의 신청만 취소할 수 있습니다.");
+    }
+
+    private void validateWeeklyWorkLimitAfterCancel(AttendanceRequestDto request) {
+        if (!isWorkTimeReducingRequest(request)) {
+            return;
+        }
+        for (String weekDate : cancelValidationWeekDates(request)) {
+            AttendanceRequestDto weeklyRequest = copyForWeekValidation(request, weekDate);
+            int plannedMin = requestMapper.findWeeklyPlannedWorkMin(
+                    request.getCompany(), request.getEmpCode(), weekDate);
+            int activeRequestMinExcludingCancelTarget = requestMapper.sumActiveWeeklyRequestEffectMin(weeklyRequest);
+            int totalMin = plannedMin + activeRequestMinExcludingCancelTarget + restoredWorkMinAfterCancel(request, weekDate);
+            if (totalMin > MAX_WEEK_MIN) {
+                int overMin = totalMin - MAX_WEEK_MIN;
+                throw new IllegalArgumentException(String.format(
+                        "취소 시 주 52시간을 초과하여 취소할 수 없습니다. 초과 시간: %d시간 %d분",
+                        overMin / 60, overMin % 60));
+            }
+        }
+    }
+
+    private boolean isWorkTimeReducingRequest(AttendanceRequestDto request) {
+        if (request == null) {
+            return false;
+        }
+        if ("OTHER".equals(request.getRequestCategory())) {
+            return isOtherRestRequest(request);
+        }
+        if (!"GENERAL".equals(request.getRequestCategory())) {
+            return false;
+        }
+        String workCode = request.getRequestWorkCode();
+        return "조퇴".equals(workCode)
+                || "외근".equals(workCode)
+                || "외출".equals(workCode)
+                || "전반차".equals(workCode)
+                || "후반차".equals(workCode)
+                || "오전반차".equals(workCode)
+                || "오후반차".equals(workCode)
+                || "연차".equals(workCode)
+                || "휴가".equals(workCode);
+    }
+
+    private boolean isOtherRestRequest(AttendanceRequestDto request) {
+        Map<String, Object> shiftInfo = requestMapper.findShiftInfoByCodeOrName(
+                request.getCompany(), request.getRequestWorkCode());
+        String shiftName = shiftInfo == null ? null : stringValue(shiftInfo, "shiftName", "SHIFTNAME");
+        return containsAny(request.getRequestWorkCode(), "연차", "휴가", "반차", "공가", "병가", "경조")
+                || containsAny(shiftName, "연차", "휴가", "반차", "공가", "병가", "경조");
+    }
+
+    private boolean containsAny(String text, String... keywords) {
+        if (text == null || text.isBlank()) {
+            return false;
+        }
+        for (String keyword : keywords) {
+            if (text.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<String> cancelValidationWeekDates(AttendanceRequestDto request) {
+        List<String> weekDates = new ArrayList<>();
+        if (!"OTHER".equals(request.getRequestCategory())) {
+            weekDates.add(request.getWorkDate());
+            return weekDates;
+        }
+        LocalDate start = LocalDate.parse(request.getWorkDate());
+        LocalDate end = request.getEndDate() == null || request.getEndDate().isBlank()
+                ? start
+                : LocalDate.parse(request.getEndDate());
+        Set<LocalDate> weekStarts = new HashSet<>();
+        for (LocalDate day = start; !day.isAfter(end); day = day.plusDays(1)) {
+            LocalDate weekStart = day.minusDays(day.getDayOfWeek().getValue() - 1L);
+            if (weekStarts.add(weekStart)) {
+                weekDates.add(day.toString());
+            }
+        }
+        return weekDates;
+    }
+
+    private AttendanceRequestDto copyForWeekValidation(AttendanceRequestDto request, String weekDate) {
+        AttendanceRequestDto copy = new AttendanceRequestDto();
+        copy.setCompany(request.getCompany());
+        copy.setRequestId(request.getRequestId());
+        copy.setEmpCode(request.getEmpCode());
+        copy.setWorkDate(weekDate);
+        return copy;
+    }
+
+    private int restoredWorkMinAfterCancel(AttendanceRequestDto request, String weekDate) {
+        if ("OTHER".equals(request.getRequestCategory())) {
+            return restoredOtherWorkMinAfterCancel(request, weekDate);
+        }
+        if (request.getRequestWorkMin() != null && request.getRequestWorkMin() > 0) {
+            return request.getRequestWorkMin();
+        }
+        return plannedWorkMin(request.getCompany(), request.getEmpCode(), request.getWorkDate());
+    }
+
+    private int restoredOtherWorkMinAfterCancel(AttendanceRequestDto request, String weekDate) {
+        LocalDate start = LocalDate.parse(request.getWorkDate());
+        LocalDate end = request.getEndDate() == null || request.getEndDate().isBlank()
+                ? start
+                : LocalDate.parse(request.getEndDate());
+        LocalDate baseDate = LocalDate.parse(weekDate);
+        LocalDate weekStart = baseDate.minusDays(baseDate.getDayOfWeek().getValue() - 1L);
+        LocalDate weekEnd = weekStart.plusDays(6);
+        int total = 0;
+        for (LocalDate day = start; !day.isAfter(end); day = day.plusDays(1)) {
+            if (!day.isBefore(weekStart) && !day.isAfter(weekEnd)) {
+                total += plannedWorkMin(request.getCompany(), request.getEmpCode(), day.toString());
+            }
+        }
+        return total;
+    }
+
+    private int plannedWorkMin(String company, String empCode, String workDate) {
+        Map<String, Object> shiftInfo = requestMapper.findPlannedShiftInfo(
+                company, empCode, workDate);
+        if (shiftInfo == null) {
+            return 0;
+        }
+        String workOn = stringValue(shiftInfo, "workOnHhmm", "WORKONHHMM");
+        String workOff = stringValue(shiftInfo, "workOffHhmm", "WORKOFFHHMM");
+        if (workOn == null || workOff == null) {
+            return 0;
+        }
+        int start = toMinute(workOn);
+        int end = toMinute(workOff);
+        if (end <= start) {
+            end += 1440;
+        }
+        return Math.max(0, end - start - breakOverlapMin(shiftInfo, start, end));
     }
 
     private boolean canCancelRequest(AttendanceRequestDto request, LoginUserDto loginUser) {
