@@ -504,12 +504,12 @@
                            WHEN awd.WORK_DATE > CAST(#{today} AS DATE) THEN 0
                            ELSE
                                (CASE WHEN
-                                    ISNULL(awBaseActual.BASE_ACTUAL_MIN, 0) + ISNULL(awActualReq.ACTUAL_EFFECT_MIN, 0) &lt; 0
+                                    ISNULL(awBaseActual.BASE_ACTUAL_MIN, 0) &lt; 0
                                      THEN 0
                                      ELSE
-                                    ISNULL(awBaseActual.BASE_ACTUAL_MIN, 0) + ISNULL(awActualReq.ACTUAL_EFFECT_MIN, 0)
+                                    ISNULL(awBaseActual.BASE_ACTUAL_MIN, 0)
                                 END)
-                                - (ISNULL(awPlan.PLAN_WORK_MIN, 0) + ISNULL(awExpectedReq.REQUEST_EFFECT_MIN, 0))
+                                - ISNULL(awPlan.PLAN_WORK_MIN, 0)
                        END AS ADJ_MIN
             ) dayAdj
         ) weeklyActualAdj

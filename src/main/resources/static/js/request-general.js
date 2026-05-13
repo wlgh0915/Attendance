@@ -166,6 +166,10 @@ function isActiveRequest(state) {
     return state && ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(state.status);
 }
 
+function isApprovedRequest(state) {
+    return state && state.status === 'APPROVED';
+}
+
 function hasActiveRequest(row, ...codes) {
     return codes.some(code => isActiveRequest(row.requestsByWorkCode && row.requestsByWorkCode[code]));
 }
@@ -300,6 +304,11 @@ function activeGeneralRequests(row) {
         .filter(req => isActiveRequest(req) && categoryOfRequest(req) !== 'OTHER');
 }
 
+function approvedGeneralRequests(row) {
+    return Object.values((row && row.requestsByWorkCode) || {})
+        .filter(req => isApprovedRequest(req) && categoryOfRequest(req) !== 'OTHER');
+}
+
 function requestRange(req) {
     const start = absoluteMinute(req.startTimeType || 'N0', req.startTime);
     let end = absoluteMinute(req.endTimeType || 'N0', req.endTime);
@@ -342,8 +351,8 @@ function recognizedActualWorkMin(row, currentState, selectedState) {
     const actual = hasCheckIn && row.checkOut && actualStart != null && actualEnd != null
         ? {start: actualStart, end: actualEnd}
         : null;
-    const requests = activeGeneralRequests(row).filter(req => !requestMatches(req, currentState));
-    if (selectedState) requests.push(selectedState);
+    const requests = approvedGeneralRequests(row).filter(req => !requestMatches(req, currentState));
+    if (isApprovedRequest(selectedState)) requests.push(selectedState);
     requests.forEach(req => {
         const category = categoryOfRequest(req);
         if (category === 'OVERTIME' || category === 'HOLIDAY') {

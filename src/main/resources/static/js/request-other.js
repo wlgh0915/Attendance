@@ -67,6 +67,10 @@ function isActiveRequest(state) {
     return state && ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(state.status);
 }
 
+function isApprovedRequest(state) {
+    return state && state.status === 'APPROVED';
+}
+
 function hasActiveOtherRequest(row) {
     return Object.values(row.requestsByWorkCode || {}).some(req =>
         req.existingRequestGroup === 'OTHER' && isActiveRequest(req)
@@ -97,6 +101,11 @@ function requestMatches(a, b) {
 function activeGeneralRequests(row) {
     return Object.values((row && row.requestsByWorkCode) || {})
         .filter(req => isActiveRequest(req) && categoryOfRequest(req) !== 'OTHER');
+}
+
+function approvedGeneralRequests(row) {
+    return Object.values((row && row.requestsByWorkCode) || {})
+        .filter(req => isApprovedRequest(req) && categoryOfRequest(req) !== 'OTHER');
 }
 
 function requestRange(req) {
@@ -141,7 +150,7 @@ function recognizedActualWorkMin(row) {
     const actual = hasCheckIn && row.checkOut && actualStart != null && actualEnd != null
         ? {start: actualStart, end: actualEnd}
         : null;
-    activeGeneralRequests(row).forEach(req => {
+    approvedGeneralRequests(row).forEach(req => {
         const category = categoryOfRequest(req);
         if (category === 'OVERTIME' || category === 'HOLIDAY') {
             if (!actual) return;
