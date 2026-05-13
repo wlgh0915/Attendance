@@ -1096,8 +1096,11 @@
                    r.TARGET_EMP_CODE AS EMP_CODE,
                    CONVERT(VARCHAR(8), r.TARGET_DATE, 112) AS YYYYMMDD,
                    r.TARGET_DEPT_CODE AS DEPT_CODE,
-                   r.REQ_TYPE AS HOLIDAY_SHIFT_CODE
+                   sm.SHIFT_CODE AS HOLIDAY_SHIFT_CODE
             FROM HRTATTENDANCEREQUEST01 r
+            JOIN HRTSHIFTMASTER01 sm
+              ON sm.COMPANY    = r.COMPANY
+             AND sm.SHIFT_NAME = r.REQ_TYPE
             WHERE r.REQ_ID = #{requestId}
               AND r.REQ_GROUP = 'GENERAL'
               AND r.REQ_TYPE = '휴일근무'
@@ -1116,6 +1119,34 @@
             VALUES (S.COMPANY, S.EMP_CODE, S.YYYYMMDD, S.DEPT_CODE, NULL, S.HOLIDAY_SHIFT_CODE,
                     0, 'N', 'N', 0, GETDATE(), GETDATE());
     </update>
+
+    <update id="revertCanceledHolidayAttendanceUpdate">
+        UPDATE d
+        SET d.ACTUAL_SHIFT_CODE = NULL,
+            d.UPDATED_AT        = GETDATE()
+        FROM HRTDAILYATTENDANCE01 d
+        INNER JOIN HRTATTENDANCEREQUEST01 r
+            ON d.COMPANY   = r.COMPANY
+           AND d.EMP_CODE  = r.TARGET_EMP_CODE
+           AND d.YYYYMMDD  = CONVERT(VARCHAR(8), r.TARGET_DATE, 112)
+        WHERE r.REQ_ID    = #{requestId}
+          AND r.REQ_GROUP = 'GENERAL'
+          AND r.REQ_TYPE  = '휴일근무'
+          AND d.SHIFT_CODE IS NOT NULL
+    </update>
+
+    <delete id="revertCanceledHolidayAttendanceDelete">
+        DELETE d
+        FROM HRTDAILYATTENDANCE01 d
+        INNER JOIN HRTATTENDANCEREQUEST01 r
+            ON d.COMPANY   = r.COMPANY
+           AND d.EMP_CODE  = r.TARGET_EMP_CODE
+           AND d.YYYYMMDD  = CONVERT(VARCHAR(8), r.TARGET_DATE, 112)
+        WHERE r.REQ_ID    = #{requestId}
+          AND r.REQ_GROUP = 'GENERAL'
+          AND r.REQ_TYPE  = '휴일근무'
+          AND d.SHIFT_CODE IS NULL
+    </delete>
 
     <select id="findDeptLeader" resultType="String">
         SELECT DEPT_LEADER
