@@ -29,6 +29,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
 
     private final AttendanceRequestMapper requestMapper;
     private final ApprovalMapper approvalMapper;
+    private final AnnualLeaveService annualLeaveService;
 
     private static final DateTimeFormatter REQ_ID_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
     private static final int MAX_WEEK_MIN = 3120;
@@ -88,7 +89,20 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
                     .toList());
         }
 
-        return mergeRequestsByEmployee(requestMapper.searchEmployees(search), search.getRequestCategory());
+        List<AttendanceEmpRowDto> rows = mergeRequestsByEmployee(
+                requestMapper.searchEmployees(search), search.getRequestCategory());
+        applyAnnualBalance(rows, search);
+        return rows;
+    }
+
+    private void applyAnnualBalance(List<AttendanceEmpRowDto> rows, AttendanceRequestSearchDto search) {
+        if (search.getWorkDate() == null || search.getWorkDate().isBlank()) {
+            return;
+        }
+        int yyyy = LocalDate.parse(search.getWorkDate()).getYear();
+        for (AttendanceEmpRowDto row : rows) {
+            row.setAnnualBalanceDay(annualLeaveService.availableDay(search.getCompany(), row.getEmpCode(), yyyy));
+        }
     }
 
     @Override
@@ -621,6 +635,8 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             throw new IllegalArgumentException("이미 상신된 신청입니다.");
         }
 
+        annualLeaveService.validateAvailableForSubmit(existing);
+
         String company       = loginUser.getCompany();
         String requesterCode = loginUser.getEmpCode();
 
@@ -640,6 +656,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             requestMapper.updateStatus(requestId, "APPROVED");
             requestMapper.applyApprovedOtherRequestToAttendance(requestId);
             requestMapper.applyApprovedHolidayRequestToAttendance(requestId);
+            annualLeaveService.refreshApprovedUsage(existing);
         } else {
             requestMapper.updateStatus(requestId, "SUBMITTED");
         }
@@ -721,6 +738,9 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
                 requestMapper.revertCanceledHolidayAttendanceDelete(requestId);
             }
             requestMapper.updateStatus(requestId, "CANCELED");
+            if ("APPROVED".equals(existing.getStatus()) && annualLeaveService.isAnnualLeaveRequest(existing)) {
+                annualLeaveService.refreshApprovedUsage(existing);
+            }
             return;
         }
         throw new IllegalArgumentException("승인중 또는 승인완료 상태의 신청만 취소할 수 있습니다.");

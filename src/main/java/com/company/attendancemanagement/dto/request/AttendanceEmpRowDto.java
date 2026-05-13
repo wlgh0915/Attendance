@@ -3,6 +3,7 @@ package com.company.attendancemanagement.dto.request;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.util.Map;
 
 @Getter
@@ -26,6 +27,7 @@ public class AttendanceEmpRowDto {
     private Integer actualWorkMin;
     private Integer shiftWorkMin;
     private Integer activeWeeklyRequestEffectMin;
+    private BigDecimal annualBalanceDay;
     private String actualWorkCode;
     private String actualWorkName;
     private String checkIn;

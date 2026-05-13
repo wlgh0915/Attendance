@@ -23,6 +23,7 @@ public class AttendanceApprovalServiceImpl implements AttendanceApprovalService 
     private final AttendanceApprovalMapper approvalMapper;
     private final ApprovalMapper           baseApprovalMapper;
     private final AttendanceRequestMapper  requestMapper;
+    private final AnnualLeaveService       annualLeaveService;
 
     @Override
     public List<ApprovalItemDto> searchApprovals(ApprovalSearchDto search, LoginUserDto loginUser) {
@@ -57,9 +58,15 @@ public class AttendanceApprovalServiceImpl implements AttendanceApprovalService 
             if (request != null && "OTHER".equals(request.getRequestCategory())) {
                 validateOtherRequestAvailable(request);
             }
+            if (request != null) {
+                annualLeaveService.validateAvailableForApproval(request);
+            }
             requestMapper.updateStatus(requestId, "APPROVED");
             requestMapper.applyApprovedOtherRequestToAttendance(requestId);
             requestMapper.applyApprovedHolidayRequestToAttendance(requestId);
+            if (request != null) {
+                annualLeaveService.refreshApprovedUsage(request);
+            }
         }
     }
 

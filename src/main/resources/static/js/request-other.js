@@ -41,6 +41,13 @@ function formatWorkMin(min) {
     return m + '분';
 }
 
+function formatDay(day) {
+    if (day == null) return '-';
+    const n = Number(day);
+    if (!Number.isFinite(n)) return '-';
+    return n.toFixed(5).replace(/\.?0+$/, '') + '일';
+}
+
 function absoluteMinute(timeType, time) {
     if (!time) return null;
     const [h, m] = time.split(':').map(Number);
@@ -177,7 +184,7 @@ function renderTable(rows) {
     const tbody = document.getElementById('reqTableBody');
     const workDate = document.getElementById('workDate').value;
     if (!rows || rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="15" class="no-data">조회된 인원이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="16" class="no-data">조회된 인원이 없습니다.</td></tr>';
         tableData = [];
         return;
     }
@@ -206,6 +213,7 @@ function renderTable(rows) {
             + '<td>'+(r.actualWorkName || r.actualWorkCode || '-')+'</td>'
             + '<td data-field="shiftWorkMin">'+formatWorkMin(cumulativeEstimatedWorkMin(r))+'</td>'
             + '<td>'+formatWorkMin(recognizedActualWorkMin(r))+'</td>'
+            + '<td>'+formatDay(r.annualBalanceDay)+'</td>'
             + '<td><input type="date" data-field="endDate" min="'+workDate+'" value="'+endDateVal+'" '+dis+'></td>'
             + '<td><select data-field="requestWorkCode" '+dis+' onchange="onWorkCodeChange(this,'+idx+')">'+buildShiftOptions(selectedWorkCode)+'</select></td>'
             + '<td><input type="text" data-field="reason" value="'+reasonVal+'" placeholder="사유" '+dis+'></td>'

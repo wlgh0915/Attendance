@@ -25,6 +25,7 @@ function switchCategory(el) {
     el.classList.add('active');
     currentCategory = el.dataset.cat;
     updateHolidayColumnVisibility();
+    updateAnnualColumnVisibility();
     doSearch();
 }
 
@@ -34,8 +35,16 @@ function updateHolidayColumnVisibility() {
     });
 }
 
+function updateAnnualColumnVisibility() {
+    document.querySelectorAll('.leave-hidden').forEach(el => {
+        el.style.display = currentCategory === 'LEAVE' ? '' : 'none';
+    });
+}
+
 function visibleColumnCount() {
-    return currentCategory === 'HOLIDAY' ? 14 : 16;
+    if (currentCategory === 'HOLIDAY') return 14;
+    if (currentCategory === 'LEAVE') return 17;
+    return 16;
 }
 
 function buildTimeOptions(selected) {
@@ -164,6 +173,13 @@ function selectedWorkMin(tr, state, row) {
 
 function isActiveRequest(state) {
     return state && ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(state.status);
+}
+
+function formatDay(day) {
+    if (day == null) return '-';
+    const n = Number(day);
+    if (!Number.isFinite(n)) return '-';
+    return n.toFixed(5).replace(/\.?0+$/, '') + '일';
 }
 
 function isApprovedRequest(state) {
@@ -468,6 +484,7 @@ function renderTable(rows) {
     const checkAll = document.getElementById('checkAll');
     if (checkAll) checkAll.checked = false;
     updateHolidayColumnVisibility();
+    updateAnnualColumnVisibility();
     const tbody = document.getElementById('reqTableBody');
     if (!rows || rows.length === 0) {
         tbody.innerHTML = '<tr><td colspan="'+visibleColumnCount()+'" class="no-data">조회된 인원이 없습니다.</td></tr>';
@@ -506,6 +523,7 @@ function renderTable(rows) {
             + '<td>'+(r.actualWorkName || r.actualWorkCode || '-')+'</td>'
             + '<td class="holiday-hidden">'+formatWorkMin(recognizedActualWorkMin(r))+'</td>'
             + '<td data-field="shiftWorkMin">'+formatWorkMin(savedEstimatedWorkMin(r, existing, selectedWorkCode))+'</td>'
+            + '<td class="leave-hidden">'+formatDay(r.annualBalanceDay)+'</td>'
             + '<td><select data-field="requestWorkCode" onchange="onWorkCodeChange(this,'+idx+')">'+buildWorkCodeOptions(currentCategory,selectedWorkCode)+'</select></td>'
             + '<td><input type="text" data-field="reason" value="'+reasonVal+'" placeholder="사유" '+disFull+'></td>'
             + '<td><input type="text" data-field="reasonDetail" value="'+reasonDetailVal+'" placeholder="사유 상세 입력" '+disFull+'></td>'
@@ -522,6 +540,7 @@ function renderTable(rows) {
             + '</tr>';
     }).join('');
     updateHolidayColumnVisibility();
+    updateAnnualColumnVisibility();
 }
 
 // 근무코드 변경 시 시간 필드 잠금/해제
@@ -773,6 +792,7 @@ function showToast(msg, type) {
 
 document.addEventListener('DOMContentLoaded', () => {
     updateHolidayColumnVisibility();
+    updateAnnualColumnVisibility();
     doSearch();
 });
 
