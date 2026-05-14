@@ -41,8 +41,41 @@ function formatWorkMin(min) {
     return m + '분';
 }
 
+function formatDay(day) {
+    if (day == null) return '-';
+    const n = Number(day);
+    if (!Number.isFinite(n)) return '-';
+    return n.toFixed(5).replace(/\.?0+$/, '') + '일';
+}
+
+function absoluteMinute(timeType, time) {
+    if (!time) return null;
+    const [h, m] = time.split(':').map(Number);
+    return (timeType === 'N1' ? 1440 : 0) + h * 60 + m;
+}
+
+function breakOverlapMin(row, startMin, endMin) {
+    const overlap = (breakStart, breakEnd) => {
+        if (!breakStart || !breakEnd) return 0;
+        let bs = absoluteMinute('N0', breakStart);
+        let be = absoluteMinute('N0', breakEnd);
+        if (be < bs) be += 1440;
+        if (endMin > 1440 && bs < startMin) {
+            bs += 1440;
+            be += 1440;
+        }
+        return Math.max(0, Math.min(endMin, be) - Math.max(startMin, bs));
+    };
+    return overlap(row.break1StartHhmm, row.break1EndHhmm)
+        + overlap(row.break2StartHhmm, row.break2EndHhmm);
+}
+
 function isActiveRequest(state) {
     return state && ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(state.status);
+}
+
+function isApprovedRequest(state) {
+    return state && state.status === 'APPROVED';
 }
 
 function hasActiveOtherRequest(row) {
@@ -66,6 +99,81 @@ function requestEffectMin(state) {
     return 0;
 }
 
+function requestMatches(a, b) {
+    if (!a || !b) return false;
+    if (a.requestId != null && b.requestId != null) return String(a.requestId) === String(b.requestId);
+    return a.requestWorkCode && a.requestWorkCode === b.requestWorkCode;
+}
+
+function activeGeneralRequests(row) {
+    return Object.values((row && row.requestsByWorkCode) || {})
+        .filter(req => isActiveRequest(req) && categoryOfRequest(req) !== 'OTHER');
+}
+
+function approvedGeneralRequests(row) {
+    return Object.values((row && row.requestsByWorkCode) || {})
+        .filter(req => isApprovedRequest(req) && categoryOfRequest(req) !== 'OTHER');
+}
+
+function requestRange(req) {
+    const start = absoluteMinute(req.startTimeType || 'N0', req.startTime);
+    let end = absoluteMinute(req.endTimeType || 'N0', req.endTime);
+    if (start == null || end == null) return null;
+    if (end < start) end += 1440;
+    return {start, end};
+}
+
+function plannedRange(row) {
+    const start = absoluteMinute('N0', row && row.shiftOnTime);
+    let end = absoluteMinute('N0', row && row.shiftOffTime);
+    if (start == null || end == null) return null;
+    if (end <= start) end += 1440;
+    return {start, end};
+}
+
+function recognizedActualWorkMin(row) {
+    if (!row) return 0;
+
+    const plan = plannedRange(row);
+    const hasCheckIn = !!row.checkIn;
+    const actualStart = hasCheckIn ? absoluteMinute('N0', row.checkIn) : null;
+    let actualEnd = null;
+    if (hasCheckIn && row.checkOut) {
+        actualEnd = absoluteMinute('N0', row.checkOut);
+        if (row.overnightYn === 'Y' || actualEnd < actualStart) actualEnd += 1440;
+    } else if (hasCheckIn && plan) {
+        actualEnd = plan.end;
+    }
+
+    let total = hasCheckIn ? 0 : (row.actualWorkMin || 0);
+    if (hasCheckIn && actualStart != null && actualEnd != null && plan && (row.plannedWorkMin || 0) > 0) {
+        const baseStart = Math.max(actualStart, plan.start);
+        const baseEnd = Math.min(actualEnd, plan.end);
+        if (baseEnd > baseStart) {
+            total += Math.max(0, baseEnd - baseStart - breakOverlapMin(row, baseStart, baseEnd));
+        }
+    }
+
+    const actual = hasCheckIn && row.checkOut && actualStart != null && actualEnd != null
+        ? {start: actualStart, end: actualEnd}
+        : null;
+    approvedGeneralRequests(row).forEach(req => {
+        const category = categoryOfRequest(req);
+        if (category === 'OVERTIME' || category === 'HOLIDAY') {
+            if (!actual) return;
+            const reqRange = requestRange(req);
+            if (!reqRange) return;
+            let overlap = Math.max(0, Math.min(actual.end, reqRange.end) - Math.max(actual.start, reqRange.start));
+            if ((req.requestWorkMin || 0) > 0) overlap = Math.min(overlap, req.requestWorkMin);
+            total += overlap;
+        } else if (category === 'LEAVE') {
+            total -= (req.requestWorkMin || row.plannedWorkMin || 0);
+        }
+    });
+
+    return Math.max(0, total);
+}
+
 function cumulativeEstimatedWorkMin(row) {
     return Math.max((row.shiftWorkMin || 0) + (row.activeWeeklyRequestEffectMin || 0), 0);
 }
@@ -76,7 +184,7 @@ function renderTable(rows) {
     const tbody = document.getElementById('reqTableBody');
     const workDate = document.getElementById('workDate').value;
     if (!rows || rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="12" class="no-data">조회된 인원이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="16" class="no-data">조회된 인원이 없습니다.</td></tr>';
         tableData = [];
         return;
     }
@@ -101,7 +209,11 @@ function renderTable(rows) {
             + '<td>'+(r.empName||'')+'</td>'
             + '<td>'+(r.deptName||'')+'</td>'
             + '<td>'+(r.workPlanName||'-')+'</td>'
+            + '<td>'+formatWorkMin(r.plannedWorkMin || 0)+'</td>'
+            + '<td>'+(r.actualWorkName || r.actualWorkCode || '-')+'</td>'
             + '<td data-field="shiftWorkMin">'+formatWorkMin(cumulativeEstimatedWorkMin(r))+'</td>'
+            + '<td>'+formatWorkMin(recognizedActualWorkMin(r))+'</td>'
+            + '<td>'+formatDay(r.annualBalanceDay)+'</td>'
             + '<td><input type="date" data-field="endDate" min="'+workDate+'" value="'+endDateVal+'" '+dis+'></td>'
             + '<td><select data-field="requestWorkCode" '+dis+' onchange="onWorkCodeChange(this,'+idx+')">'+buildShiftOptions(selectedWorkCode)+'</select></td>'
             + '<td><input type="text" data-field="reason" value="'+reasonVal+'" placeholder="사유" '+dis+'></td>'

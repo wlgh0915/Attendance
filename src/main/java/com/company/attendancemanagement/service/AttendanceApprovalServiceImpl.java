@@ -23,6 +23,8 @@ public class AttendanceApprovalServiceImpl implements AttendanceApprovalService 
     private final AttendanceApprovalMapper approvalMapper;
     private final ApprovalMapper           baseApprovalMapper;
     private final AttendanceRequestMapper  requestMapper;
+    private final AnnualLeaveService       annualLeaveService;
+    private final AttendanceRecordService  recordService;
 
     @Override
     public List<ApprovalItemDto> searchApprovals(ApprovalSearchDto search, LoginUserDto loginUser) {
@@ -57,9 +59,21 @@ public class AttendanceApprovalServiceImpl implements AttendanceApprovalService 
             if (request != null && "OTHER".equals(request.getRequestCategory())) {
                 validateOtherRequestAvailable(request);
             }
+            if (request != null) {
+                annualLeaveService.validateAvailableForApproval(request);
+            }
             requestMapper.updateStatus(requestId, "APPROVED");
             requestMapper.applyApprovedOtherRequestToAttendance(requestId);
             requestMapper.applyApprovedHolidayRequestToAttendance(requestId);
+            if (request != null) {
+                annualLeaveService.refreshApprovedUsage(request);
+            }
+            if (request != null && ("연장".equals(request.getRequestWorkCode())
+                    || "조출연장".equals(request.getRequestWorkCode()))) {
+                String yyyymmdd = request.getWorkDate().replace("-", "");
+                recordService.recalculateIfRecordExists(
+                        request.getCompany(), request.getEmpCode(), yyyymmdd);
+            }
         }
     }
 

@@ -82,6 +82,7 @@
 .type-badge { background: #eef3f8; color: #2c3e50; }
 .st-DRAFT { background: #e9ecef; color: #495057; }
 .st-SUBMITTED { background: #fff3cd; color: #7a4c00; }
+.st-PENDING { background: #fff3cd; color: #7a4c00; }
 .st-APPROVED { background: #d5f5e3; color: #1e5f3a; }
 .st-REJECTED { background: #fde8e8; color: #922b21; }
 .st-CANCELED { background: #eceff1; color: #607d8b; }

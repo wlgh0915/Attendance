@@ -25,7 +25,6 @@
         <div class="search-group" th:if="${canViewAll}">
             <label>부서</label>
             <select name="deptCode">
-                <option value="">전체</option>
                 <option th:each="dept : ${depts}"
                         th:value="${dept.deptCode}"
                         th:text="${dept.deptName}"
@@ -98,7 +97,7 @@
                 </td>
                 <td th:text="${row.deptName ?: row.deptCode}"></td>
                 <td>
-                    <span class="type-badge" th:text="${row.requestWorkCode ?: row.requestCategory}"></span>
+                    <span class="type-badge" th:text="${row.requestCategory == 'OTHER' ? (row.changeShiftName ?: row.requestWorkCode ?: row.requestCategory) : (row.requestWorkCode ?: row.requestCategory)}"></span>
                 </td>
                 <td>
                     <span th:if="${row.startTime != null || row.endTime != null}"
@@ -138,7 +137,7 @@
 
 <div id="detailModal" class="detail-drawer">
     <div class="detail-drawer-header">
-        <span class="modal-title">근태신청 상세</span>
+        <span class="modal-title">근태 신청 상세</span>
         <button type="button" class="btn-drawer-close" onclick="closeHistoryDetail()">×</button>
     </div>
     <div class="detail-section">
@@ -149,14 +148,7 @@
         <h4>결재선</h4>
         <table class="chain-table">
             <thead>
-            <tr>
-                <th>순번</th>
-                <th>구분</th>
-                <th>결재자</th>
-                <th>상태</th>
-                <th>처리일시</th>
-                <th>반려사유</th>
-            </tr>
+            <tr><th>순번</th><th>구분</th><th>결재자</th><th>상태</th><th>처리일시</th><th>반려사유</th></tr>
             </thead>
             <tbody id="chainBody"></tbody>
         </table>

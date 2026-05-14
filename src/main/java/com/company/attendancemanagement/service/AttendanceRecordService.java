@@ -11,4 +11,5 @@ public interface AttendanceRecordService {
     int calculateWorkMin(AttendanceRecordDto dto);
     void upsert(AttendanceRecordDto dto);
     void delete(String company, String empCode, String yyyymmdd);
+    void recalculateIfRecordExists(String company, String empCode, String yyyymmdd);
 }

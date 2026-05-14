@@ -43,16 +43,21 @@
                        - ISNULL(DATEDIFF(MINUTE, s.BREAK2_START_HHMM, s.BREAK2_END_HHMM), 0))
                  ELSE 0
             END                                                   AS plannedWorkMin,
-            CASE WHEN absenceInfo.isAbsent = 1 THEN 0 ELSE ar.WORK_MIN END AS actualWorkMin,
+            CASE WHEN absenceInfo.isAbsent = 1 THEN 0
+                 WHEN ar.CHECK_IN IS NULL AND effectiveShiftCalc.RECOGNIZED_NO_RECORD_YN = 'Y'
+                 THEN effectiveShiftCalc.WORK_MIN
+                 WHEN ar.WORK_MIN IS NOT NULL THEN ar.WORK_MIN
+                 ELSE ar.WORK_MIN
+            END                                                   AS actualWorkMin,
             weekly.weekWorkMin                                     AS shiftWorkMin,
             weeklyReq.activeWeeklyRequestEffectMin + weeklyActualAdj.weekActualAdjustmentMin AS activeWeeklyRequestEffectMin,
             CASE WHEN absenceInfo.isAbsent = 1
                  THEN 'ABSENT'
-                 ELSE COALESCE(NULLIF(ar.ACTUAL_SHIFT_CODE, ''), NULLIF(ar.SHIFT_CODE, ''), '')
+                 ELSE ISNULL(effectiveShift.SHIFT_CODE, '')
             END                                                   AS actualWorkCode,
             CASE WHEN absenceInfo.isAbsent = 1
                  THEN '결근'
-                 ELSE ISNULL(actualShift.SHIFT_NAME, '')
+                 ELSE ISNULL(effectiveShift.SHIFT_NAME, '')
             END                                                   AS actualWorkName,
             LEFT(CONVERT(VARCHAR(8), ar.CHECK_IN, 108), 5)         AS checkIn,
             LEFT(CONVERT(VARCHAR(8), ar.CHECK_OUT, 108), 5)        AS checkOut,
@@ -159,7 +164,12 @@
                                          - ISNULL(DATEDIFF(MINUTE, ows.BREAK2_START_HHMM, ows.BREAK2_END_HHMM), 0)
                                END
                            WHEN ws.WORK_ON_HHMM IS NULL OR ws.WORK_OFF_HHMM IS NULL THEN 0
-                           WHEN ISNULL(day_type.WORK_DAY_TYPE, '') IN ('OFF', 'HOLIDAY') THEN 0
+                           WHEN ISNULL(day_type.WORK_DAY_TYPE, '') IN ('OFF', 'HOLIDAY')
+                                AND NOT (
+                                    ws.SHIFT_NAME LIKE '%출장%'
+                                    OR ws.SHIFT_NAME LIKE '%외근%'
+                                )
+                           THEN 0
                            WHEN ws.WORK_OFF_HHMM >= ws.WORK_ON_HHMM
                            THEN DATEDIFF(MINUTE, ws.WORK_ON_HHMM, ws.WORK_OFF_HHMM)
                                 - ISNULL(DATEDIFF(MINUTE, ws.BREAK1_START_HHMM, ws.BREAK1_END_HHMM), 0)
@@ -299,7 +309,12 @@
             CROSS APPLY (
                 SELECT CASE
                            WHEN aws.WORK_ON_HHMM IS NULL OR aws.WORK_OFF_HHMM IS NULL THEN 0
-                           WHEN ISNULL(awDayType.WORK_DAY_TYPE, '') IN ('OFF', 'HOLIDAY') THEN 0
+                           WHEN ISNULL(awDayType.WORK_DAY_TYPE, '') IN ('OFF', 'HOLIDAY')
+                                AND NOT (
+                                    aws.SHIFT_NAME LIKE '%출장%'
+                                    OR aws.SHIFT_NAME LIKE '%외근%'
+                                )
+                           THEN 0
                            WHEN aws.WORK_OFF_HHMM >= aws.WORK_ON_HHMM
                            THEN DATEDIFF(MINUTE, aws.WORK_ON_HHMM, aws.WORK_OFF_HHMM)
                                 - ISNULL(DATEDIFF(MINUTE, aws.BREAK1_START_HHMM, aws.BREAK1_END_HHMM), 0)
@@ -469,6 +484,15 @@
                                 AND awClip.WORK_END_MIN IS NOT NULL
                                 AND awClip.WORK_END_MIN > awClip.WORK_START_MIN
                            THEN awClip.WORK_END_MIN - awClip.WORK_START_MIN - ISNULL(awBreak.BREAK_MIN, 0)
+                           WHEN awa.CHECK_IN IS NULL
+                                AND (
+                                    ISNULL(awDayType.WORK_DAY_TYPE, '') IN ('OFF', 'HOLIDAY')
+                                    OR aws.SHIFT_NAME LIKE '%휴가%'
+                                    OR aws.SHIFT_NAME LIKE '%반차%'
+                                    OR aws.SHIFT_NAME LIKE '%출장%'
+                                    OR aws.SHIFT_NAME LIKE '%외출%'
+                                )
+                           THEN ISNULL(awPlan.PLAN_WORK_MIN, 0)
                            WHEN awa.WORK_MIN IS NOT NULL
                                 AND ISNULL(awPlan.PLAN_WORK_MIN, 0) > 0
                            THEN CASE WHEN awa.WORK_MIN > awPlan.PLAN_WORK_MIN THEN awPlan.PLAN_WORK_MIN ELSE awa.WORK_MIN END
@@ -480,12 +504,12 @@
                            WHEN awd.WORK_DATE > CAST(#{today} AS DATE) THEN 0
                            ELSE
                                (CASE WHEN
-                                    ISNULL(awBaseActual.BASE_ACTUAL_MIN, 0) + ISNULL(awActualReq.ACTUAL_EFFECT_MIN, 0) &lt; 0
+                                    ISNULL(awBaseActual.BASE_ACTUAL_MIN, 0) &lt; 0
                                      THEN 0
                                      ELSE
-                                    ISNULL(awBaseActual.BASE_ACTUAL_MIN, 0) + ISNULL(awActualReq.ACTUAL_EFFECT_MIN, 0)
+                                    ISNULL(awBaseActual.BASE_ACTUAL_MIN, 0)
                                 END)
-                                - (ISNULL(awPlan.PLAN_WORK_MIN, 0) + ISNULL(awExpectedReq.REQUEST_EFFECT_MIN, 0))
+                                - ISNULL(awPlan.PLAN_WORK_MIN, 0)
                        END AS ADJ_MIN
             ) dayAdj
         ) weeklyActualAdj
@@ -515,22 +539,48 @@
               AND h.EMP_CODE = ar.EMP_CODE
               AND ar.YYYYMMDD = REPLACE(#{workDate}, '-', '')
         OUTER APPLY (
+            SELECT COALESCE(
+                       NULLIF(ar.ACTUAL_SHIFT_CODE, ''),
+                       NULLIF(ar.SHIFT_CODE, ''),
+                       NULLIF(o.CHANGE_SHIFT_CODE, ''),
+                       NULLIF(s.SHIFT_CODE, '')
+                   ) AS SHIFT_CODE
+        ) effectiveShiftCode
+        LEFT JOIN HRTSHIFTMASTER01 effectiveShift
+               ON effectiveShift.COMPANY = h.COMPANY
+              AND effectiveShift.SHIFT_CODE = effectiveShiftCode.SHIFT_CODE
+        OUTER APPLY (
+            SELECT CASE
+                       WHEN effectiveShift.WORK_ON_HHMM IS NULL OR effectiveShift.WORK_OFF_HHMM IS NULL THEN 0
+                       WHEN ISNULL(effectiveShift.WORK_DAY_TYPE, '') IN ('OFF', 'HOLIDAY')
+                            AND NOT (
+                                effectiveShift.SHIFT_NAME LIKE '%출장%'
+                                OR effectiveShift.SHIFT_NAME LIKE '%외근%'
+                            )
+                       THEN 0
+                       WHEN effectiveShift.WORK_OFF_HHMM >= effectiveShift.WORK_ON_HHMM
+                       THEN DATEDIFF(MINUTE, effectiveShift.WORK_ON_HHMM, effectiveShift.WORK_OFF_HHMM)
+                            - ISNULL(DATEDIFF(MINUTE, effectiveShift.BREAK1_START_HHMM, effectiveShift.BREAK1_END_HHMM), 0)
+                            - ISNULL(DATEDIFF(MINUTE, effectiveShift.BREAK2_START_HHMM, effectiveShift.BREAK2_END_HHMM), 0)
+                       ELSE 1440 + DATEDIFF(MINUTE, effectiveShift.WORK_ON_HHMM, effectiveShift.WORK_OFF_HHMM)
+                            - ISNULL(DATEDIFF(MINUTE, effectiveShift.BREAK1_START_HHMM, effectiveShift.BREAK1_END_HHMM), 0)
+                            - ISNULL(DATEDIFF(MINUTE, effectiveShift.BREAK2_START_HHMM, effectiveShift.BREAK2_END_HHMM), 0)
+                   END AS WORK_MIN,
+                   CASE
+                       WHEN ISNULL(effectiveShift.WORK_DAY_TYPE, '') IN ('OFF', 'HOLIDAY')
+                            OR effectiveShift.SHIFT_NAME LIKE '%휴가%'
+                            OR effectiveShift.SHIFT_NAME LIKE '%반차%'
+                            OR effectiveShift.SHIFT_NAME LIKE '%출장%'
+                            OR effectiveShift.SHIFT_NAME LIKE '%외출%'
+                       THEN 'Y'
+                       ELSE 'N'
+                   END AS RECOGNIZED_NO_RECORD_YN
+        ) effectiveShiftCalc
+        OUTER APPLY (
             SELECT CASE
                        WHEN CAST(#{workDate} AS DATE) > CAST(#{today} AS DATE) THEN 0
                        WHEN ar.CHECK_IN IS NOT NULL THEN 0
-                       WHEN EXISTS (
-                            SELECT 1
-                            FROM HRTSHIFTMASTER01 exs
-                            WHERE exs.COMPANY = h.COMPANY
-                              AND exs.SHIFT_CODE = COALESCE(NULLIF(ar.ACTUAL_SHIFT_CODE, ''), NULLIF(ar.SHIFT_CODE, ''))
-                              AND (
-                                    ISNULL(exs.WORK_DAY_TYPE, '') IN ('OFF', 'HOLIDAY')
-                                    OR exs.SHIFT_NAME LIKE '%휴가%'
-                                    OR exs.SHIFT_NAME LIKE '%반차%'
-                                    OR exs.SHIFT_NAME LIKE '%출장%'
-                                    OR exs.SHIFT_NAME LIKE '%외출%'
-                              )
-                       ) THEN 0
+                       WHEN effectiveShiftCalc.RECOGNIZED_NO_RECORD_YN = 'Y' THEN 0
                        WHEN CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
                                 WHEN 'WEEKDAY' THEN 'WORK'
                                 WHEN 'ANYDAY'  THEN 'WORK'
@@ -610,12 +660,9 @@
                   AND ng.START_TIME IS NOT NULL
             ) limitSrc
         ) nextLimit
-        LEFT JOIN HRTSHIFTMASTER01 actualShift
-               ON actualShift.COMPANY = h.COMPANY
-              AND actualShift.SHIFT_CODE = COALESCE(NULLIF(ar.ACTUAL_SHIFT_CODE, ''), NULLIF(ar.SHIFT_CODE, ''), s.SHIFT_CODE)
         WHERE h.COMPANY = #{company}
           <choose>
-              <when test="deptLeader and (deptCode == null or deptCode == '') and accessibleDeptCodes != null and accessibleDeptCodes.size() > 0">
+              <when test="deptLeader and accessibleDeptCodes != null and accessibleDeptCodes.size() > 0">
                   AND h.DEPT_CODE IN
                   <foreach collection="accessibleDeptCodes" item="deptCodeItem" open="(" separator="," close=")">
                       #{deptCodeItem}
@@ -679,6 +726,7 @@
             ISNULL(g.START_TIME_TYPE, 'N0')                   AS startTimeType,
             LEFT(CONVERT(VARCHAR(8), g.END_TIME,   108), 5)  AS endTime,
             ISNULL(g.END_TIME_TYPE,   'N0')                   AS endTimeType,
+            g.WORK_MIN                                        AS requestWorkMin,
             r.STATUS                                          AS status,
             r.REQUESTER_EMP_CODE                              AS requesterCode
         FROM HRTATTENDANCEREQUEST01 r
@@ -702,6 +750,7 @@
             END                                               AS requestCategory,
             CASE WHEN r.REQ_GROUP = 'OTHER' THEN o.CHANGE_SHIFT_CODE
                  ELSE r.REQ_TYPE END                          AS requestWorkCode,
+            cs.SHIFT_NAME                                     AS changeShiftName,
             r.TARGET_EMP_CODE                                 AS empCode,
             te.EMP_NAME                                       AS empName,
             r.TARGET_DEPT_CODE                                AS deptCode,
@@ -724,16 +773,14 @@
         LEFT JOIN HRIMASTER01 te ON r.COMPANY = te.COMPANY AND r.TARGET_EMP_CODE = te.EMP_CODE
         LEFT JOIN HRIMASTER01 re ON r.COMPANY = re.COMPANY AND r.REQUESTER_EMP_CODE = re.EMP_CODE
         LEFT JOIN ORGDEPTMASTER01 td ON r.COMPANY = td.COMPANY AND r.TARGET_DEPT_CODE = td.DEPT_CODE
+        LEFT JOIN HRTSHIFTMASTER01 cs ON r.COMPANY = cs.COMPANY AND o.CHANGE_SHIFT_CODE = cs.SHIFT_CODE
         WHERE r.COMPANY = #{company}
           AND r.TARGET_DATE &lt;= CAST(#{toDate} AS DATE)
           AND ISNULL(o.END_DATE, r.TARGET_DATE) &gt;= CAST(#{fromDate} AS DATE)
           <if test="!canViewAll">
               AND (r.REQUESTER_EMP_CODE = #{loginEmpCode} OR r.TARGET_EMP_CODE = #{loginEmpCode})
           </if>
-          <if test="canViewAll and deptCode != null and deptCode != ''">
-              AND r.TARGET_DEPT_CODE = #{deptCode}
-          </if>
-          <if test="canViewAll and (deptCode == null or deptCode == '') and accessibleDeptCodes != null and accessibleDeptCodes.size() > 0">
+          <if test="canViewAll and accessibleDeptCodes != null and accessibleDeptCodes.size() > 0">
               AND r.TARGET_DEPT_CODE IN
               <foreach collection="accessibleDeptCodes" item="deptCodeItem" open="(" separator="," close=")">
                   #{deptCodeItem}
@@ -781,6 +828,7 @@
             td.DEPT_NAME                                     AS targetDeptName,
             re.EMP_CODE                                      AS requesterEmpCode,
             re.EMP_NAME                                      AS requesterEmpName,
+            rd.DEPT_NAME                                     AS requesterDeptName,
             LEFT(CONVERT(VARCHAR(8), g.START_TIME, 108), 5) AS startTime,
             ISNULL(g.START_TIME_TYPE, 'N0')                  AS startTimeType,
             LEFT(CONVERT(VARCHAR(8), g.END_TIME,   108), 5) AS endTime,
@@ -797,6 +845,7 @@
         JOIN HRIMASTER01 te ON r.COMPANY = te.COMPANY AND r.TARGET_EMP_CODE = te.EMP_CODE
         LEFT JOIN ORGDEPTMASTER01 td ON te.COMPANY = td.COMPANY AND te.DEPT_CODE = td.DEPT_CODE
         JOIN HRIMASTER01 re ON r.COMPANY = re.COMPANY AND r.REQUESTER_EMP_CODE = re.EMP_CODE
+        LEFT JOIN ORGDEPTMASTER01 rd ON re.COMPANY = rd.COMPANY AND re.DEPT_CODE = rd.DEPT_CODE
         LEFT JOIN HRTATTENDANCE_GENERAL01 g ON r.COMPANY = g.COMPANY AND r.REQ_ID = g.REQ_ID
         LEFT JOIN HRTATTENDANCE_OTHER01 o ON r.COMPANY = o.COMPANY AND r.REQ_ID = o.REQ_ID
         LEFT JOIN HRTSHIFTMASTER01 s ON r.COMPANY = s.COMPANY AND o.CHANGE_SHIFT_CODE = s.SHIFT_CODE
@@ -1047,8 +1096,11 @@
                    r.TARGET_EMP_CODE AS EMP_CODE,
                    CONVERT(VARCHAR(8), r.TARGET_DATE, 112) AS YYYYMMDD,
                    r.TARGET_DEPT_CODE AS DEPT_CODE,
-                   r.REQ_TYPE AS HOLIDAY_SHIFT_CODE
+                   sm.SHIFT_CODE AS HOLIDAY_SHIFT_CODE
             FROM HRTATTENDANCEREQUEST01 r
+            JOIN HRTSHIFTMASTER01 sm
+              ON sm.COMPANY    = r.COMPANY
+             AND sm.SHIFT_NAME = r.REQ_TYPE
             WHERE r.REQ_ID = #{requestId}
               AND r.REQ_GROUP = 'GENERAL'
               AND r.REQ_TYPE = '휴일근무'
@@ -1067,6 +1119,34 @@
             VALUES (S.COMPANY, S.EMP_CODE, S.YYYYMMDD, S.DEPT_CODE, NULL, S.HOLIDAY_SHIFT_CODE,
                     0, 'N', 'N', 0, GETDATE(), GETDATE());
     </update>
+
+    <update id="revertCanceledHolidayAttendanceUpdate">
+        UPDATE d
+        SET d.ACTUAL_SHIFT_CODE = NULL,
+            d.UPDATED_AT        = GETDATE()
+        FROM HRTDAILYATTENDANCE01 d
+        INNER JOIN HRTATTENDANCEREQUEST01 r
+            ON d.COMPANY   = r.COMPANY
+           AND d.EMP_CODE  = r.TARGET_EMP_CODE
+           AND d.YYYYMMDD  = CONVERT(VARCHAR(8), r.TARGET_DATE, 112)
+        WHERE r.REQ_ID    = #{requestId}
+          AND r.REQ_GROUP = 'GENERAL'
+          AND r.REQ_TYPE  = '휴일근무'
+          AND d.SHIFT_CODE IS NOT NULL
+    </update>
+
+    <delete id="revertCanceledHolidayAttendanceDelete">
+        DELETE d
+        FROM HRTDAILYATTENDANCE01 d
+        INNER JOIN HRTATTENDANCEREQUEST01 r
+            ON d.COMPANY   = r.COMPANY
+           AND d.EMP_CODE  = r.TARGET_EMP_CODE
+           AND d.YYYYMMDD  = CONVERT(VARCHAR(8), r.TARGET_DATE, 112)
+        WHERE r.REQ_ID    = #{requestId}
+          AND r.REQ_GROUP = 'GENERAL'
+          AND r.REQ_TYPE  = '휴일근무'
+          AND d.SHIFT_CODE IS NULL
+    </delete>
 
     <select id="findDeptLeader" resultType="String">
         SELECT DEPT_LEADER
@@ -1171,7 +1251,9 @@
     </select>
 
     <select id="findShiftInfoByCodeOrName" resultType="java.util.HashMap">
-        SELECT LEFT(CONVERT(VARCHAR(8), WORK_ON_HHMM,  108), 5) AS workOnHhmm,
+        SELECT SHIFT_NAME AS shiftName,
+               WORK_DAY_TYPE AS workDayType,
+               LEFT(CONVERT(VARCHAR(8), WORK_ON_HHMM,  108), 5) AS workOnHhmm,
                LEFT(CONVERT(VARCHAR(8), WORK_OFF_HHMM, 108), 5) AS workOffHhmm,
                LEFT(CONVERT(VARCHAR(8), BREAK1_START_HHMM, 108), 5) AS break1StartHhmm,
                LEFT(CONVERT(VARCHAR(8), BREAK1_END_HHMM,   108), 5) AS break1EndHhmm,

@@ -25,6 +25,7 @@ function switchCategory(el) {
     el.classList.add('active');
     currentCategory = el.dataset.cat;
     updateHolidayColumnVisibility();
+    updateAnnualColumnVisibility();
     doSearch();
 }
 
@@ -34,8 +35,16 @@ function updateHolidayColumnVisibility() {
     });
 }
 
+function updateAnnualColumnVisibility() {
+    document.querySelectorAll('.leave-hidden').forEach(el => {
+        el.style.display = currentCategory === 'LEAVE' ? '' : 'none';
+    });
+}
+
 function visibleColumnCount() {
-    return currentCategory === 'HOLIDAY' ? 14 : 16;
+    if (currentCategory === 'HOLIDAY') return 14;
+    if (currentCategory === 'LEAVE') return 17;
+    return 16;
 }
 
 function buildTimeOptions(selected) {
@@ -164,6 +173,17 @@ function selectedWorkMin(tr, state, row) {
 
 function isActiveRequest(state) {
     return state && ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(state.status);
+}
+
+function formatDay(day) {
+    if (day == null) return '-';
+    const n = Number(day);
+    if (!Number.isFinite(n)) return '-';
+    return n.toFixed(5).replace(/\.?0+$/, '') + '일';
+}
+
+function isApprovedRequest(state) {
+    return state && state.status === 'APPROVED';
 }
 
 function hasActiveRequest(row, ...codes) {
@@ -300,6 +320,11 @@ function activeGeneralRequests(row) {
         .filter(req => isActiveRequest(req) && categoryOfRequest(req) !== 'OTHER');
 }
 
+function approvedGeneralRequests(row) {
+    return Object.values((row && row.requestsByWorkCode) || {})
+        .filter(req => isApprovedRequest(req) && categoryOfRequest(req) !== 'OTHER');
+}
+
 function requestRange(req) {
     const start = absoluteMinute(req.startTimeType || 'N0', req.startTime);
     let end = absoluteMinute(req.endTimeType || 'N0', req.endTime);
@@ -317,21 +342,21 @@ function plannedRange(row) {
 }
 
 function recognizedActualWorkMin(row, currentState, selectedState) {
-    if (!row || !row.checkIn) return 0;
+    if (!row) return 0;
 
     const plan = plannedRange(row);
-    const actualStart = absoluteMinute('N0', row.checkIn);
+    const hasCheckIn = !!row.checkIn;
+    const actualStart = hasCheckIn ? absoluteMinute('N0', row.checkIn) : null;
     let actualEnd = null;
-    if (row.checkOut) {
+    if (hasCheckIn && row.checkOut) {
         actualEnd = absoluteMinute('N0', row.checkOut);
         if (row.overnightYn === 'Y' || actualEnd < actualStart) actualEnd += 1440;
-    } else if (plan) {
+    } else if (hasCheckIn && plan) {
         actualEnd = plan.end;
     }
-    if (actualStart == null || actualEnd == null) return 0;
 
-    let total = 0;
-    if (plan && (row.plannedWorkMin || 0) > 0) {
+    let total = hasCheckIn ? 0 : (row.actualWorkMin || 0);
+    if (hasCheckIn && actualStart != null && actualEnd != null && plan && (row.plannedWorkMin || 0) > 0) {
         const baseStart = Math.max(actualStart, plan.start);
         const baseEnd = Math.min(actualEnd, plan.end);
         if (baseEnd > baseStart) {
@@ -339,9 +364,11 @@ function recognizedActualWorkMin(row, currentState, selectedState) {
         }
     }
 
-    const actual = row.checkOut ? {start: actualStart, end: actualEnd} : null;
-    const requests = activeGeneralRequests(row).filter(req => !requestMatches(req, currentState));
-    if (selectedState) requests.push(selectedState);
+    const actual = hasCheckIn && row.checkOut && actualStart != null && actualEnd != null
+        ? {start: actualStart, end: actualEnd}
+        : null;
+    const requests = approvedGeneralRequests(row).filter(req => !requestMatches(req, currentState));
+    if (isApprovedRequest(selectedState)) requests.push(selectedState);
     requests.forEach(req => {
         const category = categoryOfRequest(req);
         if (category === 'OVERTIME' || category === 'HOLIDAY') {
@@ -457,6 +484,7 @@ function renderTable(rows) {
     const checkAll = document.getElementById('checkAll');
     if (checkAll) checkAll.checked = false;
     updateHolidayColumnVisibility();
+    updateAnnualColumnVisibility();
     const tbody = document.getElementById('reqTableBody');
     if (!rows || rows.length === 0) {
         tbody.innerHTML = '<tr><td colspan="'+visibleColumnCount()+'" class="no-data">조회된 인원이 없습니다.</td></tr>';
@@ -471,11 +499,12 @@ function renderTable(rows) {
         const disFull = locked ? 'disabled' : '';
 
         // 잠긴 행은 저장된 값 그대로, 아닌 경우 근무코드 규칙 적용
+        const timeRuleSource = {...existing, shiftOnTime: r.shiftOnTime, shiftOffTime: r.shiftOffTime};
         const ts = locked
             ? { startTypeDis:false, startDis:false, endTypeDis:false, endDis:false,
                 startType: existing.startTimeType||'N0', endType: existing.endTimeType||'N0',
                 startTime: existing.startTime||'', endTime: existing.endTime||'' }
-            : computeTimeState(currentCategory, selectedWorkCode, {...r, ...existing});
+            : computeTimeState(currentCategory, selectedWorkCode, timeRuleSource);
 
         const startTypeDis = locked || ts.startTypeDis ? 'disabled' : '';
         const startDis     = locked || ts.startDis     ? 'disabled' : '';
@@ -495,6 +524,7 @@ function renderTable(rows) {
             + '<td>'+(r.actualWorkName || r.actualWorkCode || '-')+'</td>'
             + '<td class="holiday-hidden">'+formatWorkMin(recognizedActualWorkMin(r))+'</td>'
             + '<td data-field="shiftWorkMin">'+formatWorkMin(savedEstimatedWorkMin(r, existing, selectedWorkCode))+'</td>'
+            + '<td class="leave-hidden">'+formatDay(r.annualBalanceDay)+'</td>'
             + '<td><select data-field="requestWorkCode" onchange="onWorkCodeChange(this,'+idx+')">'+buildWorkCodeOptions(currentCategory,selectedWorkCode)+'</select></td>'
             + '<td><input type="text" data-field="reason" value="'+reasonVal+'" placeholder="사유" '+disFull+'></td>'
             + '<td><input type="text" data-field="reasonDetail" value="'+reasonDetailVal+'" placeholder="사유 상세 입력" '+disFull+'></td>'
@@ -511,6 +541,7 @@ function renderTable(rows) {
             + '</tr>';
     }).join('');
     updateHolidayColumnVisibility();
+    updateAnnualColumnVisibility();
 }
 
 // 근무코드 변경 시 시간 필드 잠금/해제
@@ -524,11 +555,12 @@ function applyRequestState(tr, r, workCode) {
     const existing = existingRequestFor(r, workCode);
     const state = existing || {};
     const locked = (state.status === 'SUBMITTED' || state.status === 'APPROVED');
+    const timeRuleSource = {...state, shiftOnTime: r.shiftOnTime, shiftOffTime: r.shiftOffTime};
     const ts = locked
         ? { startTypeDis:false, startDis:false, endTypeDis:false, endDis:false,
             startType: state.startTimeType||'N0', endType: state.endTimeType||'N0',
             startTime: state.startTime||'', endTime: state.endTime||'' }
-        : computeTimeState(currentCategory, workCode, {...r, ...state});
+        : computeTimeState(currentCategory, workCode, timeRuleSource);
 
     const startTypeEl = tr.querySelector('[data-field="startTimeType"]');
     const startEl     = tr.querySelector('[data-field="startTime"]');
@@ -762,6 +794,7 @@ function showToast(msg, type) {
 
 document.addEventListener('DOMContentLoaded', () => {
     updateHolidayColumnVisibility();
+    updateAnnualColumnVisibility();
     doSearch();
 });
 

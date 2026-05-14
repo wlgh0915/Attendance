@@ -50,6 +50,23 @@
                     #{overnightYn}, #{lateYn}, #{lateMin}, GETDATE(), GETDATE());
     </update>
 
+    <!-- 단일 날짜 출퇴근 실적 조회 -->
+    <select id="findByDay"
+            resultType="com.company.attendancemanagement.dto.record.AttendanceRecordDto">
+        SELECT COMPANY, EMP_CODE, YYYYMMDD, DEPT_CODE, SHIFT_CODE,
+               ACTUAL_SHIFT_CODE AS actualShiftCode,
+               LEFT(CONVERT(VARCHAR(8), CHECK_IN,  108), 5) AS checkIn,
+               LEFT(CONVERT(VARCHAR(8), CHECK_OUT, 108), 5) AS checkOut,
+               WORK_MIN     AS workMin,
+               OVERNIGHT_YN AS overnightYn,
+               LATE_YN      AS lateYn,
+               LATE_MIN     AS lateMin
+        FROM HRTDAILYATTENDANCE01
+        WHERE COMPANY  = #{company}
+          AND EMP_CODE = #{empCode}
+          AND YYYYMMDD = #{yyyymmdd}
+    </select>
+
     <!-- 날짜별 계획 시프트 조회 (HRIDEPTTRANSFER01 기반) -->
     <select id="findPlannedShift" resultType="java.util.HashMap">
         <![CDATA[

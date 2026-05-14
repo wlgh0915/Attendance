@@ -26,6 +26,11 @@ public interface AttendanceRecordMapper {
                                          @Param("empCode")  String empCode,
                                          @Param("yyyymmdd") String yyyymmdd);
 
+    /** 특정 날짜의 출퇴근 실적 단건 조회 */
+    AttendanceRecordDto findByDay(@Param("company")  String company,
+                                  @Param("empCode")  String empCode,
+                                  @Param("yyyymmdd") String yyyymmdd);
+
     /** 해당 날짜의 승인된 연장근무 신청 조회 (조출연장 포함) */
     List<Map<String, Object>> findApprovedOvertimeRequests(@Param("company")  String company,
                                                            @Param("empCode")  String empCode,

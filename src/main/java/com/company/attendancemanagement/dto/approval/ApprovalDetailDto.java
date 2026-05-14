@@ -22,6 +22,7 @@ public class ApprovalDetailDto {
     private String targetDeptName;
     private String requesterEmpCode;
     private String requesterEmpName;
+    private String requesterDeptName;
     private String startTime;
     private String startTimeType;    // N0: 당일 / N1: 익일
     private String endTime;

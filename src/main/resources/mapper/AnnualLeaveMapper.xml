@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.company.attendancemanagement.mapper.AnnualLeaveMapper">
+
+    <insert id="ensureAnnualDetail">
+        INSERT INTO HRTANNUALDETAIL01 (
+            COMPANY, YYYY, EMP_CODE, DEPT_CODE,
+            ANNUAL_START_DATE, ANNUAL_END_DATE,
+            TOTAL_WORK_DAY, REAL_WORK_DAY,
+            TOT_DAY, USE_DAY, BALANCE_DAY,
+            CREATED_AT, UPDATED_AT
+        )
+        SELECT h.COMPANY,
+               #{yyyy},
+               h.EMP_CODE,
+               h.DEPT_CODE,
+               DATEFROMPARTS(#{yyyy}, 1, 1),
+               DATEFROMPARTS(#{yyyy}, 12, 31),
+               365,
+               365,
+               20,
+               0,
+               20,
+               GETDATE(),
+               GETDATE()
+        FROM HRIMASTER01 h
+        WHERE h.COMPANY = #{company}
+          AND h.EMP_CODE = #{empCode}
+          AND NOT EXISTS (
+              SELECT 1
+              FROM HRTANNUALDETAIL01 ad
+              WHERE ad.COMPANY = h.COMPANY
+                AND ad.YYYY = #{yyyy}
+                AND ad.EMP_CODE = h.EMP_CODE
+          )
+    </insert>
+
+    <select id="findTotalDay" resultType="java.math.BigDecimal">
+        SELECT ISNULL(MAX(TOT_DAY), 20)
+        FROM HRTANNUALDETAIL01
+        WHERE COMPANY = #{company}
+          AND YYYY = #{yyyy}
+          AND EMP_CODE = #{empCode}
+    </select>
+
+    <update id="updateUsage">
+        UPDATE HRTANNUALDETAIL01
+        SET USE_DAY = #{useDay},
+            BALANCE_DAY = ISNULL(TOT_DAY, 20) - #{useDay},
+            UPDATED_AT = GETDATE()
+        WHERE COMPANY = #{company}
+          AND YYYY = #{yyyy}
+          AND EMP_CODE = #{empCode}
+    </update>
+
+    <select id="findUsageCandidates"
+            resultType="com.company.attendancemanagement.dto.annual.AnnualLeaveUsageCandidateDto">
+        SELECT r.REQ_ID AS requestId,
+               r.REQ_GROUP AS requestCategory,
+               CASE WHEN r.REQ_GROUP = 'OTHER' THEN o.CHANGE_SHIFT_CODE ELSE r.REQ_TYPE END AS requestWorkCode,
+               CONVERT(VARCHAR(10), r.TARGET_DATE, 23) AS workDate,
+               CONVERT(VARCHAR(10), ISNULL(o.END_DATE, r.TARGET_DATE), 23) AS endDate,
+               g.WORK_MIN AS requestWorkMin
+        FROM HRTATTENDANCEREQUEST01 r
+        LEFT JOIN HRTATTENDANCE_GENERAL01 g
+               ON g.COMPANY = r.COMPANY AND g.REQ_ID = r.REQ_ID
+        LEFT JOIN HRTATTENDANCE_OTHER01 o
+               ON o.COMPANY = r.COMPANY AND o.REQ_ID = r.REQ_ID
+        WHERE r.COMPANY = #{company}
+          AND r.TARGET_EMP_CODE = #{empCode}
+          AND (
+              r.STATUS = 'APPROVED'
+              <if test="includeSubmitted">
+                  OR r.STATUS = 'SUBMITTED'
+              </if>
+          )
+          <if test="excludeRequestId != null and excludeRequestId != ''">
+              AND r.REQ_ID &lt;&gt; #{excludeRequestId}
+          </if>
+          AND (
+              (
+                  r.REQ_GROUP = 'GENERAL'
+                  AND r.REQ_TYPE IN ('조퇴', '외출', '전반차', '후반차', '오전반차', '오후반차')
+                  AND YEAR(r.TARGET_DATE) = #{yyyy}
+              )
+              OR
+              (
+                  r.REQ_GROUP = 'OTHER'
+                  AND o.CHANGE_SHIFT_CODE = '06'
+                  AND o.START_DATE &lt;= DATEFROMPARTS(#{yyyy}, 12, 31)
+                  AND o.END_DATE &gt;= DATEFROMPARTS(#{yyyy}, 1, 1)
+              )
+          )
+    </select>
+</mapper>

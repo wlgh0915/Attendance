@@ -11,6 +11,7 @@ public class AttendanceRequestHistoryDto {
     private String endDate;
     private String requestCategory;
     private String requestWorkCode;
+    private String changeShiftName;
     private String empCode;
     private String empName;
     private String deptCode;
