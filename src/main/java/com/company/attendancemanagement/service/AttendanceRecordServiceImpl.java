@@ -179,6 +179,18 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
         recordMapper.delete(company, empCode, yyyymmdd);
     }
 
+    @Override
+    public void recalculateIfRecordExists(String company, String empCode, String yyyymmdd) {
+        AttendanceRecordDto existing = recordMapper.findByDay(company, empCode, yyyymmdd);
+        if (existing == null || isBlank(existing.getCheckIn()) || isBlank(existing.getCheckOut())) {
+            return;
+        }
+        int workMin = calculateWorkMin(existing);
+        existing.setWorkMin(workMin);
+        calculateLate(existing);
+        recordMapper.upsert(existing);
+    }
+
     private void calculateLate(AttendanceRecordDto dto) {
         if (dto.getCheckIn() == null || dto.getShiftCode() == null) {
             dto.setLateYn("N");
