@@ -67,53 +67,14 @@
             <th class="th-week" colspan="2">주간합계</th>
         </tr>
         <tr>
-            <th class="th-week-sub">예상</th>
-            <th class="th-week-sub">실근무</th>
+            <th class="th-week-sub">신청 기준</th>
+            <th class="th-week-sub">급여 산정 기준</th>
         </tr>
         </thead>
         <tbody id="calBody"></tbody>
     </table>
     <div id="monthTotal" class="month-total"></div>
 </div><!-- /cal-page -->
-
-<!-- 근태 등록 모달 -->
-<div class="modal-bg" id="modalBg" onclick="closeModal(event)">
-    <div class="modal">
-        <h3>근태 등록</h3>
-        <div class="modal-row">
-            <label>날짜</label>
-            <input type="text" id="mDate" readonly>
-        </div>
-        <div class="modal-row">
-            <label>근태 유형</label>
-            <select id="mCategory" onchange="onCategoryChange()">
-                <option value="OVERTIME">연장근로</option>
-                <option value="HOLIDAY">휴일근로</option>
-                <option value="LEAVE">조퇴/외출/반차</option>
-                <option value="OTHER">기타(근무변경)</option>
-            </select>
-        </div>
-        <div class="modal-row">
-            <label>신청근무</label>
-            <select id="mWorkCode"></select>
-        </div>
-        <div class="modal-row">
-            <label>시작 / 종료 시간</label>
-            <div class="row-2">
-                <select id="mStart"></select>
-                <select id="mEnd"></select>
-            </div>
-        </div>
-        <div class="modal-row">
-            <label>사유</label>
-            <textarea id="mReason" placeholder="사유를 입력하세요"></textarea>
-        </div>
-        <div class="modal-actions">
-            <button class="btn-modal-cancel" onclick="closeModalDirect()">취소</button>
-            <button class="btn-modal-save"   onclick="doModalSave()">저장</button>
-        </div>
-    </div>
-</div>
 
 <div id="toast"></div>
 

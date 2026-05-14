@@ -23,6 +23,7 @@ public class AttendanceApprovalServiceImpl implements AttendanceApprovalService 
     private final AttendanceApprovalMapper approvalMapper;
     private final ApprovalMapper           baseApprovalMapper;
     private final AttendanceRequestMapper  requestMapper;
+    private final AttendanceRecordService  recordService;
 
     @Override
     public List<ApprovalItemDto> searchApprovals(ApprovalSearchDto search, LoginUserDto loginUser) {
@@ -60,6 +61,12 @@ public class AttendanceApprovalServiceImpl implements AttendanceApprovalService 
             requestMapper.updateStatus(requestId, "APPROVED");
             requestMapper.applyApprovedOtherRequestToAttendance(requestId);
             requestMapper.applyApprovedHolidayRequestToAttendance(requestId);
+            if (request != null && ("연장".equals(request.getRequestWorkCode())
+                    || "조출연장".equals(request.getRequestWorkCode()))) {
+                String yyyymmdd = request.getWorkDate().replace("-", "");
+                recordService.recalculateIfRecordExists(
+                        request.getCompany(), request.getEmpCode(), yyyymmdd);
+            }
         }
     }
 

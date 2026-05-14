@@ -1,13 +1,5 @@
 const today = new Date().toISOString().slice(0, 10);
 
-const WORK_CODES = {
-    OVERTIME: [{v:'연장',    l:'연장근로'},   {v:'조출연장', l:'조출연장'}],
-    HOLIDAY:  [{v:'휴일근무', l:'휴일근무'}],
-    LEAVE:    [{v:'조퇴',    l:'조퇴'},        {v:'외출',    l:'외출'},
-               {v:'외근',    l:'외근'},         {v:'전반차',  l:'전반차'}, {v:'후반차', l:'후반차'}],
-    OTHER:    [{v:'근무변경', l:'근무변경'}]
-};
-
 /* ───────── 캘린더 렌더링 ───────── */
 function dowToCol(num) { return num - 1; } // MSSQL: 1=일~7=토
 
@@ -137,6 +129,10 @@ function renderCalendar() {
         const activeOtherReq = (day.requests || []).find(
             r => r.requestCategory === 'OTHER' && ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(r.status)
         );
+        // 활성 휴일근무 신청
+        const hasActiveHolidayReq = (day.requests || []).some(
+            r => r.requestWorkCode === '휴일근무' && ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(r.status)
+        );
         // 변경 후 근무 시간이 없으면 휴무 근태(연차/병가 등)
         const isLeaveDay = activeOtherReq != null && !activeOtherReq.changeShiftOnHhmm;
 
@@ -174,7 +170,8 @@ function renderCalendar() {
             ? (dispOnHhmm ? 'WORK' : 'OFF')
             : day.workDayType;
 
-        if (dispShiftName && !isAbsent) {
+        const isOffOrHolidayShift = dispWorkDayType === 'OFF' || dispWorkDayType === 'HOLIDAY';
+        if (dispShiftName && !isAbsent && !(hasActiveHolidayReq && isOffOrHolidayShift)) {
             const timePart = (dispWorkDayType === 'WORK' && dispOnHhmm && dispOffHhmm)
                 ? `<span class="shift-time"> ${dispOnHhmm}~${dispOffHhmm}</span>`
                 : '';
@@ -220,7 +217,7 @@ function renderCalendar() {
             inner += `<span class="overnight-badge">익일근무 ~${r.endTime}</span>`;
         });
 
-        html += `<td class="${colCls} ${todCls} ${monthCls}" onclick="openModal('${day.workDate}')">${inner}</td>`;
+        html += `<td class="${colCls} ${todCls} ${monthCls}">${inner}</td>`;
         col++;
     });
 
@@ -246,7 +243,7 @@ function renderCalendar() {
             && (d.record.checkIn || (d.requests || []).some(r => r.requestCategory === 'LEAVE' && r.status === 'APPROVED')))
         .reduce((sum, d) => sum + d.record.workMin, 0);
     document.getElementById('monthTotal').textContent =
-        '월 총 근무시간: 예상 ' + fmtMin(totalMin) + ' / 실 ' + fmtMin(totalActualMin);
+        '월 총 근무시간: 신청 기준 ' + fmtMin(totalMin) + ' / 급여 산정 기준 ' + fmtMin(totalActualMin);
 }
 
 /* ───────── 부서/사원 변경 ───────── */
@@ -291,118 +288,6 @@ async function generateDeptRecords() {
         return;
     }
     showToast(json.message || '반영되었습니다.', 'success');
-    setTimeout(() => location.reload(), 800);
-}
-
-/* ───────── 근태 등록 모달 ───────── */
-let modalDate = '';
-
-function buildTimeOpts(selected) {
-    let opts = '<option value="">--</option>';
-    for (let h = 0; h < 24; h++) {
-        for (let m of [0, 30]) {
-            const v = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
-            opts += `<option value="${v}"${v === selected ? ' selected' : ''}>${v}</option>`;
-        }
-    }
-    return opts;
-}
-
-function buildWorkCodeOpts(cat) {
-    const codes = WORK_CODES[cat] || [];
-    return '<option value="">-- 선택 --</option>'
-        + codes.map(c => `<option value="${c.v}">${c.l}</option>`).join('');
-}
-
-function onCategoryChange() {
-    const cat = document.getElementById('mCategory').value;
-    document.getElementById('mWorkCode').innerHTML = buildWorkCodeOpts(cat);
-}
-
-function openModal(date) {
-    modalDate = date;
-    document.getElementById('mDate').value      = date;
-    document.getElementById('mReason').value    = '';
-    document.getElementById('mStart').innerHTML = buildTimeOpts('');
-    document.getElementById('mEnd').innerHTML   = buildTimeOpts('');
-    onCategoryChange();
-    document.getElementById('modalBg').classList.add('open');
-}
-
-function closeModal(e) {
-    if (e.target === document.getElementById('modalBg')) closeModalDirect();
-}
-function closeModalDirect() {
-    document.getElementById('modalBg').classList.remove('open');
-}
-
-async function doModalSave() {
-    const category = document.getElementById('mCategory').value;
-    const workCode = document.getElementById('mWorkCode').value;
-    const start    = document.getElementById('mStart').value;
-    const end      = document.getElementById('mEnd').value;
-    const reason   = document.getElementById('mReason').value;
-
-    if (!workCode) { showToast('신청근무를 선택하세요.', 'error'); return; }
-
-    if (category === 'HOLIDAY') {
-        const dayInfo = DAYS.find(d => d.workDate === modalDate);
-        if (!dayInfo || (dayInfo.workDayType !== 'OFF' && dayInfo.workDayType !== 'HOLIDAY')) {
-            showToast('휴일근무는 휴일(OFF/HOLIDAY)에만 신청할 수 있습니다.', 'error');
-            return;
-        }
-    }
-    if (workCode === '조출연장' && start && start >= '09:00') {
-        showToast('조출연장은 시작시간이 09:00 이전이어야 합니다.', 'error'); return;
-    }
-    if (workCode === '연장' && end) {
-        const endMin = toMinute(end);
-        const startMin = start ? toMinute(start) : null;
-        const isOvernight = startMin !== null && endMin < startMin;
-        if (!isOvernight && endMin <= toMinute('18:00')) {
-            showToast('연장근무는 종료시간이 18:00 이후여야 합니다.', 'error'); return;
-        }
-    }
-    if (workCode === '조퇴' || workCode === '외출') {
-        const dayInfo = DAYS.find(d => d.workDate === modalDate);
-        if (dayInfo) {
-            if (dayInfo.workOnHhmm && start && start < dayInfo.workOnHhmm) {
-                showToast('시작 시간이 근무 시작 시간(' + dayInfo.workOnHhmm + ') 이전입니다.', 'error'); return;
-            }
-            if (dayInfo.workOffHhmm && end && end > dayInfo.workOffHhmm) {
-                showToast('종료 시간이 근무 종료 시간(' + dayInfo.workOffHhmm + ') 이후입니다.', 'error'); return;
-            }
-        }
-    }
-    const activeReqs = (DAYS.find(d => d.workDate === modalDate)?.requests || [])
-        .filter(r => ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(r.status));
-    if ((workCode === '연장' || workCode === '조출연장') &&
-            activeReqs.some(r => r.requestWorkCode === '조퇴')) {
-        showToast('조퇴 신청이 있는 날에는 연장근무를 신청할 수 없습니다.', 'error'); return;
-    }
-    if (workCode === '조퇴' &&
-            activeReqs.some(r => r.requestWorkCode === '연장' || r.requestWorkCode === '조출연장')) {
-        showToast('연장근무 신청이 있는 날에는 조퇴를 신청할 수 없습니다.', 'error'); return;
-    }
-
-    const dto = {
-        empCode:         TARGET_EMP,
-        workDate:        modalDate,
-        requestCategory: category,
-        requestWorkCode: workCode,
-        startTime:       start || null,
-        endTime:         end   || null,
-        reason:          reason
-    };
-
-    const res  = await fetch('/attendance/request/save', {
-        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(dto)
-    });
-    const json = await res.json();
-    if (!json.success) { showToast(json.message || '저장 실패', 'error'); return; }
-
-    showToast('저장되었습니다.', 'success');
-    closeModalDirect();
     setTimeout(() => location.reload(), 800);
 }
 
