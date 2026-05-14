@@ -66,7 +66,7 @@
               AND r.REQ_TYPE = '휴일근무'
           </if>
           <if test="'LEAVE'.equals(category)">
-              AND r.REQ_TYPE IN ('조퇴', '외근', '외출', '전반차', '후반차')
+              AND r.REQ_TYPE IN ('조퇴', '외근', '외출', '전반차', '후반차', '오전반차', '오후반차')
           </if>
           <if test="'OTHER'.equals(category)">
               AND r.REQ_GROUP = 'OTHER'
