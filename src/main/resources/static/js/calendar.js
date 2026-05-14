@@ -198,8 +198,8 @@ function renderCalendar() {
             inner += `<span class="absent-badge">결근</span>`;
         }
 
-        // 4. 근태신청 (연장, 연차, 반차 등) - 취소 제외
-        (day.requests || []).filter(r => r.status !== 'CANCELED').forEach(r => {
+        // 4. 근태신청 (연장, 연차, 반차 등) - 취소/반려 제외
+        (day.requests || []).filter(r => r.status !== 'CANCELED' && r.status !== 'REJECTED').forEach(r => {
             const typeLabel = (r.requestCategory === 'OTHER' && r.changeShiftName)
                 ? r.changeShiftName
                 : (r.requestWorkCode || catLabel(r.requestCategory));
