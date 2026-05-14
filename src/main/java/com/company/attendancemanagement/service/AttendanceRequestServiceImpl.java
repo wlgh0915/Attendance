@@ -332,6 +332,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
                 && absoluteMinute(dto.getEndTimeType(), dto.getEndTime()) <= toMinute("18:00")) {
             throw new IllegalArgumentException("연장근무는 종료시간이 18:00 이후여야 합니다.");
         }
+        validateOvertimeOutsidePlannedWorkTime(dto);
 
         if (isBoundedLeaveRequest(dto.getRequestWorkCode())) {
             validateWithinEffectiveWorkTime(dto);
@@ -459,6 +460,38 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         Integer limitMin = requestMapper.findNextDayWorkStartLimitMin(dto);
         if (limitMin != null && endMin > limitMin) {
             throw new IllegalArgumentException("익일 종료 시간은 다음날 예정 출근 또는 조출 신청 시작 시간을 넘길 수 없습니다.");
+        }
+    }
+
+    private void validateOvertimeOutsidePlannedWorkTime(AttendanceRequestDto dto) {
+        String workCode = dto.getRequestWorkCode();
+        if (!"연장".equals(workCode) && !"조출연장".equals(workCode)) {
+            return;
+        }
+        Map<String, Object> shiftInfo = requestMapper.findPlannedShiftInfo(
+                dto.getCompany(), dto.getEmpCode(), dto.getWorkDate());
+        if (shiftInfo == null) {
+            return;
+        }
+        String workOn = stringValue(shiftInfo, "workOnHhmm", "WORKONHHMM");
+        String workOff = stringValue(shiftInfo, "workOffHhmm", "WORKOFFHHMM");
+        if (workOn == null || workOff == null) {
+            return;
+        }
+
+        int plannedStart = toMinute(workOn);
+        int plannedEnd = toMinute(workOff);
+        if (plannedEnd <= plannedStart) {
+            plannedEnd += 1440;
+        }
+        int requestStart = absoluteMinute(dto.getStartTimeType(), dto.getStartTime());
+        int requestEnd = absoluteMinute(dto.getEndTimeType(), dto.getEndTime());
+
+        if ("연장".equals(workCode) && requestStart < plannedEnd) {
+            throw new IllegalArgumentException("연장근무 시작 시간은 근무 종료 시간 이후여야 합니다.");
+        }
+        if ("조출연장".equals(workCode) && requestEnd > plannedStart) {
+            throw new IllegalArgumentException("조출연장 종료 시간은 근무 시작 시간 이전이어야 합니다.");
         }
     }
 

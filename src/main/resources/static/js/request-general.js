@@ -499,11 +499,12 @@ function renderTable(rows) {
         const disFull = locked ? 'disabled' : '';
 
         // 잠긴 행은 저장된 값 그대로, 아닌 경우 근무코드 규칙 적용
+        const timeRuleSource = {...existing, shiftOnTime: r.shiftOnTime, shiftOffTime: r.shiftOffTime};
         const ts = locked
             ? { startTypeDis:false, startDis:false, endTypeDis:false, endDis:false,
                 startType: existing.startTimeType||'N0', endType: existing.endTimeType||'N0',
                 startTime: existing.startTime||'', endTime: existing.endTime||'' }
-            : computeTimeState(currentCategory, selectedWorkCode, {...r, ...existing});
+            : computeTimeState(currentCategory, selectedWorkCode, timeRuleSource);
 
         const startTypeDis = locked || ts.startTypeDis ? 'disabled' : '';
         const startDis     = locked || ts.startDis     ? 'disabled' : '';
@@ -554,11 +555,12 @@ function applyRequestState(tr, r, workCode) {
     const existing = existingRequestFor(r, workCode);
     const state = existing || {};
     const locked = (state.status === 'SUBMITTED' || state.status === 'APPROVED');
+    const timeRuleSource = {...state, shiftOnTime: r.shiftOnTime, shiftOffTime: r.shiftOffTime};
     const ts = locked
         ? { startTypeDis:false, startDis:false, endTypeDis:false, endDis:false,
             startType: state.startTimeType||'N0', endType: state.endTimeType||'N0',
             startTime: state.startTime||'', endTime: state.endTime||'' }
-        : computeTimeState(currentCategory, workCode, {...r, ...state});
+        : computeTimeState(currentCategory, workCode, timeRuleSource);
 
     const startTypeEl = tr.querySelector('[data-field="startTimeType"]');
     const startEl     = tr.querySelector('[data-field="startTime"]');
