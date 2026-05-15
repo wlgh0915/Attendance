@@ -305,7 +305,10 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         boolean isOther = "OTHER".equals(dto.getRequestCategory());
         if (isOther) {
             normalizeOtherRequestDateRange(dto);
+            validateWorkPlanExists(dto);
             validateOtherRangeAvailable(dto);
+        } else {
+            validateWorkPlanExists(dto);
         }
 
         applyFixedHalfDayTime(dto);
@@ -403,6 +406,19 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         }
         if (requestMapper.countActiveSameWorkRequest(dto) > 0) {
             throw new IllegalArgumentException("기타 근태 기간에 이미 기타 근태 신청이 있습니다.");
+        }
+    }
+
+    private void validateWorkPlanExists(AttendanceRequestDto dto) {
+        if ("OTHER".equals(dto.getRequestCategory())) {
+            normalizeOtherRequestDateRange(dto);
+            if (requestMapper.countUnplannedShiftDays(dto) > 0) {
+                throw new IllegalArgumentException("근무 계획이 미설정된 기간에는 근태를 신청할 수 없습니다.");
+            }
+            return;
+        }
+        if (requestMapper.countPlannedShift(dto.getCompany(), dto.getEmpCode(), dto.getWorkDate()) == 0) {
+            throw new IllegalArgumentException("근무 계획이 미설정된 인원은 근태를 신청할 수 없습니다.");
         }
     }
 
@@ -657,6 +673,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
     public void submitRequest(String requestId, LoginUserDto loginUser) {
         AttendanceRequestDto existing = requestMapper.findByRequestId(requestId);
         if (existing == null) throw new IllegalArgumentException("존재하지 않는 근태신청입니다.");
+        validateWorkPlanExists(existing);
         if ("OTHER".equals(existing.getRequestCategory())) {
             normalizeOtherRequestDateRange(existing);
             validateOtherRangeAvailable(existing);

@@ -15,6 +15,7 @@
             d.DEPT_NAME                                           AS deptName,
             ISNULL(s.SHIFT_CODE, '')                              AS workPlanCode,
             ISNULL(s.SHIFT_NAME, '미설정')                         AS workPlanName,
+            CASE WHEN s.SHIFT_CODE IS NULL THEN 0 ELSE 1 END       AS hasWorkPlan,
             CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
                 WHEN 'WEEKDAY' THEN 'WORK'
                 WHEN 'ANYDAY'  THEN 'WORK'
@@ -1247,6 +1248,75 @@
           AND (tr.END_DATE IS NULL OR tr.END_DATE >= CAST(#{workDate} AS DATE))
           AND s.WORK_ON_HHMM IS NOT NULL
           AND s.WORK_OFF_HHMM IS NOT NULL
+        ]]>
+    </select>
+
+    <select id="countPlannedShift" resultType="int">
+        <![CDATA[
+        SELECT COUNT(*)
+        FROM HRIDEPTTRANSFER01 tr
+        JOIN ORGDEPTMASTER01 dept
+               ON dept.COMPANY   = tr.COMPANY
+              AND dept.DEPT_CODE = tr.DEPT_CODE
+        JOIN HRTWORKPATTERNMASTER01 pm
+               ON pm.COMPANY           = dept.COMPANY
+              AND pm.WORK_PATTERN_CODE = dept.WORK_PATTERN_CODE
+              AND pm.USE_YN            = 'Y'
+        JOIN HRTWORKPATTERNDETAIL01 pd
+               ON pd.COMPANY           = pm.COMPANY
+              AND pd.WORK_PATTERN_CODE = pm.WORK_PATTERN_CODE
+              AND pd.SEQ = (
+                  (DATEDIFF(DAY, pm.START_DATE, CAST(#{workDate} AS DATE)) % pm.CYCLE_COUNT
+                   + pm.CYCLE_COUNT) % pm.CYCLE_COUNT + 1
+              )
+        JOIN HRTSHIFTMASTER01 s
+               ON s.COMPANY = pd.COMPANY
+              AND s.SHIFT_CODE = pd.SHIFT_CODE
+        WHERE tr.COMPANY    = #{company}
+          AND tr.EMP_CODE   = #{empCode}
+          AND tr.START_DATE <= CAST(#{workDate} AS DATE)
+          AND (tr.END_DATE IS NULL OR tr.END_DATE >= CAST(#{workDate} AS DATE))
+        ]]>
+    </select>
+
+    <select id="countUnplannedShiftDays"
+            parameterType="com.company.attendancemanagement.dto.request.AttendanceRequestDto"
+            resultType="int">
+        <![CDATA[
+        SELECT COUNT(*)
+        FROM (
+            SELECT DATEADD(DAY, n.n, CAST(#{workDate} AS DATE)) AS WORK_DATE
+            FROM (
+                SELECT TOP (DATEDIFF(DAY, CAST(#{workDate} AS DATE), CAST(#{endDate} AS DATE)) + 1)
+                       ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1 AS n
+                FROM sys.all_objects
+            ) n
+        ) days
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM HRIDEPTTRANSFER01 tr
+            JOIN ORGDEPTMASTER01 dept
+                   ON dept.COMPANY   = tr.COMPANY
+                  AND dept.DEPT_CODE = tr.DEPT_CODE
+            JOIN HRTWORKPATTERNMASTER01 pm
+                   ON pm.COMPANY           = dept.COMPANY
+                  AND pm.WORK_PATTERN_CODE = dept.WORK_PATTERN_CODE
+                  AND pm.USE_YN            = 'Y'
+            JOIN HRTWORKPATTERNDETAIL01 pd
+                   ON pd.COMPANY           = pm.COMPANY
+                  AND pd.WORK_PATTERN_CODE = pm.WORK_PATTERN_CODE
+                  AND pd.SEQ = (
+                      (DATEDIFF(DAY, pm.START_DATE, days.WORK_DATE) % pm.CYCLE_COUNT
+                       + pm.CYCLE_COUNT) % pm.CYCLE_COUNT + 1
+                  )
+            JOIN HRTSHIFTMASTER01 s
+                   ON s.COMPANY = pd.COMPANY
+                  AND s.SHIFT_CODE = pd.SHIFT_CODE
+            WHERE tr.COMPANY    = #{company}
+              AND tr.EMP_CODE   = #{empCode}
+              AND tr.START_DATE <= days.WORK_DATE
+              AND (tr.END_DATE IS NULL OR tr.END_DATE >= days.WORK_DATE)
+        )
         ]]>
     </select>
 

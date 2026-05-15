@@ -16,6 +16,7 @@ public class AttendanceEmpRowDto {
 
     private String workPlanCode;
     private String workPlanName;
+    private Boolean hasWorkPlan;
     private String workDayType;
     private String shiftOnTime;
     private String shiftOffTime;

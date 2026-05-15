@@ -77,6 +77,12 @@ public interface AttendanceRequestMapper {
                                              @Param("empCode")  String empCode,
                                              @Param("workDate") String workDate);
 
+    int countPlannedShift(@Param("company")  String company,
+                          @Param("empCode")  String empCode,
+                          @Param("workDate") String workDate);
+
+    int countUnplannedShiftDays(AttendanceRequestDto dto);
+
     Map<String, Object> findShiftInfoByCodeOrName(@Param("company") String company,
                                                   @Param("shiftCodeOrName") String shiftCodeOrName);
 

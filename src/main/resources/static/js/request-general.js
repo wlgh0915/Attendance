@@ -495,8 +495,9 @@ function renderTable(rows) {
     tbody.innerHTML = rows.map((r, idx) => {
         const selectedWorkCode = r.requestWorkCode || '';
         const existing = existingRequestFor(r, selectedWorkCode) || r;
+        const planBlocked = r.hasWorkPlan === false || r.hasWorkPlan === 0;
         const locked = (existing.status === 'SUBMITTED' || existing.status === 'APPROVED');
-        const disFull = locked ? 'disabled' : '';
+        const disFull = (locked || planBlocked) ? 'disabled' : '';
 
         // 잠긴 행은 저장된 값 그대로, 아닌 경우 근무코드 규칙 적용
         const timeRuleSource = {...existing, shiftOnTime: r.shiftOnTime, shiftOffTime: r.shiftOffTime};
@@ -506,16 +507,20 @@ function renderTable(rows) {
                 startTime: existing.startTime||'', endTime: existing.endTime||'' }
             : computeTimeState(currentCategory, selectedWorkCode, timeRuleSource);
 
-        const startTypeDis = locked || ts.startTypeDis ? 'disabled' : '';
-        const startDis     = locked || ts.startDis     ? 'disabled' : '';
-        const endTypeDis   = locked || ts.endTypeDis   ? 'disabled' : '';
-        const endDis       = locked || ts.endDis       ? 'disabled' : '';
+        const startTypeDis = locked || planBlocked || ts.startTypeDis ? 'disabled' : '';
+        const startDis     = locked || planBlocked || ts.startDis     ? 'disabled' : '';
+        const endTypeDis   = locked || planBlocked || ts.endTypeDis   ? 'disabled' : '';
+        const endDis       = locked || planBlocked || ts.endDis       ? 'disabled' : '';
+        const checkDis     = planBlocked ? 'disabled' : '';
+        const statusHtml   = planBlocked
+            ? '<span class="badge badge-rejected">근무계획 미설정</span>'
+            : statusBadge(existing.status);
 
         const reasonVal       = (existing.reason||'').replace(/"/g,'&quot;');
         const reasonDetailVal = (existing.reasonDetail||'').replace(/"/g,'&quot;');
 
         return '<tr data-idx="'+idx+'">'
-            + '<td class="td-check" onclick="clickCheckCell(this)"><input type="checkbox" onclick="event.stopPropagation();toggleCheck(this,'+idx+')"></td>'
+            + '<td class="td-check" onclick="clickCheckCell(this)"><input type="checkbox" '+checkDis+' onclick="event.stopPropagation();toggleCheck(this,'+idx+')"></td>'
             + '<td>'+(r.empCode||'')+'</td>'
             + '<td>'+(r.empName||'')+'</td>'
             + '<td>'+(r.deptName||'')+'</td>'
@@ -525,7 +530,7 @@ function renderTable(rows) {
             + '<td class="holiday-hidden">'+formatWorkMin(recognizedActualWorkMin(r))+'</td>'
             + '<td data-field="shiftWorkMin">'+formatWorkMin(savedEstimatedWorkMin(r, existing, selectedWorkCode))+'</td>'
             + '<td class="leave-hidden">'+formatDay(r.annualBalanceDay)+'</td>'
-            + '<td><select data-field="requestWorkCode" onchange="onWorkCodeChange(this,'+idx+')">'+buildWorkCodeOptions(currentCategory,selectedWorkCode)+'</select></td>'
+            + '<td><select data-field="requestWorkCode" '+disFull+' onchange="onWorkCodeChange(this,'+idx+')">'+buildWorkCodeOptions(currentCategory,selectedWorkCode)+'</select></td>'
             + '<td><input type="text" data-field="reason" value="'+reasonVal+'" placeholder="사유" '+disFull+'></td>'
             + '<td><input type="text" data-field="reasonDetail" value="'+reasonDetailVal+'" placeholder="사유 상세 입력" '+disFull+'></td>'
             + '<td><div style="display:flex;gap:3px;">'
@@ -536,7 +541,7 @@ function renderTable(rows) {
             + '<select data-field="endTimeType" style="width:52px;" '+endTypeDis+' onchange="onTimeChange(this,'+idx+')">'+buildDayTypeOptions(ts.endType)+'</select>'
             + '<select data-field="endTime" style="flex:1;" '+endDis+' onchange="onTimeChange(this,'+idx+')">'+buildTimeOptions(ts.endTime)+'</select>'
             + '</div></td>'
-            + '<td data-field="status">'+statusBadge(existing.status)+'</td>'
+            + '<td data-field="status">'+statusHtml+'</td>'
             + '<td data-field="requesterName">'+(existing.requesterName||'')+'</td>'
             + '</tr>';
     }).join('');
