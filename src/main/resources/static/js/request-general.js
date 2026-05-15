@@ -202,7 +202,7 @@ function subtractWorkingMinutes(row, rangeStart, rangeEnd, workMin) {
     return rangeStart;
 }
 
-function halfDayShiftSource(row) {
+function effectiveShiftSource(row) {
     const actualShift = shiftCodesData.find(s =>
         (row.actualWorkCode && s.shiftCode === row.actualWorkCode)
         || (row.actualWorkName && s.shiftName === row.actualWorkName));
@@ -219,7 +219,7 @@ function halfDayShiftSource(row) {
 }
 
 function halfDayTimeState(row, code) {
-    const source = halfDayShiftSource(row);
+    const source = effectiveShiftSource(row);
     const plannedStart = absoluteMinute('N0', source.shiftOnTime);
     let plannedEnd = absoluteMinute('N0', source.shiftOffTime);
     if (plannedStart == null || plannedEnd == null) return null;
@@ -309,7 +309,7 @@ function isBoundedLeaveCode(workCode) {
 }
 
 function effectiveWorkRange(row) {
-    const source = halfDayShiftSource(row);
+    const source = effectiveShiftSource(row);
     const baseStart = absoluteMinute('N0', source.shiftOnTime);
     const baseEndTime = absoluteMinute('N0', source.shiftOffTime);
     if (baseStart == null || baseEndTime == null) return null;
@@ -413,6 +413,32 @@ function baseActualWorkMin(row) {
     const baseEnd = Math.min(actualEnd, plan.end);
     if (baseEnd <= baseStart) return 0;
     return Math.max(0, baseEnd - baseStart - breakOverlapMin(row, baseStart, baseEnd));
+}
+
+function overtimeBoundary(row) {
+    const source = effectiveShiftSource(row);
+    const start = absoluteMinute('N0', source && source.shiftOnTime);
+    let end = absoluteMinute('N0', source && source.shiftOffTime);
+    if (start == null || end == null) return null;
+    if (end <= start) end += 1440;
+    return {start, end};
+}
+
+function validateOvertimeOutsideEffectiveWorkTime(dto, row) {
+    if (dto.requestWorkCode !== '연장' && dto.requestWorkCode !== '조출연장') return true;
+    const boundary = overtimeBoundary(row);
+    if (!boundary) return true;
+    const start = absoluteMinute(dto.startTimeType, dto.startTime);
+    const end = absoluteMinute(dto.endTimeType, dto.endTime);
+    if (dto.requestWorkCode === '연장' && start < boundary.end) {
+        showToast('연장근무 시작 시간은 근무 종료 시간 이후여야 합니다.', 'error');
+        return false;
+    }
+    if (dto.requestWorkCode === '조출연장' && end > boundary.start) {
+        showToast('조출연장 종료 시간은 근무 시작 시간 이전이어야 합니다.', 'error');
+        return false;
+    }
+    return true;
 }
 
 function actualMissingWorkMin(row) {
@@ -579,13 +605,16 @@ function computeTimeState(category, code, r) {
     if (!code) return {startTypeDis, startDis, endTypeDis, endDis, startType, endType, startTime, endTime};
 
     if (category === 'OVERTIME') {
-        if (code === '연장' && r.shiftOffTime) {
-            startType = 'N0';
-            startTime = r.shiftOffTime;
+        const boundary = overtimeBoundary(r);
+        if (code === '연장' && boundary) {
+            const startState = minuteToTimeState(boundary.end);
+            startType = startState.timeType;
+            startTime = startState.time;
             startTypeDis = startDis = true;
-        } else if (code === '조출연장' && r.shiftOnTime) {
-            endType = 'N0';
-            endTime = r.shiftOnTime;
+        } else if (code === '조출연장' && boundary) {
+            const endState = minuteToTimeState(boundary.start);
+            endType = endState.timeType;
+            endTime = endState.time;
             endTypeDis = endDis = true;
         }
     } else if (category === 'LEAVE') {
@@ -840,12 +869,7 @@ async function doSave() {
         if (!dto.requestWorkCode) { showToast('신청근무를 선택하세요.','error'); return; }
         if (!validateCheckIn(tableData[parseInt(tr.dataset.idx)], currentCategory, dto.requestWorkCode)) return;
         if (!dto.startTime || !dto.endTime) { showToast('시작/종료 시간을 선택하세요.','error'); return; }
-        if (dto.requestWorkCode === '조출연장' && dto.startTime >= '09:00') {
-            showToast('조출연장은 시작시간이 09:00 이전이어야 합니다.','error'); return;
-        }
-        if (dto.requestWorkCode === '연장' && isSameDay(dto.endTimeType) && dto.endTime <= '18:00') {
-            showToast('연장근무는 종료시간이 18:00 이후여야 합니다.','error'); return;
-        }
+        if (!validateOvertimeOutsideEffectiveWorkTime(dto, tableData[parseInt(tr.dataset.idx)])) return;
         if (!validateWithinEffectiveWorkTime(dto, tableData[parseInt(tr.dataset.idx)])) return;
         if (!checkOvertimeLeaveConflict(dto, tableData[parseInt(tr.dataset.idx)])) return;
         if (hasOverlappingRequest(dto, tableData[parseInt(tr.dataset.idx)])) {
@@ -895,12 +919,7 @@ async function doSubmit() {
         if (!dto.requestWorkCode) { showToast('신청근무를 선택하세요.','error'); return; }
         if (!validateCheckIn(tableData[idx], currentCategory, dto.requestWorkCode)) return;
         if (!dto.startTime || !dto.endTime) { showToast('시작/종료 시간을 선택하세요.','error'); return; }
-        if (dto.requestWorkCode === '조출연장' && dto.startTime >= '09:00') {
-            showToast('조출연장은 시작시간이 09:00 이전이어야 합니다.','error'); return;
-        }
-        if (dto.requestWorkCode === '연장' && isSameDay(dto.endTimeType) && dto.endTime <= '18:00') {
-            showToast('연장근무는 종료시간이 18:00 이후여야 합니다.','error'); return;
-        }
+        if (!validateOvertimeOutsideEffectiveWorkTime(dto, tableData[parseInt(tr.dataset.idx)])) return;
         if (!validateWithinEffectiveWorkTime(dto, tableData[parseInt(tr.dataset.idx)])) return;
         if (!checkOvertimeLeaveConflict(dto, tableData[parseInt(tr.dataset.idx)])) return;
         if (hasOverlappingRequest(dto, tableData[parseInt(tr.dataset.idx)])) {

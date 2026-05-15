@@ -326,16 +326,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             dto.setRequestWorkMin(requestWorkMin);
         }
 
-        // 조출연장: 시작시간 09:00 이전, 연장: 종료시간 18:00 이후
-        if ("조출연장".equals(dto.getRequestWorkCode())
-                && absoluteMinute(dto.getStartTimeType(), dto.getStartTime()) >= toMinute("09:00")) {
-            throw new IllegalArgumentException("조출연장은 시작시간이 09:00 이전이어야 합니다.");
-        }
-        if ("연장".equals(dto.getRequestWorkCode())
-                && absoluteMinute(dto.getEndTimeType(), dto.getEndTime()) <= toMinute("18:00")) {
-            throw new IllegalArgumentException("연장근무는 종료시간이 18:00 이후여야 합니다.");
-        }
-        validateOvertimeOutsidePlannedWorkTime(dto);
+        validateOvertimeOutsideEffectiveWorkTime(dto);
 
         if (isBoundedLeaveRequest(dto.getRequestWorkCode())) {
             validateWithinEffectiveWorkTime(dto);
@@ -510,12 +501,12 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         }
     }
 
-    private void validateOvertimeOutsidePlannedWorkTime(AttendanceRequestDto dto) {
+    private void validateOvertimeOutsideEffectiveWorkTime(AttendanceRequestDto dto) {
         String workCode = dto.getRequestWorkCode();
         if (!"연장".equals(workCode) && !"조출연장".equals(workCode)) {
             return;
         }
-        Map<String, Object> shiftInfo = requestMapper.findPlannedShiftInfo(
+        Map<String, Object> shiftInfo = requestMapper.findEffectiveShiftInfo(
                 dto.getCompany(), dto.getEmpCode(), dto.getWorkDate());
         if (shiftInfo == null) {
             return;
