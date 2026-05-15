@@ -55,6 +55,10 @@ public interface AttendanceRequestMapper {
 
     int applyApprovedHolidayRequestToAttendance(@Param("requestId") String requestId);
 
+    int revertCanceledOtherAttendanceUpdate(@Param("requestId") String requestId);
+
+    int revertCanceledOtherAttendanceDelete(@Param("requestId") String requestId);
+
     int revertCanceledHolidayAttendanceUpdate(@Param("requestId") String requestId);
 
     int revertCanceledHolidayAttendanceDelete(@Param("requestId") String requestId);

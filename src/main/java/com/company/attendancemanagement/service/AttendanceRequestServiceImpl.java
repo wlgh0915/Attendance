@@ -875,6 +875,10 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
                 return;
             }
             validateWeeklyWorkLimitAfterCancel(existing);
+            if ("APPROVED".equals(existing.getStatus()) && "OTHER".equals(existing.getRequestCategory())) {
+                requestMapper.revertCanceledOtherAttendanceUpdate(requestId);
+                requestMapper.revertCanceledOtherAttendanceDelete(requestId);
+            }
             if ("APPROVED".equals(existing.getStatus()) && "휴일근무".equals(existing.getRequestWorkCode())) {
                 requestMapper.revertCanceledHolidayAttendanceUpdate(requestId);
                 requestMapper.revertCanceledHolidayAttendanceDelete(requestId);

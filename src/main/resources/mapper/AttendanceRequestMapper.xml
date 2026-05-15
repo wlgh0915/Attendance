@@ -147,7 +147,7 @@
                   AND otr.TARGET_DATE     &lt;= wd.WORK_DATE
                   AND oto.END_DATE        &gt;= wd.WORK_DATE
                   AND otr.REQ_GROUP       = 'OTHER'
-                  AND otr.STATUS IN ('DRAFT', 'SUBMITTED', 'APPROVED')
+                  AND otr.STATUS = 'APPROVED'
             ) oReq
             LEFT JOIN HRTSHIFTMASTER01 ows
                    ON ows.COMPANY    = h.COMPANY
@@ -290,7 +290,7 @@
                   AND awotr.TARGET_DATE     &lt;= awd.WORK_DATE
                   AND awoto.END_DATE        &gt;= awd.WORK_DATE
                   AND awotr.REQ_GROUP       = 'OTHER'
-                  AND awotr.STATUS IN ('DRAFT', 'SUBMITTED', 'APPROVED')
+                  AND awotr.STATUS = 'APPROVED'
             ) awoReq
             LEFT JOIN HRTSHIFTMASTER01 aws
                    ON aws.COMPANY = h.COMPANY
@@ -543,7 +543,8 @@
             SELECT COALESCE(
                        NULLIF(ar.ACTUAL_SHIFT_CODE, ''),
                        NULLIF(ar.SHIFT_CODE, ''),
-                       NULLIF(o.CHANGE_SHIFT_CODE, ''),
+                       CASE WHEN r.REQ_GROUP = 'OTHER' AND r.STATUS = 'APPROVED'
+                            THEN NULLIF(o.CHANGE_SHIFT_CODE, '') END,
                        NULLIF(s.SHIFT_CODE, '')
                    ) AS SHIFT_CODE
         ) effectiveShiftCode
@@ -1090,6 +1091,62 @@
                     0, 'N', 'N', 0, GETDATE(), GETDATE());
     </update>
 
+    <update id="revertCanceledOtherAttendanceUpdate">
+        UPDATE d
+        SET d.ACTUAL_SHIFT_CODE = NULL,
+            d.UPDATED_AT        = GETDATE()
+        FROM HRTDAILYATTENDANCE01 d
+        INNER JOIN (
+            SELECT r.COMPANY,
+                   r.TARGET_EMP_CODE AS EMP_CODE,
+                   CONVERT(VARCHAR(8), DATEADD(DAY, n.n, o.START_DATE), 112) AS YYYYMMDD,
+                   o.CHANGE_SHIFT_CODE
+            FROM HRTATTENDANCEREQUEST01 r
+            JOIN HRTATTENDANCE_OTHER01 o
+              ON r.COMPANY = o.COMPANY
+             AND r.REQ_ID = o.REQ_ID
+            CROSS APPLY (
+                SELECT TOP (DATEDIFF(DAY, o.START_DATE, o.END_DATE) + 1)
+                       ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1 AS n
+                FROM sys.all_objects
+            ) n
+            WHERE r.REQ_ID = #{requestId}
+              AND r.REQ_GROUP = 'OTHER'
+        ) S
+          ON d.COMPANY = S.COMPANY
+         AND d.EMP_CODE = S.EMP_CODE
+         AND d.YYYYMMDD = S.YYYYMMDD
+        WHERE d.SHIFT_CODE IS NOT NULL
+          AND d.ACTUAL_SHIFT_CODE = S.CHANGE_SHIFT_CODE
+    </update>
+
+    <delete id="revertCanceledOtherAttendanceDelete">
+        DELETE d
+        FROM HRTDAILYATTENDANCE01 d
+        INNER JOIN (
+            SELECT r.COMPANY,
+                   r.TARGET_EMP_CODE AS EMP_CODE,
+                   CONVERT(VARCHAR(8), DATEADD(DAY, n.n, o.START_DATE), 112) AS YYYYMMDD,
+                   o.CHANGE_SHIFT_CODE
+            FROM HRTATTENDANCEREQUEST01 r
+            JOIN HRTATTENDANCE_OTHER01 o
+              ON r.COMPANY = o.COMPANY
+             AND r.REQ_ID = o.REQ_ID
+            CROSS APPLY (
+                SELECT TOP (DATEDIFF(DAY, o.START_DATE, o.END_DATE) + 1)
+                       ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1 AS n
+                FROM sys.all_objects
+            ) n
+            WHERE r.REQ_ID = #{requestId}
+              AND r.REQ_GROUP = 'OTHER'
+        ) S
+          ON d.COMPANY = S.COMPANY
+         AND d.EMP_CODE = S.EMP_CODE
+         AND d.YYYYMMDD = S.YYYYMMDD
+        WHERE d.SHIFT_CODE IS NULL
+          AND d.ACTUAL_SHIFT_CODE = S.CHANGE_SHIFT_CODE
+    </delete>
+
     <update id="applyApprovedHolidayRequestToAttendance">
         MERGE HRTDAILYATTENDANCE01 AS T
         USING (
@@ -1289,7 +1346,7 @@
             WHERE r.COMPANY = tr.COMPANY
               AND r.TARGET_EMP_CODE = tr.EMP_CODE
               AND r.REQ_GROUP = 'OTHER'
-              AND r.STATUS IN ('DRAFT', 'SUBMITTED', 'APPROVED')
+              AND r.STATUS = 'APPROVED'
               AND CAST(#{workDate} AS DATE) BETWEEN o.START_DATE AND o.END_DATE
             ORDER BY CASE r.STATUS WHEN 'APPROVED' THEN 1 WHEN 'SUBMITTED' THEN 2 ELSE 3 END,
                      r.REQ_ID DESC
@@ -1446,7 +1503,7 @@
                 WHERE r.COMPANY = tr.COMPANY
                   AND r.TARGET_EMP_CODE = tr.EMP_CODE
                   AND r.REQ_GROUP = 'OTHER'
-                  AND r.STATUS IN ('DRAFT', 'SUBMITTED', 'APPROVED')
+                  AND r.STATUS = 'APPROVED'
                   AND CAST(#{workDate} AS DATE) BETWEEN o.START_DATE AND o.END_DATE
                 ORDER BY CASE r.STATUS WHEN 'APPROVED' THEN 1 WHEN 'SUBMITTED' THEN 2 ELSE 3 END,
                          r.REQ_ID DESC
