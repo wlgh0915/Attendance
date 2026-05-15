@@ -1036,7 +1036,13 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
     }
 
     private boolean canCancelRequest(AttendanceRequestDto request, LoginUserDto loginUser) {
+        if ("ADMIN".equals(loginUser.getRoleCode())) {
+            return true;
+        }
         if (loginUser.getEmpCode().equals(request.getRequesterCode())) {
+            return true;
+        }
+        if (loginUser.getEmpCode().equals(request.getEmpCode())) {
             return true;
         }
         String deptLeader = requestMapper.findDeptLeader(loginUser.getCompany(), request.getDeptCode());
