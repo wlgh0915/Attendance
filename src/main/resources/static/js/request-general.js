@@ -47,10 +47,11 @@ function visibleColumnCount() {
     return 16;
 }
 
-function buildTimeOptions(selected) {
+function buildTimeOptions(selected, allowQuarterHour) {
     let opts = '<option value="">--</option>';
+    const minutes = allowQuarterHour ? [0, 15, 30, 45] : [0, 30];
     for (let h = 0; h < 24; h++) {
-        for (let m of [0, 30]) {
+        for (let m of minutes) {
             const hh = String(h).padStart(2,'0'), mm = String(m).padStart(2,'0');
             const val = hh+':'+mm;
             opts += '<option value="'+val+'"'+(val===selected?' selected':'')+'>'+val+'</option>';
@@ -155,6 +156,95 @@ function absoluteMinute(timeType, time) {
     return (timeType === 'N1' ? 1440 : 0) + h * 60 + m;
 }
 
+function minuteToTimeState(min) {
+    const normalized = ((min % 1440) + 1440) % 1440;
+    const hh = String(Math.floor(normalized / 60)).padStart(2, '0');
+    const mm = String(normalized % 60).padStart(2, '0');
+    return {
+        timeType: min >= 1440 ? 'N1' : 'N0',
+        time: hh + ':' + mm
+    };
+}
+
+function isBreakMinute(row, minute, rangeStart, rangeEnd) {
+    const inBreak = (breakStart, breakEnd) => {
+        if (!breakStart || !breakEnd) return false;
+        let bs = absoluteMinute('N0', breakStart);
+        let be = absoluteMinute('N0', breakEnd);
+        if (be < bs) be += 1440;
+        if (rangeEnd > 1440 && bs < rangeStart) {
+            bs += 1440;
+            be += 1440;
+        }
+        return minute >= bs && minute < be;
+    };
+    return inBreak(row.break1StartHhmm, row.break1EndHhmm)
+        || inBreak(row.break2StartHhmm, row.break2EndHhmm);
+}
+
+function addWorkingMinutes(row, rangeStart, rangeEnd, workMin) {
+    let worked = 0;
+    for (let minute = rangeStart; minute < rangeEnd; minute++) {
+        if (isBreakMinute(row, minute, rangeStart, rangeEnd)) continue;
+        worked++;
+        if (worked >= workMin) return minute + 1;
+    }
+    return rangeEnd;
+}
+
+function subtractWorkingMinutes(row, rangeStart, rangeEnd, workMin) {
+    let worked = 0;
+    for (let minute = rangeEnd - 1; minute >= rangeStart; minute--) {
+        if (isBreakMinute(row, minute, rangeStart, rangeEnd)) continue;
+        worked++;
+        if (worked >= workMin) return minute;
+    }
+    return rangeStart;
+}
+
+function halfDayShiftSource(row) {
+    const actualShift = shiftCodesData.find(s =>
+        (row.actualWorkCode && s.shiftCode === row.actualWorkCode)
+        || (row.actualWorkName && s.shiftName === row.actualWorkName));
+    if (!actualShift || !actualShift.workOnHhmm || !actualShift.workOffHhmm) return row;
+    return {
+        shiftOnTime: actualShift.workOnHhmm,
+        shiftOffTime: actualShift.workOffHhmm,
+        break1StartHhmm: actualShift.break1StartHhmm,
+        break1EndHhmm: actualShift.break1EndHhmm,
+        break2StartHhmm: actualShift.break2StartHhmm,
+        break2EndHhmm: actualShift.break2EndHhmm,
+        plannedWorkMin: actualShift.workMinutes || 0
+    };
+}
+
+function halfDayTimeState(row, code) {
+    const source = halfDayShiftSource(row);
+    const plannedStart = absoluteMinute('N0', source.shiftOnTime);
+    let plannedEnd = absoluteMinute('N0', source.shiftOffTime);
+    if (plannedStart == null || plannedEnd == null) return null;
+    if (plannedEnd <= plannedStart) plannedEnd += 1440;
+    const plannedWorkMin = source.plannedWorkMin && source.plannedWorkMin > 0
+        ? source.plannedWorkMin
+        : Math.max(0, plannedEnd - plannedStart - breakOverlapMin(source, plannedStart, plannedEnd));
+    if (plannedWorkMin <= 0) return null;
+
+    const halfWorkMin = Math.round(plannedWorkMin / 2);
+    if (code === '오전반차' || code === '전반차') {
+        return {
+            start: minuteToTimeState(plannedStart),
+            end: minuteToTimeState(addWorkingMinutes(source, plannedStart, plannedEnd, halfWorkMin))
+        };
+    }
+    if (code === '오후반차' || code === '후반차') {
+        return {
+            start: minuteToTimeState(subtractWorkingMinutes(source, plannedStart, plannedEnd, halfWorkMin)),
+            end: minuteToTimeState(plannedEnd)
+        };
+    }
+    return null;
+}
+
 function selectedWorkMin(tr, state, row) {
     if (state && state.requestWorkMin != null && state.status !== 'DRAFT') return state.requestWorkMin;
     const requestWorkCode = tr.querySelector('[data-field="requestWorkCode"]').value;
@@ -219,8 +309,9 @@ function isBoundedLeaveCode(workCode) {
 }
 
 function effectiveWorkRange(row) {
-    const baseStart = absoluteMinute('N0', row.shiftOnTime);
-    const baseEndTime = absoluteMinute('N0', row.shiftOffTime);
+    const source = halfDayShiftSource(row);
+    const baseStart = absoluteMinute('N0', source.shiftOnTime);
+    const baseEndTime = absoluteMinute('N0', source.shiftOffTime);
     if (baseStart == null || baseEndTime == null) return null;
     let start = baseStart;
     let end = baseEndTime <= baseStart ? baseEndTime + 1440 : baseEndTime;
@@ -467,12 +558,18 @@ function computeTimeState(category, code, r) {
         }
     } else if (category === 'LEAVE') {
         if (code === '오전반차' || code === '전반차') {
-            startType = 'N0'; startTime = '09:00';
-            endType   = 'N0'; endTime   = '13:00';
+            const halfDay = halfDayTimeState(r, code);
+            if (halfDay) {
+                startType = halfDay.start.timeType; startTime = halfDay.start.time;
+                endType   = halfDay.end.timeType;   endTime   = halfDay.end.time;
+            }
             startTypeDis = startDis = endTypeDis = endDis = true;
         } else if (code === '오후반차' || code === '후반차') {
-            startType = 'N0'; startTime = '14:00';
-            endType   = 'N0'; endTime   = '18:00';
+            const halfDay = halfDayTimeState(r, code);
+            if (halfDay) {
+                startType = halfDay.start.timeType; startTime = halfDay.start.time;
+                endType   = halfDay.end.timeType;   endTime   = halfDay.end.time;
+            }
             startTypeDis = startDis = endTypeDis = endDis = true;
         }
     }
@@ -500,7 +597,18 @@ function renderTable(rows) {
         const disFull = (locked || planBlocked) ? 'disabled' : '';
 
         // 잠긴 행은 저장된 값 그대로, 아닌 경우 근무코드 규칙 적용
-        const timeRuleSource = {...existing, shiftOnTime: r.shiftOnTime, shiftOffTime: r.shiftOffTime};
+        const timeRuleSource = {
+            ...existing,
+            shiftOnTime: r.shiftOnTime,
+            shiftOffTime: r.shiftOffTime,
+            break1StartHhmm: r.break1StartHhmm,
+            break1EndHhmm: r.break1EndHhmm,
+            break2StartHhmm: r.break2StartHhmm,
+            break2EndHhmm: r.break2EndHhmm,
+            plannedWorkMin: r.plannedWorkMin,
+            actualWorkCode: r.actualWorkCode,
+            actualWorkName: r.actualWorkName
+        };
         const ts = locked
             ? { startTypeDis:false, startDis:false, endTypeDis:false, endDis:false,
                 startType: existing.startTimeType||'N0', endType: existing.endTimeType||'N0',
@@ -512,6 +620,7 @@ function renderTable(rows) {
         const endTypeDis   = locked || planBlocked || ts.endTypeDis   ? 'disabled' : '';
         const endDis       = locked || planBlocked || ts.endDis       ? 'disabled' : '';
         const checkDis     = planBlocked ? 'disabled' : '';
+        const allowQuarterHour = isHalfDayCode(selectedWorkCode);
         const statusHtml   = planBlocked
             ? '<span class="badge badge-rejected">근무계획 미설정</span>'
             : statusBadge(existing.status);
@@ -535,11 +644,11 @@ function renderTable(rows) {
             + '<td><input type="text" data-field="reasonDetail" value="'+reasonDetailVal+'" placeholder="사유 상세 입력" '+disFull+'></td>'
             + '<td><div style="display:flex;gap:3px;">'
             + '<select data-field="startTimeType" style="width:52px;" '+startTypeDis+' onchange="onTimeChange(this,'+idx+')">'+buildDayTypeOptions(ts.startType)+'</select>'
-            + '<select data-field="startTime" style="flex:1;" '+startDis+' onchange="onTimeChange(this,'+idx+')">'+buildTimeOptions(ts.startTime)+'</select>'
+            + '<select data-field="startTime" style="flex:1;" '+startDis+' onchange="onTimeChange(this,'+idx+')">'+buildTimeOptions(ts.startTime, allowQuarterHour)+'</select>'
             + '</div></td>'
             + '<td><div style="display:flex;gap:3px;">'
             + '<select data-field="endTimeType" style="width:52px;" '+endTypeDis+' onchange="onTimeChange(this,'+idx+')">'+buildDayTypeOptions(ts.endType)+'</select>'
-            + '<select data-field="endTime" style="flex:1;" '+endDis+' onchange="onTimeChange(this,'+idx+')">'+buildTimeOptions(ts.endTime)+'</select>'
+            + '<select data-field="endTime" style="flex:1;" '+endDis+' onchange="onTimeChange(this,'+idx+')">'+buildTimeOptions(ts.endTime, allowQuarterHour)+'</select>'
             + '</div></td>'
             + '<td data-field="status">'+statusHtml+'</td>'
             + '<td data-field="requesterName">'+(existing.requesterName||'')+'</td>'
@@ -560,7 +669,18 @@ function applyRequestState(tr, r, workCode) {
     const existing = existingRequestFor(r, workCode);
     const state = existing || {};
     const locked = (state.status === 'SUBMITTED' || state.status === 'APPROVED');
-    const timeRuleSource = {...state, shiftOnTime: r.shiftOnTime, shiftOffTime: r.shiftOffTime};
+    const timeRuleSource = {
+        ...state,
+        shiftOnTime: r.shiftOnTime,
+        shiftOffTime: r.shiftOffTime,
+        break1StartHhmm: r.break1StartHhmm,
+        break1EndHhmm: r.break1EndHhmm,
+        break2StartHhmm: r.break2StartHhmm,
+        break2EndHhmm: r.break2EndHhmm,
+        plannedWorkMin: r.plannedWorkMin,
+        actualWorkCode: r.actualWorkCode,
+        actualWorkName: r.actualWorkName
+    };
     const ts = locked
         ? { startTypeDis:false, startDis:false, endTypeDis:false, endDis:false,
             startType: state.startTimeType||'N0', endType: state.endTimeType||'N0',
@@ -582,6 +702,10 @@ function applyRequestState(tr, r, workCode) {
     startEl.disabled     = locked || ts.startDis;
     endTypeEl.disabled   = locked || ts.endTypeDis;
     endEl.disabled       = locked || ts.endDis;
+
+    const allowQuarterHour = isHalfDayCode(workCode);
+    startEl.innerHTML = buildTimeOptions(ts.startTime, allowQuarterHour);
+    endEl.innerHTML = buildTimeOptions(ts.endTime, allowQuarterHour);
 
     startTypeEl.value = ts.startType;
     startEl.value     = ts.startTime;

@@ -423,17 +423,48 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
     }
 
     private void applyFixedHalfDayTime(AttendanceRequestDto dto) {
-        if ("오전반차".equals(dto.getRequestWorkCode()) || "전반차".equals(dto.getRequestWorkCode())) {
-            dto.setStartTimeType("N0");
-            dto.setStartTime("09:00");
-            dto.setEndTimeType("N0");
-            dto.setEndTime("13:00");
-        } else if ("오후반차".equals(dto.getRequestWorkCode()) || "후반차".equals(dto.getRequestWorkCode())) {
-            dto.setStartTimeType("N0");
-            dto.setStartTime("14:00");
-            dto.setEndTimeType("N0");
-            dto.setEndTime("18:00");
+        if (!isHalfDayRequest(dto.getRequestWorkCode())) {
+            return;
         }
+
+        Map<String, Object> shiftInfo = requestMapper.findEffectiveShiftInfo(
+                dto.getCompany(), dto.getEmpCode(), dto.getWorkDate());
+        if (shiftInfo == null) {
+            throw new IllegalArgumentException("근무 계획 시간을 확인할 수 없어 반차 시간을 계산할 수 없습니다.");
+        }
+
+        String workOn = stringValue(shiftInfo, "workOnHhmm", "WORKONHHMM");
+        String workOff = stringValue(shiftInfo, "workOffHhmm", "WORKOFFHHMM");
+        if (workOn == null || workOff == null) {
+            throw new IllegalArgumentException("근무 계획 시간을 확인할 수 없어 반차 시간을 계산할 수 없습니다.");
+        }
+
+        int plannedStart = toMinute(workOn);
+        int plannedEnd = toMinute(workOff);
+        if (plannedEnd <= plannedStart) {
+            plannedEnd += 1440;
+        }
+
+        int plannedWorkMin = Math.max(0, plannedEnd - plannedStart - breakOverlapMin(shiftInfo, plannedStart, plannedEnd));
+        if (plannedWorkMin <= 0) {
+            throw new IllegalArgumentException("소정근로시간이 없어 반차 시간을 계산할 수 없습니다.");
+        }
+
+        int halfWorkMin = Math.round(plannedWorkMin / 2.0f);
+        int start;
+        int end;
+        if ("오전반차".equals(dto.getRequestWorkCode()) || "전반차".equals(dto.getRequestWorkCode())) {
+            start = plannedStart;
+            end = addWorkingMinutes(shiftInfo, plannedStart, plannedEnd, halfWorkMin);
+        } else {
+            end = plannedEnd;
+            start = subtractWorkingMinutes(shiftInfo, plannedStart, plannedEnd, halfWorkMin);
+        }
+
+        dto.setStartTimeType(timeType(start));
+        dto.setStartTime(hhmm(start));
+        dto.setEndTimeType(timeType(end));
+        dto.setEndTime(hhmm(end));
     }
 
     private boolean isHalfDayRequest(String workCode) {
@@ -522,6 +553,64 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
     private int toMinute(String hhmm) {
         LocalTime time = LocalTime.parse(hhmm);
         return time.getHour() * 60 + time.getMinute();
+    }
+
+    private int addWorkingMinutes(Map<String, Object> shiftInfo, int rangeStart, int rangeEnd, int workMin) {
+        int worked = 0;
+        for (int minute = rangeStart; minute < rangeEnd; minute++) {
+            if (isBreakMinute(shiftInfo, minute, rangeStart, rangeEnd)) {
+                continue;
+            }
+            worked++;
+            if (worked >= workMin) {
+                return minute + 1;
+            }
+        }
+        return rangeEnd;
+    }
+
+    private int subtractWorkingMinutes(Map<String, Object> shiftInfo, int rangeStart, int rangeEnd, int workMin) {
+        int worked = 0;
+        for (int minute = rangeEnd - 1; minute >= rangeStart; minute--) {
+            if (isBreakMinute(shiftInfo, minute, rangeStart, rangeEnd)) {
+                continue;
+            }
+            worked++;
+            if (worked >= workMin) {
+                return minute;
+            }
+        }
+        return rangeStart;
+    }
+
+    private boolean isBreakMinute(Map<String, Object> shiftInfo, int minute, int rangeStart, int rangeEnd) {
+        return isInBreak(shiftInfo.get("break1StartHhmm"), shiftInfo.get("break1EndHhmm"), minute, rangeStart, rangeEnd)
+                || isInBreak(shiftInfo.get("break2StartHhmm"), shiftInfo.get("break2EndHhmm"), minute, rangeStart, rangeEnd);
+    }
+
+    private boolean isInBreak(Object breakStartValue, Object breakEndValue, int minute, int rangeStart, int rangeEnd) {
+        if (breakStartValue == null || breakEndValue == null) return false;
+        String breakStartText = breakStartValue.toString();
+        String breakEndText = breakEndValue.toString();
+        if (breakStartText.isBlank() || breakEndText.isBlank()) return false;
+        int breakStart = toMinute(breakStartText);
+        int breakEnd = breakStartText.compareTo(breakEndText) > 0
+                ? 1440 + toMinute(breakEndText)
+                : toMinute(breakEndText);
+        if (rangeEnd > 1440 && breakStart < rangeStart) {
+            breakStart += 1440;
+            breakEnd += 1440;
+        }
+        return minute >= breakStart && minute < breakEnd;
+    }
+
+    private String timeType(int absoluteMinute) {
+        return absoluteMinute >= 1440 ? "N1" : "N0";
+    }
+
+    private String hhmm(int absoluteMinute) {
+        int normalized = ((absoluteMinute % 1440) + 1440) % 1440;
+        return String.format("%02d:%02d", normalized / 60, normalized % 60);
     }
 
     private int breakOverlapMin(Map<String, Object> shiftInfo, int startMin, int endMin) {
@@ -776,6 +865,9 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             throw new IllegalArgumentException("신청자 또는 부서장만 취소할 수 있습니다.");
         }
         if ("SUBMITTED".equals(existing.getStatus()) || "APPROVED".equals(existing.getStatus())) {
+            if ("OTHER".equals(existing.getRequestCategory())) {
+                validateOtherCancelAvailable(existing);
+            }
             int approvedCount = approvalMapper.countApprovedByApprover(requestId);
             if ("SUBMITTED".equals(existing.getStatus()) && approvedCount == 0) {
                 approvalMapper.deleteByRequestId(requestId);
@@ -794,6 +886,13 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             return;
         }
         throw new IllegalArgumentException("승인중 또는 승인완료 상태의 신청만 취소할 수 있습니다.");
+    }
+
+    private void validateOtherCancelAvailable(AttendanceRequestDto request) {
+        normalizeOtherRequestDateRange(request);
+        if (requestMapper.countActiveGeneralRequestInOtherRange(request) > 0) {
+            throw new IllegalArgumentException("기타 근태 기간에 일반 근태 신청이 있어 상신취소할 수 없습니다. 일반 근태 신청을 먼저 취소하세요.");
+        }
     }
 
     private void validateWeeklyWorkLimitAfterCancel(AttendanceRequestDto request) {
