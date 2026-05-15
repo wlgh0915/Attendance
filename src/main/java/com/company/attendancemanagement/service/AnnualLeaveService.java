@@ -139,9 +139,6 @@ public class AnnualLeaveService {
         if (isHalfDay(workCode)) {
             return HALF_DAY;
         }
-        if ("조퇴".equals(workCode) || "외출".equals(workCode)) {
-            return timeRatioDay(company, empCode, candidate.getWorkDate(), candidate.getRequestWorkMin());
-        }
         return BigDecimal.ZERO;
     }
 
@@ -237,7 +234,7 @@ public class AnnualLeaveService {
     }
 
     private boolean isAnnualGeneralWorkCode(String workCode) {
-        return isHalfDay(workCode) || "조퇴".equals(workCode) || "외출".equals(workCode);
+        return isHalfDay(workCode);
     }
 
     private boolean isHalfDay(String workCode) {

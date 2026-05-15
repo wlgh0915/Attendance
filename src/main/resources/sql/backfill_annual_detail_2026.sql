@@ -42,54 +42,13 @@ WITH GeneralUse AS (
            CAST(SUM(
                CASE
                    WHEN r.REQ_TYPE IN ('전반차', '후반차', '오전반차', '오후반차') THEN 0.5
-                   WHEN r.REQ_TYPE IN ('조퇴', '외출') AND ISNULL(plan.PLAN_WORK_MIN, 0) > 0
-                       THEN CAST(ISNULL(g.WORK_MIN, 0) AS NUMERIC(19,5))
-                            / CAST(plan.PLAN_WORK_MIN AS NUMERIC(19,5))
                    ELSE 0
                END
            ) AS NUMERIC(19,5)) AS USE_DAY
     FROM HRTATTENDANCEREQUEST01 r
-    JOIN HRTATTENDANCE_GENERAL01 g
-      ON g.COMPANY = r.COMPANY
-     AND g.REQ_ID = r.REQ_ID
-    OUTER APPLY (
-        SELECT TOP 1
-               CASE
-                   WHEN s.WORK_ON_HHMM IS NULL OR s.WORK_OFF_HHMM IS NULL THEN 0
-                   WHEN s.WORK_OFF_HHMM >= s.WORK_ON_HHMM
-                   THEN DATEDIFF(MINUTE, s.WORK_ON_HHMM, s.WORK_OFF_HHMM)
-                        - ISNULL(DATEDIFF(MINUTE, s.BREAK1_START_HHMM, s.BREAK1_END_HHMM), 0)
-                        - ISNULL(DATEDIFF(MINUTE, s.BREAK2_START_HHMM, s.BREAK2_END_HHMM), 0)
-                   ELSE 1440 + DATEDIFF(MINUTE, s.WORK_ON_HHMM, s.WORK_OFF_HHMM)
-                        - ISNULL(DATEDIFF(MINUTE, s.BREAK1_START_HHMM, s.BREAK1_END_HHMM), 0)
-                        - ISNULL(DATEDIFF(MINUTE, s.BREAK2_START_HHMM, s.BREAK2_END_HHMM), 0)
-               END AS PLAN_WORK_MIN
-        FROM HRIDEPTTRANSFER01 tr
-        JOIN ORGDEPTMASTER01 dept
-          ON dept.COMPANY = tr.COMPANY
-         AND dept.DEPT_CODE = tr.DEPT_CODE
-        JOIN HRTWORKPATTERNMASTER01 pm
-          ON pm.COMPANY = dept.COMPANY
-         AND pm.WORK_PATTERN_CODE = dept.WORK_PATTERN_CODE
-         AND pm.USE_YN = 'Y'
-        JOIN HRTWORKPATTERNDETAIL01 pd
-          ON pd.COMPANY = pm.COMPANY
-         AND pd.WORK_PATTERN_CODE = pm.WORK_PATTERN_CODE
-         AND pd.SEQ = (
-             (DATEDIFF(DAY, pm.START_DATE, r.TARGET_DATE) % pm.CYCLE_COUNT
-              + pm.CYCLE_COUNT) % pm.CYCLE_COUNT + 1
-         )
-        JOIN HRTSHIFTMASTER01 s
-          ON s.COMPANY = pd.COMPANY
-         AND s.SHIFT_CODE = pd.SHIFT_CODE
-        WHERE tr.COMPANY = r.COMPANY
-          AND tr.EMP_CODE = r.TARGET_EMP_CODE
-          AND tr.START_DATE <= r.TARGET_DATE
-          AND (tr.END_DATE IS NULL OR tr.END_DATE >= r.TARGET_DATE)
-    ) plan
     WHERE r.STATUS = 'APPROVED'
       AND r.REQ_GROUP = 'GENERAL'
-      AND r.REQ_TYPE IN ('조퇴', '외출', '전반차', '후반차', '오전반차', '오후반차')
+      AND r.REQ_TYPE IN ('전반차', '후반차', '오전반차', '오후반차')
       AND YEAR(r.TARGET_DATE) = @TARGET_YYYY
     GROUP BY r.COMPANY, r.TARGET_EMP_CODE
 ),
