@@ -391,9 +391,41 @@ function actualOverlapMin(row, tr) {
     return Math.max(0, Math.min(end, actual.end) - Math.max(start, actual.start));
 }
 
-function requestEffectForState(state) {
+function baseActualWorkMin(row) {
+    if (!row || !workDateIsPastOrToday()) return row && row.plannedWorkMin ? row.plannedWorkMin : 0;
+    const plan = plannedRange(row);
+    const hasCheckIn = !!row.checkIn;
+    if (!hasCheckIn) return row.actualWorkMin || 0;
+
+    const actualStart = absoluteMinute('N0', row.checkIn);
+    let actualEnd = null;
+    if (row.checkOut) {
+        actualEnd = absoluteMinute('N0', row.checkOut);
+        if (row.overnightYn === 'Y' || actualEnd < actualStart) actualEnd += 1440;
+    } else if (plan) {
+        actualEnd = plan.end;
+    }
+
+    if (actualStart == null || actualEnd == null || !plan || (row.plannedWorkMin || 0) <= 0) {
+        return row.actualWorkMin || 0;
+    }
+    const baseStart = Math.max(actualStart, plan.start);
+    const baseEnd = Math.min(actualEnd, plan.end);
+    if (baseEnd <= baseStart) return 0;
+    return Math.max(0, baseEnd - baseStart - breakOverlapMin(row, baseStart, baseEnd));
+}
+
+function actualMissingWorkMin(row) {
+    if (!row || !workDateIsPastOrToday()) return 0;
+    return Math.max(0, (row.plannedWorkMin || 0) - baseActualWorkMin(row));
+}
+
+function requestEffectForState(state, row) {
     if (!isActiveRequest(state) || state.existingRequestGroup === 'OTHER') return 0;
-    return requestEffectMin(categoryOfRequest(state), state.requestWorkMin || 0);
+    const category = categoryOfRequest(state);
+    const min = state.requestWorkMin || 0;
+    if (category !== 'LEAVE') return requestEffectMin(category, min);
+    return -Math.max(0, min - actualMissingWorkMin(row));
 }
 
 function weeklyBaseWithRequests(row) {
@@ -491,15 +523,15 @@ function dailyExpectedWorkMin(row, currentState, selectedEffectMin) {
     let total = row.plannedWorkMin || 0;
     activeGeneralRequests(row).forEach(req => {
         if (requestMatches(req, currentState)) return;
-        total += requestEffectForState(req);
+        total += requestEffectForState(req, row);
     });
     total += selectedEffectMin || 0;
     return Math.max(0, total);
 }
 
 function adjustedWeeklyWorkMin(row, currentState, selectedState) {
-    const selectedEffectMin = requestEffectForState(selectedState);
-    const total = weeklyBaseWithRequests(row) - requestEffectForState(currentState) + (selectedEffectMin || 0);
+    const selectedEffectMin = requestEffectForState(selectedState, row);
+    const total = weeklyBaseWithRequests(row) - requestEffectForState(currentState, row) + (selectedEffectMin || 0);
     return Math.max(total, 0);
 }
 

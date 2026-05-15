@@ -993,10 +993,85 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         if ("OTHER".equals(request.getRequestCategory())) {
             return restoredOtherWorkMinAfterCancel(request, weekDate);
         }
-        if (request.getRequestWorkMin() != null && request.getRequestWorkMin() > 0) {
-            return request.getRequestWorkMin();
+        return restoredGeneralWorkMinAfterCancel(request);
+    }
+
+    private int restoredGeneralWorkMinAfterCancel(AttendanceRequestDto request) {
+        int requestMin = request.getRequestWorkMin() != null && request.getRequestWorkMin() > 0
+                ? request.getRequestWorkMin()
+                : plannedWorkMin(request.getCompany(), request.getEmpCode(), request.getWorkDate());
+        LocalDate workDate = LocalDate.parse(request.getWorkDate());
+        if (workDate.isAfter(LocalDate.now())) {
+            return requestMin;
         }
-        return plannedWorkMin(request.getCompany(), request.getEmpCode(), request.getWorkDate());
+        int actualMissingMin = actualMissingWorkMin(request.getCompany(), request.getEmpCode(), request.getWorkDate());
+        return Math.max(0, requestMin - actualMissingMin);
+    }
+
+    private int actualMissingWorkMin(String company, String empCode, String workDate) {
+        int plannedMin = plannedWorkMin(company, empCode, workDate);
+        if (plannedMin <= 0) {
+            return 0;
+        }
+        int actualMin = baseActualWorkMin(company, empCode, workDate, plannedMin);
+        return Math.max(0, plannedMin - actualMin);
+    }
+
+    private int baseActualWorkMin(String company, String empCode, String workDate, int plannedMin) {
+        Map<String, Object> shiftInfo = requestMapper.findPlannedShiftInfo(company, empCode, workDate);
+        Map<String, Object> actual = requestMapper.findAttendanceRecordInfo(company, empCode, workDate);
+        if (actual == null) {
+            return 0;
+        }
+        String checkIn = stringValue(actual, "checkIn", "CHECKIN");
+        String checkOut = stringValue(actual, "checkOut", "CHECKOUT");
+        if (checkIn == null) {
+            Integer recordWorkMin = numberValue(actual, "workMin", "WORKMIN");
+            return recordWorkMin == null ? 0 : Math.min(recordWorkMin, plannedMin);
+        }
+        if (shiftInfo == null) {
+            Integer recordWorkMin = numberValue(actual, "workMin", "WORKMIN");
+            return recordWorkMin == null ? 0 : Math.min(recordWorkMin, plannedMin);
+        }
+        String workOn = stringValue(shiftInfo, "workOnHhmm", "WORKONHHMM");
+        String workOff = stringValue(shiftInfo, "workOffHhmm", "WORKOFFHHMM");
+        if (workOn == null || workOff == null) {
+            return 0;
+        }
+        int plannedStart = toMinute(workOn);
+        int plannedEnd = toMinute(workOff);
+        if (plannedEnd <= plannedStart) {
+            plannedEnd += 1440;
+        }
+        int actualStart = toMinute(checkIn);
+        int actualEnd;
+        if (checkOut == null) {
+            actualEnd = plannedEnd;
+        } else {
+            actualEnd = toMinute(checkOut);
+            String overnightYn = stringValue(actual, "overnightYn", "OVERNIGHTYN");
+            if ("Y".equals(overnightYn) || actualEnd < actualStart) {
+                actualEnd += 1440;
+            }
+        }
+        int clippedStart = Math.max(actualStart, plannedStart);
+        int clippedEnd = Math.min(actualEnd, plannedEnd);
+        if (clippedEnd <= clippedStart) {
+            return 0;
+        }
+        return Math.max(0, clippedEnd - clippedStart - breakOverlapMin(shiftInfo, clippedStart, clippedEnd));
+    }
+
+    private Integer numberValue(Map<String, Object> map, String camelKey, String upperKey) {
+        Object value = map.get(camelKey);
+        if (value == null) value = map.get(upperKey);
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        if (value == null || value.toString().isBlank()) {
+            return null;
+        }
+        return Integer.parseInt(value.toString());
     }
 
     private int restoredOtherWorkMinAfterCancel(AttendanceRequestDto request, String weekDate) {

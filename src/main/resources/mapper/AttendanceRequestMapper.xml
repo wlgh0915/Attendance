@@ -189,7 +189,9 @@
                                   THEN ISNULL(wg.WORK_MIN, 0)
                                   ELSE 0
                              END
-                    WHEN wr.REQ_TYPE IN ('조퇴', '외근', '외출', '오전반차', '오후반차') THEN -ISNULL(wg.WORK_MIN, 0)
+                    WHEN wr.REQ_TYPE NOT IN ('연장', '조출연장', '휴일근무')
+                         AND wr.TARGET_DATE > CAST(#{today} AS DATE)
+                    THEN -ISNULL(wg.WORK_MIN, 0)
                     ELSE 0
                 END
             ), 0) AS activeWeeklyRequestEffectMin
@@ -406,15 +408,15 @@
                      END) AS BREAK_MIN
             ) awBreak
             OUTER APPLY (
-                SELECT ISNULL(SUM(reqEffect.EFFECT_MIN), 0) AS REQUEST_EFFECT_MIN
+                SELECT ISNULL(SUM(reqEffect.REDUCE_MIN), 0) AS REDUCE_MIN
                 FROM (
                     SELECT CASE
                                WHEN awr.REQ_TYPE IN ('연장', '조출연장', '휴일근무')
-                                   THEN CASE WHEN ISNULL(awg.WORK_MIN, 0) > 0 THEN ISNULL(awg.WORK_MIN, 0) ELSE 0 END
+                                   THEN 0
                                WHEN awr.REQ_GROUP = 'GENERAL'
-                                   THEN -CASE WHEN ISNULL(awg.WORK_MIN, 0) > 0 THEN ISNULL(awg.WORK_MIN, 0) ELSE awPlan.PLAN_WORK_MIN END
+                                   THEN CASE WHEN ISNULL(awg.WORK_MIN, 0) > 0 THEN ISNULL(awg.WORK_MIN, 0) ELSE awPlan.PLAN_WORK_MIN END
                                ELSE 0
-                           END AS EFFECT_MIN
+                           END AS REDUCE_MIN
                     FROM HRTATTENDANCEREQUEST01 awr
                     JOIN HRTATTENDANCE_GENERAL01 awg
                       ON awg.COMPANY = awr.COMPANY AND awg.REQ_ID = awr.REQ_ID
@@ -504,13 +506,33 @@
                 SELECT CASE
                            WHEN awd.WORK_DATE > CAST(#{today} AS DATE) THEN 0
                            ELSE
-                               (CASE WHEN
-                                    ISNULL(awBaseActual.BASE_ACTUAL_MIN, 0) &lt; 0
-                                     THEN 0
-                                     ELSE
-                                    ISNULL(awBaseActual.BASE_ACTUAL_MIN, 0)
+                               ((CASE WHEN ISNULL(awBaseActual.BASE_ACTUAL_MIN, 0) &lt; 0
+                                      THEN 0 ELSE ISNULL(awBaseActual.BASE_ACTUAL_MIN, 0) END)
+                                - ISNULL(awPlan.PLAN_WORK_MIN, 0))
+                               -
+                               (CASE
+                                    WHEN ISNULL(awExpectedReq.REDUCE_MIN, 0) >
+                                         (CASE
+                                             WHEN ISNULL(awPlan.PLAN_WORK_MIN, 0)
+                                                  - (CASE WHEN ISNULL(awBaseActual.BASE_ACTUAL_MIN, 0) &lt; 0
+                                                          THEN 0 ELSE ISNULL(awBaseActual.BASE_ACTUAL_MIN, 0) END) > 0
+                                             THEN ISNULL(awPlan.PLAN_WORK_MIN, 0)
+                                                  - (CASE WHEN ISNULL(awBaseActual.BASE_ACTUAL_MIN, 0) &lt; 0
+                                                          THEN 0 ELSE ISNULL(awBaseActual.BASE_ACTUAL_MIN, 0) END)
+                                             ELSE 0
+                                          END)
+                                    THEN ISNULL(awExpectedReq.REDUCE_MIN, 0)
+                                         - (CASE
+                                             WHEN ISNULL(awPlan.PLAN_WORK_MIN, 0)
+                                                  - (CASE WHEN ISNULL(awBaseActual.BASE_ACTUAL_MIN, 0) &lt; 0
+                                                          THEN 0 ELSE ISNULL(awBaseActual.BASE_ACTUAL_MIN, 0) END) > 0
+                                             THEN ISNULL(awPlan.PLAN_WORK_MIN, 0)
+                                                  - (CASE WHEN ISNULL(awBaseActual.BASE_ACTUAL_MIN, 0) &lt; 0
+                                                          THEN 0 ELSE ISNULL(awBaseActual.BASE_ACTUAL_MIN, 0) END)
+                                             ELSE 0
+                                          END)
+                                    ELSE 0
                                 END)
-                                - ISNULL(awPlan.PLAN_WORK_MIN, 0)
                        END AS ADJ_MIN
             ) dayAdj
         ) weeklyActualAdj
@@ -1717,7 +1739,9 @@
                               THEN ISNULL(g.WORK_MIN, 0)
                               ELSE 0
                          END
-                WHEN r.REQ_TYPE IN ('조퇴', '외근', '외출', '오전반차', '오후반차') THEN -ISNULL(g.WORK_MIN, 0)
+                WHEN r.REQ_TYPE NOT IN ('연장', '조출연장', '휴일근무')
+                     AND r.TARGET_DATE > CAST(GETDATE() AS DATE)
+                THEN -ISNULL(g.WORK_MIN, 0)
                 ELSE 0
             END
         ), 0)
