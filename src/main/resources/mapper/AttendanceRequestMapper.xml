@@ -560,8 +560,33 @@
               AND h.EMP_CODE = ar.EMP_CODE
               AND ar.YYYYMMDD = REPLACE(#{workDate}, '-', '')
         OUTER APPLY (
+            SELECT TOP 1 offShift.SHIFT_CODE
+            FROM HRTATTENDANCEREQUEST01 offReq
+            LEFT JOIN HRTATTENDANCE_OTHER01 offOther
+                   ON offOther.COMPANY = offReq.COMPANY
+                  AND offOther.REQ_ID = offReq.REQ_ID
+            JOIN HRTSHIFTMASTER01 offShift
+                  ON offShift.COMPANY = offReq.COMPANY
+                 AND (
+                       (offReq.REQ_GROUP = 'OTHER'
+                        AND offShift.SHIFT_CODE = offOther.CHANGE_SHIFT_CODE
+                        AND offReq.TARGET_DATE &lt;= CAST(#{workDate} AS DATE)
+                        AND offOther.END_DATE &gt;= CAST(#{workDate} AS DATE))
+                       OR
+                       (offReq.REQ_GROUP = 'GENERAL'
+                        AND offReq.TARGET_DATE = CAST(#{workDate} AS DATE)
+                        AND (offShift.SHIFT_CODE = offReq.REQ_TYPE OR offShift.SHIFT_NAME = offReq.REQ_TYPE))
+                     )
+            WHERE offReq.COMPANY = h.COMPANY
+              AND offReq.TARGET_EMP_CODE = h.EMP_CODE
+              AND offReq.STATUS = 'APPROVED'
+              AND offShift.WORK_TYPE_CODE = 'OFF'
+            ORDER BY offReq.UPDATED_AT DESC, offReq.REQ_ID DESC
+        ) approvedOffShift
+        OUTER APPLY (
             SELECT COALESCE(
                        NULLIF(ar.ACTUAL_SHIFT_CODE, ''),
+                       NULLIF(approvedOffShift.SHIFT_CODE, ''),
                        NULLIF(ar.SHIFT_CODE, ''),
                        CASE WHEN r.REQ_GROUP = 'OTHER' AND r.STATUS = 'APPROVED'
                             THEN NULLIF(o.CHANGE_SHIFT_CODE, '') END,
@@ -608,27 +633,7 @@
                                 WHEN 'WEEKEND' THEN 'OFF'
                                 ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
                             END IN ('OFF', 'HOLIDAY') THEN 0
-                       WHEN EXISTS (
-                            SELECT 1
-                            FROM HRTATTENDANCEREQUEST01 er
-                            WHERE er.COMPANY = h.COMPANY
-                              AND er.TARGET_EMP_CODE = h.EMP_CODE
-                              AND er.STATUS = 'APPROVED'
-                              AND (
-                                    (er.REQ_GROUP = 'OTHER'
-                                     AND er.TARGET_DATE &lt;= CAST(#{workDate} AS DATE)
-                                     AND EXISTS (
-                                         SELECT 1
-                                         FROM HRTATTENDANCE_OTHER01 eo
-                                         WHERE eo.COMPANY = er.COMPANY
-                                           AND eo.REQ_ID = er.REQ_ID
-                                           AND eo.END_DATE &gt;= CAST(#{workDate} AS DATE)
-                                     ))
-                                     OR (er.REQ_GROUP = 'GENERAL'
-                                         AND er.TARGET_DATE = CAST(#{workDate} AS DATE)
-                                        AND er.REQ_TYPE NOT IN ('연장', '조출연장', '휴일근무'))
-                              )
-                       ) THEN 0
+                       WHEN approvedOffShift.SHIFT_CODE IS NOT NULL THEN 0
                        ELSE 1
                    END AS isAbsent
         ) absenceInfo
