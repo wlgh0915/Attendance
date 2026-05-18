@@ -130,12 +130,15 @@
     <!-- 부서원 목록 -->
     <select id="findEmpsByDept"
             resultType="com.company.attendancemanagement.dto.calendar.EmpSimpleDto">
-        SELECT EMP_CODE AS empCode, EMP_NAME AS empName
-        FROM HRIMASTER01
-        WHERE COMPANY   = #{company}
-          AND DEPT_CODE = #{deptCode}
-          AND RETIRE_DATE IS NULL
-        ORDER BY EMP_CODE
+        SELECT h.EMP_CODE  AS empCode,
+               h.EMP_NAME  AS empName,
+               d.DEPT_NAME AS deptName
+        FROM HRIMASTER01 h
+        LEFT JOIN ORGDEPTMASTER01 d ON h.COMPANY = d.COMPANY AND h.DEPT_CODE = d.DEPT_CODE
+        WHERE h.COMPANY   = #{company}
+          AND h.DEPT_CODE = #{deptCode}
+          AND h.RETIRE_DATE IS NULL
+        ORDER BY h.EMP_CODE
     </select>
 
     <!-- 월별 출퇴근 실적 조회 (캘린더 표시용) -->
