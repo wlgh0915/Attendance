@@ -868,6 +868,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             if ("OTHER".equals(existing.getRequestCategory())) {
                 validateOtherCancelAvailable(existing);
             }
+            validateHolidayWorkCancelAvailable(existing);
             int approvedCount = approvalMapper.countApprovedByApprover(requestId);
             if ("SUBMITTED".equals(existing.getStatus()) && approvedCount == 0) {
                 approvalMapper.deleteByRequestId(requestId);
@@ -896,6 +897,12 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         normalizeOtherRequestDateRange(request);
         if (requestMapper.countActiveGeneralRequestInOtherRange(request) > 0) {
             throw new IllegalArgumentException("기타 근태 기간에 일반 근태 신청이 있어 상신취소할 수 없습니다. 일반 근태 신청을 먼저 취소하세요.");
+        }
+    }
+
+    private void validateHolidayWorkCancelAvailable(AttendanceRequestDto request) {
+        if (requestMapper.countSubmittedOrApprovedGeneralRequestOnHolidayWorkDate(request) > 0) {
+            throw new IllegalArgumentException("휴일근무 날짜에 상신중이거나 승인된 일반 근태 신청이 있어 휴일근무를 취소할 수 없습니다. 일반 근태 신청을 먼저 취소하세요.");
         }
     }
 

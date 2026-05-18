@@ -710,18 +710,35 @@
                       END IN ('OFF', 'HOLIDAY')
               </when>
               <when test="'OVERTIME'.equals(requestCategory) or 'LEAVE'.equals(requestCategory)">
-                  AND (CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
-                           WHEN 'WEEKDAY' THEN 'WORK'
-                           WHEN 'ANYDAY'  THEN 'WORK'
-                           WHEN 'WEEKEND' THEN 'OFF'
-                           ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
-                       END IS NULL
-                       OR CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
-                              WHEN 'WEEKDAY' THEN 'WORK'
-                              WHEN 'ANYDAY'  THEN 'WORK'
-                              WHEN 'WEEKEND' THEN 'OFF'
-                              ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
-                          END NOT IN ('OFF', 'HOLIDAY'))
+                  AND (
+                      CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+                          WHEN 'WEEKDAY' THEN 'WORK'
+                          WHEN 'ANYDAY'  THEN 'WORK'
+                          WHEN 'WEEKEND' THEN 'OFF'
+                          ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+                      END IS NULL
+                      OR CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+                             WHEN 'WEEKDAY' THEN 'WORK'
+                             WHEN 'ANYDAY'  THEN 'WORK'
+                             WHEN 'WEEKEND' THEN 'OFF'
+                             ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
+                         END NOT IN ('OFF', 'HOLIDAY')
+                      OR EXISTS (
+                          SELECT 1
+                          FROM HRTATTENDANCEREQUEST01 hr
+                          JOIN HRTATTENDANCE_GENERAL01 hg
+                                 ON hg.COMPANY = hr.COMPANY
+                                AND hg.REQ_ID = hr.REQ_ID
+                          WHERE hr.COMPANY = h.COMPANY
+                            AND hr.TARGET_EMP_CODE = h.EMP_CODE
+                            AND hr.TARGET_DATE = CAST(#{workDate} AS DATE)
+                            AND hr.REQ_GROUP = 'GENERAL'
+                            AND hr.REQ_TYPE = '휴일근무'
+                            AND hr.STATUS = 'APPROVED'
+                            AND hg.START_TIME IS NOT NULL
+                            AND hg.END_TIME IS NOT NULL
+                      )
+                  )
               </when>
           </choose>
           <if test="empCode != null and empCode != ''">
@@ -980,6 +997,30 @@
           AND r.STATUS = 'SUBMITTED'
           AND r.REQ_GROUP = 'OTHER'
           AND CAST(#{workDate} AS DATE) BETWEEN o.START_DATE AND o.END_DATE
+          <if test="requestId != null and requestId != ''">
+              AND r.REQ_ID &lt;&gt; #{requestId}
+          </if>
+    </select>
+
+    <select id="countSubmittedOrApprovedGeneralRequestOnHolidayWorkDate"
+            parameterType="com.company.attendancemanagement.dto.request.AttendanceRequestDto"
+            resultType="int">
+        SELECT COUNT(*)
+        FROM HRTATTENDANCEREQUEST01 r
+        WHERE r.COMPANY = #{company}
+          AND r.TARGET_EMP_CODE = #{empCode}
+          AND r.TARGET_DATE = CAST(#{workDate} AS DATE)
+          AND r.REQ_GROUP = 'GENERAL'
+          AND r.REQ_TYPE &lt;&gt; '휴일근무'
+          AND r.STATUS IN ('SUBMITTED', 'APPROVED')
+          AND EXISTS (
+              SELECT 1
+              FROM HRTATTENDANCEREQUEST01 target
+              WHERE target.COMPANY = r.COMPANY
+                AND target.REQ_ID = #{requestId}
+                AND target.REQ_GROUP = 'GENERAL'
+                AND target.REQ_TYPE = '휴일근무'
+          )
           <if test="requestId != null and requestId != ''">
               AND r.REQ_ID &lt;&gt; #{requestId}
           </if>
@@ -1350,8 +1391,16 @@
 
     <select id="findEffectiveShiftInfo" resultType="java.util.HashMap">
         <![CDATA[
-        SELECT LEFT(CONVERT(VARCHAR(8), es.WORK_ON_HHMM,  108), 5) AS workOnHhmm,
-               LEFT(CONVERT(VARCHAR(8), es.WORK_OFF_HHMM, 108), 5) AS workOffHhmm,
+        SELECT CASE
+                   WHEN dayType.WORK_DAY_TYPE IN ('OFF', 'HOLIDAY') AND hReq.START_TIME IS NOT NULL
+                   THEN LEFT(CONVERT(VARCHAR(8), hReq.START_TIME, 108), 5)
+                   ELSE LEFT(CONVERT(VARCHAR(8), es.WORK_ON_HHMM, 108), 5)
+               END AS workOnHhmm,
+               CASE
+                   WHEN dayType.WORK_DAY_TYPE IN ('OFF', 'HOLIDAY') AND hReq.END_TIME IS NOT NULL
+                   THEN LEFT(CONVERT(VARCHAR(8), hReq.END_TIME, 108), 5)
+                   ELSE LEFT(CONVERT(VARCHAR(8), es.WORK_OFF_HHMM, 108), 5)
+               END AS workOffHhmm,
                LEFT(CONVERT(VARCHAR(8), es.BREAK1_START_HHMM, 108), 5) AS break1StartHhmm,
                LEFT(CONVERT(VARCHAR(8), es.BREAK1_END_HHMM,   108), 5) AS break1EndHhmm,
                LEFT(CONVERT(VARCHAR(8), es.BREAK2_START_HHMM, 108), 5) AS break2StartHhmm,
@@ -1373,10 +1422,37 @@
               )
         JOIN HRTSHIFTMASTER01 ps
                ON ps.COMPANY = pd.COMPANY AND ps.SHIFT_CODE = pd.SHIFT_CODE
+        OUTER APPLY (
+            SELECT CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(ps.WORK_DAY_TYPE, ''))
+                       WHEN 'WEEKDAY' THEN 'WORK'
+                       WHEN 'ANYDAY'  THEN 'WORK'
+                       WHEN 'WEEKEND' THEN 'OFF'
+                       ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(ps.WORK_DAY_TYPE, ''))
+                   END AS WORK_DAY_TYPE
+        ) dayType
         LEFT JOIN HRTDAILYATTENDANCE01 ar
                ON ar.COMPANY = tr.COMPANY
               AND ar.EMP_CODE = tr.EMP_CODE
               AND ar.YYYYMMDD = REPLACE(#{workDate}, '-', '')
+        OUTER APPLY (
+            SELECT TOP 1 g.START_TIME,
+                         g.START_TIME_TYPE,
+                         g.END_TIME,
+                         g.END_TIME_TYPE
+            FROM HRTATTENDANCEREQUEST01 r
+            JOIN HRTATTENDANCE_GENERAL01 g
+                   ON g.COMPANY = r.COMPANY
+                  AND g.REQ_ID = r.REQ_ID
+            WHERE r.COMPANY = tr.COMPANY
+              AND r.TARGET_EMP_CODE = tr.EMP_CODE
+              AND r.TARGET_DATE = CAST(#{workDate} AS DATE)
+              AND r.REQ_GROUP = 'GENERAL'
+              AND r.REQ_TYPE = '휴일근무'
+              AND r.STATUS = 'APPROVED'
+              AND g.START_TIME IS NOT NULL
+              AND g.END_TIME IS NOT NULL
+            ORDER BY r.UPDATED_AT DESC, r.REQ_ID DESC
+        ) hReq
         OUTER APPLY (
             SELECT TOP 1 o.CHANGE_SHIFT_CODE
             FROM HRTATTENDANCEREQUEST01 r
@@ -1403,8 +1479,12 @@
           AND tr.EMP_CODE   = #{empCode}
           AND tr.START_DATE <= CAST(#{workDate} AS DATE)
           AND (tr.END_DATE IS NULL OR tr.END_DATE >= CAST(#{workDate} AS DATE))
-          AND es.WORK_ON_HHMM IS NOT NULL
-          AND es.WORK_OFF_HHMM IS NOT NULL
+          AND (
+                (dayType.WORK_DAY_TYPE IN ('OFF', 'HOLIDAY')
+                 AND hReq.START_TIME IS NOT NULL
+                 AND hReq.END_TIME IS NOT NULL)
+                OR (es.WORK_ON_HHMM IS NOT NULL AND es.WORK_OFF_HHMM IS NOT NULL)
+              )
         ]]>
     </select>
 
@@ -1508,10 +1588,19 @@
                 ELSE base.baseEndMin
             END AS effectiveEndMin
         FROM (
-            SELECT DATEDIFF(MINUTE, CAST('00:00' AS TIME), es.WORK_ON_HHMM) AS baseStartMin,
-                   CASE WHEN es.WORK_OFF_HHMM >= es.WORK_ON_HHMM
-                        THEN DATEDIFF(MINUTE, CAST('00:00' AS TIME), es.WORK_OFF_HHMM)
-                        ELSE 1440 + DATEDIFF(MINUTE, CAST('00:00' AS TIME), es.WORK_OFF_HHMM)
+            SELECT CASE
+                       WHEN dayType.WORK_DAY_TYPE IN ('OFF', 'HOLIDAY') AND hReq.START_TIME IS NOT NULL
+                       THEN (CASE WHEN ISNULL(hReq.START_TIME_TYPE, 'N0') = 'N1' THEN 1440 ELSE 0 END
+                             + DATEDIFF(MINUTE, CAST('00:00' AS TIME), hReq.START_TIME))
+                       ELSE DATEDIFF(MINUTE, CAST('00:00' AS TIME), es.WORK_ON_HHMM)
+                   END AS baseStartMin,
+                   CASE
+                       WHEN dayType.WORK_DAY_TYPE IN ('OFF', 'HOLIDAY') AND hReq.END_TIME IS NOT NULL
+                       THEN (CASE WHEN ISNULL(hReq.END_TIME_TYPE, 'N0') = 'N1' THEN 1440 ELSE 0 END
+                             + DATEDIFF(MINUTE, CAST('00:00' AS TIME), hReq.END_TIME))
+                       WHEN es.WORK_OFF_HHMM >= es.WORK_ON_HHMM
+                       THEN DATEDIFF(MINUTE, CAST('00:00' AS TIME), es.WORK_OFF_HHMM)
+                       ELSE 1440 + DATEDIFF(MINUTE, CAST('00:00' AS TIME), es.WORK_OFF_HHMM)
                    END AS baseEndMin
             FROM HRIDEPTTRANSFER01 tr
             JOIN ORGDEPTMASTER01 dept
@@ -1530,10 +1619,37 @@
                   )
             JOIN HRTSHIFTMASTER01 ps
                    ON ps.COMPANY = pd.COMPANY AND ps.SHIFT_CODE = pd.SHIFT_CODE
+            OUTER APPLY (
+                SELECT CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(ps.WORK_DAY_TYPE, ''))
+                           WHEN 'WEEKDAY' THEN 'WORK'
+                           WHEN 'ANYDAY'  THEN 'WORK'
+                           WHEN 'WEEKEND' THEN 'OFF'
+                           ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(ps.WORK_DAY_TYPE, ''))
+                       END AS WORK_DAY_TYPE
+            ) dayType
             LEFT JOIN HRTDAILYATTENDANCE01 ar
                    ON ar.COMPANY = tr.COMPANY
                   AND ar.EMP_CODE = tr.EMP_CODE
                   AND ar.YYYYMMDD = REPLACE(#{workDate}, '-', '')
+            OUTER APPLY (
+                SELECT TOP 1 g.START_TIME,
+                             g.START_TIME_TYPE,
+                             g.END_TIME,
+                             g.END_TIME_TYPE
+                FROM HRTATTENDANCEREQUEST01 r
+                JOIN HRTATTENDANCE_GENERAL01 g
+                       ON g.COMPANY = r.COMPANY
+                      AND g.REQ_ID = r.REQ_ID
+                WHERE r.COMPANY = tr.COMPANY
+                  AND r.TARGET_EMP_CODE = tr.EMP_CODE
+                  AND r.TARGET_DATE = CAST(#{workDate} AS DATE)
+                  AND r.REQ_GROUP = 'GENERAL'
+                  AND r.REQ_TYPE = '휴일근무'
+                  AND r.STATUS = 'APPROVED'
+                  AND g.START_TIME IS NOT NULL
+                  AND g.END_TIME IS NOT NULL
+                ORDER BY r.UPDATED_AT DESC, r.REQ_ID DESC
+            ) hReq
             OUTER APPLY (
                 SELECT TOP 1 o.CHANGE_SHIFT_CODE
                 FROM HRTATTENDANCEREQUEST01 r
@@ -1560,8 +1676,12 @@
               AND tr.EMP_CODE   = #{empCode}
               AND tr.START_DATE <= CAST(#{workDate} AS DATE)
               AND (tr.END_DATE IS NULL OR tr.END_DATE >= CAST(#{workDate} AS DATE))
-              AND es.WORK_ON_HHMM IS NOT NULL
-              AND es.WORK_OFF_HHMM IS NOT NULL
+              AND (
+                    (dayType.WORK_DAY_TYPE IN ('OFF', 'HOLIDAY')
+                     AND hReq.START_TIME IS NOT NULL
+                     AND hReq.END_TIME IS NOT NULL)
+                    OR (es.WORK_ON_HHMM IS NOT NULL AND es.WORK_OFF_HHMM IS NOT NULL)
+                  )
         ) base
         OUTER APPLY (
             SELECT MIN(CASE WHEN r.REQ_TYPE = '조출연장'

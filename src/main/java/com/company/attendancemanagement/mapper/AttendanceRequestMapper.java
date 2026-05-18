@@ -33,6 +33,8 @@ public interface AttendanceRequestMapper {
 
     int countSubmittedOtherRequestOnGeneralDate(AttendanceRequestDto dto);
 
+    int countSubmittedOrApprovedGeneralRequestOnHolidayWorkDate(AttendanceRequestDto dto);
+
     int insertRequestHeader(AttendanceRequestDto dto);
 
     int insertGeneralDetail(AttendanceRequestDto dto);
