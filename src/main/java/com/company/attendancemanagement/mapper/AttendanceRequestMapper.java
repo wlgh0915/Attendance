@@ -31,6 +31,10 @@ public interface AttendanceRequestMapper {
 
     int countActiveGeneralRequestInOtherRange(AttendanceRequestDto dto);
 
+    int countSubmittedOtherRequestOnGeneralDate(AttendanceRequestDto dto);
+
+    int countSubmittedOrApprovedGeneralRequestOnHolidayWorkDate(AttendanceRequestDto dto);
+
     int insertRequestHeader(AttendanceRequestDto dto);
 
     int insertGeneralDetail(AttendanceRequestDto dto);
@@ -55,6 +59,10 @@ public interface AttendanceRequestMapper {
 
     int applyApprovedHolidayRequestToAttendance(@Param("requestId") String requestId);
 
+    int revertCanceledOtherAttendanceUpdate(@Param("requestId") String requestId);
+
+    int revertCanceledOtherAttendanceDelete(@Param("requestId") String requestId);
+
     int revertCanceledHolidayAttendanceUpdate(@Param("requestId") String requestId);
 
     int revertCanceledHolidayAttendanceDelete(@Param("requestId") String requestId);
@@ -76,6 +84,16 @@ public interface AttendanceRequestMapper {
     Map<String, Object> findPlannedShiftInfo(@Param("company")  String company,
                                              @Param("empCode")  String empCode,
                                              @Param("workDate") String workDate);
+
+    Map<String, Object> findEffectiveShiftInfo(@Param("company")  String company,
+                                               @Param("empCode")  String empCode,
+                                               @Param("workDate") String workDate);
+
+    int countPlannedShift(@Param("company")  String company,
+                          @Param("empCode")  String empCode,
+                          @Param("workDate") String workDate);
+
+    int countUnplannedShiftDays(AttendanceRequestDto dto);
 
     Map<String, Object> findShiftInfoByCodeOrName(@Param("company") String company,
                                                   @Param("shiftCodeOrName") String shiftCodeOrName);

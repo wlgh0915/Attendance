@@ -305,7 +305,11 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         boolean isOther = "OTHER".equals(dto.getRequestCategory());
         if (isOther) {
             normalizeOtherRequestDateRange(dto);
+            validateWorkPlanExists(dto);
             validateOtherRangeAvailable(dto);
+        } else {
+            validateWorkPlanExists(dto);
+            validateNoSubmittedOtherRequestOnGeneralDate(dto);
         }
 
         applyFixedHalfDayTime(dto);
@@ -323,16 +327,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             dto.setRequestWorkMin(requestWorkMin);
         }
 
-        // 조출연장: 시작시간 09:00 이전, 연장: 종료시간 18:00 이후
-        if ("조출연장".equals(dto.getRequestWorkCode())
-                && absoluteMinute(dto.getStartTimeType(), dto.getStartTime()) >= toMinute("09:00")) {
-            throw new IllegalArgumentException("조출연장은 시작시간이 09:00 이전이어야 합니다.");
-        }
-        if ("연장".equals(dto.getRequestWorkCode())
-                && absoluteMinute(dto.getEndTimeType(), dto.getEndTime()) <= toMinute("18:00")) {
-            throw new IllegalArgumentException("연장근무는 종료시간이 18:00 이후여야 합니다.");
-        }
-        validateOvertimeOutsidePlannedWorkTime(dto);
+        validateOvertimeOutsideEffectiveWorkTime(dto);
 
         if (isBoundedLeaveRequest(dto.getRequestWorkCode())) {
             validateWithinEffectiveWorkTime(dto);
@@ -406,18 +401,68 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         }
     }
 
-    private void applyFixedHalfDayTime(AttendanceRequestDto dto) {
-        if ("오전반차".equals(dto.getRequestWorkCode()) || "전반차".equals(dto.getRequestWorkCode())) {
-            dto.setStartTimeType("N0");
-            dto.setStartTime("09:00");
-            dto.setEndTimeType("N0");
-            dto.setEndTime("13:00");
-        } else if ("오후반차".equals(dto.getRequestWorkCode()) || "후반차".equals(dto.getRequestWorkCode())) {
-            dto.setStartTimeType("N0");
-            dto.setStartTime("14:00");
-            dto.setEndTimeType("N0");
-            dto.setEndTime("18:00");
+    private void validateNoSubmittedOtherRequestOnGeneralDate(AttendanceRequestDto dto) {
+        if (requestMapper.countSubmittedOtherRequestOnGeneralDate(dto) > 0) {
+            throw new IllegalArgumentException("승인중인 기타 근태 신청이 있어 일반 근태를 신청할 수 없습니다.");
         }
+    }
+
+    private void validateWorkPlanExists(AttendanceRequestDto dto) {
+        if ("OTHER".equals(dto.getRequestCategory())) {
+            normalizeOtherRequestDateRange(dto);
+            if (requestMapper.countUnplannedShiftDays(dto) > 0) {
+                throw new IllegalArgumentException("근무 계획이 미설정된 기간에는 근태를 신청할 수 없습니다.");
+            }
+            return;
+        }
+        if (requestMapper.countPlannedShift(dto.getCompany(), dto.getEmpCode(), dto.getWorkDate()) == 0) {
+            throw new IllegalArgumentException("근무 계획이 미설정된 인원은 근태를 신청할 수 없습니다.");
+        }
+    }
+
+    private void applyFixedHalfDayTime(AttendanceRequestDto dto) {
+        if (!isHalfDayRequest(dto.getRequestWorkCode())) {
+            return;
+        }
+
+        Map<String, Object> shiftInfo = requestMapper.findEffectiveShiftInfo(
+                dto.getCompany(), dto.getEmpCode(), dto.getWorkDate());
+        if (shiftInfo == null) {
+            throw new IllegalArgumentException("근무 계획 시간을 확인할 수 없어 반차 시간을 계산할 수 없습니다.");
+        }
+
+        String workOn = stringValue(shiftInfo, "workOnHhmm", "WORKONHHMM");
+        String workOff = stringValue(shiftInfo, "workOffHhmm", "WORKOFFHHMM");
+        if (workOn == null || workOff == null) {
+            throw new IllegalArgumentException("근무 계획 시간을 확인할 수 없어 반차 시간을 계산할 수 없습니다.");
+        }
+
+        int plannedStart = toMinute(workOn);
+        int plannedEnd = toMinute(workOff);
+        if (plannedEnd <= plannedStart) {
+            plannedEnd += 1440;
+        }
+
+        int plannedWorkMin = Math.max(0, plannedEnd - plannedStart - breakOverlapMin(shiftInfo, plannedStart, plannedEnd));
+        if (plannedWorkMin <= 0) {
+            throw new IllegalArgumentException("소정근로시간이 없어 반차 시간을 계산할 수 없습니다.");
+        }
+
+        int halfWorkMin = Math.round(plannedWorkMin / 2.0f);
+        int start;
+        int end;
+        if ("오전반차".equals(dto.getRequestWorkCode()) || "전반차".equals(dto.getRequestWorkCode())) {
+            start = plannedStart;
+            end = addWorkingMinutes(shiftInfo, plannedStart, plannedEnd, halfWorkMin);
+        } else {
+            end = plannedEnd;
+            start = subtractWorkingMinutes(shiftInfo, plannedStart, plannedEnd, halfWorkMin);
+        }
+
+        dto.setStartTimeType(timeType(start));
+        dto.setStartTime(hhmm(start));
+        dto.setEndTimeType(timeType(end));
+        dto.setEndTime(hhmm(end));
     }
 
     private boolean isHalfDayRequest(String workCode) {
@@ -463,12 +508,12 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         }
     }
 
-    private void validateOvertimeOutsidePlannedWorkTime(AttendanceRequestDto dto) {
+    private void validateOvertimeOutsideEffectiveWorkTime(AttendanceRequestDto dto) {
         String workCode = dto.getRequestWorkCode();
         if (!"연장".equals(workCode) && !"조출연장".equals(workCode)) {
             return;
         }
-        Map<String, Object> shiftInfo = requestMapper.findPlannedShiftInfo(
+        Map<String, Object> shiftInfo = requestMapper.findEffectiveShiftInfo(
                 dto.getCompany(), dto.getEmpCode(), dto.getWorkDate());
         if (shiftInfo == null) {
             return;
@@ -506,6 +551,64 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
     private int toMinute(String hhmm) {
         LocalTime time = LocalTime.parse(hhmm);
         return time.getHour() * 60 + time.getMinute();
+    }
+
+    private int addWorkingMinutes(Map<String, Object> shiftInfo, int rangeStart, int rangeEnd, int workMin) {
+        int worked = 0;
+        for (int minute = rangeStart; minute < rangeEnd; minute++) {
+            if (isBreakMinute(shiftInfo, minute, rangeStart, rangeEnd)) {
+                continue;
+            }
+            worked++;
+            if (worked >= workMin) {
+                return minute + 1;
+            }
+        }
+        return rangeEnd;
+    }
+
+    private int subtractWorkingMinutes(Map<String, Object> shiftInfo, int rangeStart, int rangeEnd, int workMin) {
+        int worked = 0;
+        for (int minute = rangeEnd - 1; minute >= rangeStart; minute--) {
+            if (isBreakMinute(shiftInfo, minute, rangeStart, rangeEnd)) {
+                continue;
+            }
+            worked++;
+            if (worked >= workMin) {
+                return minute;
+            }
+        }
+        return rangeStart;
+    }
+
+    private boolean isBreakMinute(Map<String, Object> shiftInfo, int minute, int rangeStart, int rangeEnd) {
+        return isInBreak(shiftInfo.get("break1StartHhmm"), shiftInfo.get("break1EndHhmm"), minute, rangeStart, rangeEnd)
+                || isInBreak(shiftInfo.get("break2StartHhmm"), shiftInfo.get("break2EndHhmm"), minute, rangeStart, rangeEnd);
+    }
+
+    private boolean isInBreak(Object breakStartValue, Object breakEndValue, int minute, int rangeStart, int rangeEnd) {
+        if (breakStartValue == null || breakEndValue == null) return false;
+        String breakStartText = breakStartValue.toString();
+        String breakEndText = breakEndValue.toString();
+        if (breakStartText.isBlank() || breakEndText.isBlank()) return false;
+        int breakStart = toMinute(breakStartText);
+        int breakEnd = breakStartText.compareTo(breakEndText) > 0
+                ? 1440 + toMinute(breakEndText)
+                : toMinute(breakEndText);
+        if (rangeEnd > 1440 && breakStart < rangeStart) {
+            breakStart += 1440;
+            breakEnd += 1440;
+        }
+        return minute >= breakStart && minute < breakEnd;
+    }
+
+    private String timeType(int absoluteMinute) {
+        return absoluteMinute >= 1440 ? "N1" : "N0";
+    }
+
+    private String hhmm(int absoluteMinute) {
+        int normalized = ((absoluteMinute % 1440) + 1440) % 1440;
+        return String.format("%02d:%02d", normalized / 60, normalized % 60);
     }
 
     private int breakOverlapMin(Map<String, Object> shiftInfo, int startMin, int endMin) {
@@ -657,9 +760,12 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
     public void submitRequest(String requestId, LoginUserDto loginUser) {
         AttendanceRequestDto existing = requestMapper.findByRequestId(requestId);
         if (existing == null) throw new IllegalArgumentException("존재하지 않는 근태신청입니다.");
+        validateWorkPlanExists(existing);
         if ("OTHER".equals(existing.getRequestCategory())) {
             normalizeOtherRequestDateRange(existing);
             validateOtherRangeAvailable(existing);
+        } else {
+            validateNoSubmittedOtherRequestOnGeneralDate(existing);
         }
         if ("APPROVED".equals(existing.getStatus())) {
             throw new IllegalArgumentException("이미 승인완료된 신청입니다.");
@@ -759,6 +865,10 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             throw new IllegalArgumentException("신청자 또는 부서장만 취소할 수 있습니다.");
         }
         if ("SUBMITTED".equals(existing.getStatus()) || "APPROVED".equals(existing.getStatus())) {
+            if ("OTHER".equals(existing.getRequestCategory())) {
+                validateOtherCancelAvailable(existing);
+            }
+            validateHolidayWorkCancelAvailable(existing);
             int approvedCount = approvalMapper.countApprovedByApprover(requestId);
             if ("SUBMITTED".equals(existing.getStatus()) && approvedCount == 0) {
                 approvalMapper.deleteByRequestId(requestId);
@@ -766,6 +876,10 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
                 return;
             }
             validateWeeklyWorkLimitAfterCancel(existing);
+            if ("APPROVED".equals(existing.getStatus()) && "OTHER".equals(existing.getRequestCategory())) {
+                requestMapper.revertCanceledOtherAttendanceUpdate(requestId);
+                requestMapper.revertCanceledOtherAttendanceDelete(requestId);
+            }
             if ("APPROVED".equals(existing.getStatus()) && "휴일근무".equals(existing.getRequestWorkCode())) {
                 requestMapper.revertCanceledHolidayAttendanceUpdate(requestId);
                 requestMapper.revertCanceledHolidayAttendanceDelete(requestId);
@@ -777,6 +891,19 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             return;
         }
         throw new IllegalArgumentException("승인중 또는 승인완료 상태의 신청만 취소할 수 있습니다.");
+    }
+
+    private void validateOtherCancelAvailable(AttendanceRequestDto request) {
+        normalizeOtherRequestDateRange(request);
+        if (requestMapper.countActiveGeneralRequestInOtherRange(request) > 0) {
+            throw new IllegalArgumentException("기타 근태 기간에 일반 근태 신청이 있어 상신취소할 수 없습니다. 일반 근태 신청을 먼저 취소하세요.");
+        }
+    }
+
+    private void validateHolidayWorkCancelAvailable(AttendanceRequestDto request) {
+        if (requestMapper.countSubmittedOrApprovedGeneralRequestOnHolidayWorkDate(request) > 0) {
+            throw new IllegalArgumentException("휴일근무 날짜에 상신중이거나 승인된 일반 근태 신청이 있어 휴일근무를 취소할 수 없습니다. 일반 근태 신청을 먼저 취소하세요.");
+        }
     }
 
     private void validateWeeklyWorkLimitAfterCancel(AttendanceRequestDto request) {
@@ -873,10 +1000,85 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         if ("OTHER".equals(request.getRequestCategory())) {
             return restoredOtherWorkMinAfterCancel(request, weekDate);
         }
-        if (request.getRequestWorkMin() != null && request.getRequestWorkMin() > 0) {
-            return request.getRequestWorkMin();
+        return restoredGeneralWorkMinAfterCancel(request);
+    }
+
+    private int restoredGeneralWorkMinAfterCancel(AttendanceRequestDto request) {
+        int requestMin = request.getRequestWorkMin() != null && request.getRequestWorkMin() > 0
+                ? request.getRequestWorkMin()
+                : plannedWorkMin(request.getCompany(), request.getEmpCode(), request.getWorkDate());
+        LocalDate workDate = LocalDate.parse(request.getWorkDate());
+        if (workDate.isAfter(LocalDate.now())) {
+            return requestMin;
         }
-        return plannedWorkMin(request.getCompany(), request.getEmpCode(), request.getWorkDate());
+        int actualMissingMin = actualMissingWorkMin(request.getCompany(), request.getEmpCode(), request.getWorkDate());
+        return Math.max(0, requestMin - actualMissingMin);
+    }
+
+    private int actualMissingWorkMin(String company, String empCode, String workDate) {
+        int plannedMin = plannedWorkMin(company, empCode, workDate);
+        if (plannedMin <= 0) {
+            return 0;
+        }
+        int actualMin = baseActualWorkMin(company, empCode, workDate, plannedMin);
+        return Math.max(0, plannedMin - actualMin);
+    }
+
+    private int baseActualWorkMin(String company, String empCode, String workDate, int plannedMin) {
+        Map<String, Object> shiftInfo = requestMapper.findPlannedShiftInfo(company, empCode, workDate);
+        Map<String, Object> actual = requestMapper.findAttendanceRecordInfo(company, empCode, workDate);
+        if (actual == null) {
+            return 0;
+        }
+        String checkIn = stringValue(actual, "checkIn", "CHECKIN");
+        String checkOut = stringValue(actual, "checkOut", "CHECKOUT");
+        if (checkIn == null) {
+            Integer recordWorkMin = numberValue(actual, "workMin", "WORKMIN");
+            return recordWorkMin == null ? 0 : Math.min(recordWorkMin, plannedMin);
+        }
+        if (shiftInfo == null) {
+            Integer recordWorkMin = numberValue(actual, "workMin", "WORKMIN");
+            return recordWorkMin == null ? 0 : Math.min(recordWorkMin, plannedMin);
+        }
+        String workOn = stringValue(shiftInfo, "workOnHhmm", "WORKONHHMM");
+        String workOff = stringValue(shiftInfo, "workOffHhmm", "WORKOFFHHMM");
+        if (workOn == null || workOff == null) {
+            return 0;
+        }
+        int plannedStart = toMinute(workOn);
+        int plannedEnd = toMinute(workOff);
+        if (plannedEnd <= plannedStart) {
+            plannedEnd += 1440;
+        }
+        int actualStart = toMinute(checkIn);
+        int actualEnd;
+        if (checkOut == null) {
+            actualEnd = plannedEnd;
+        } else {
+            actualEnd = toMinute(checkOut);
+            String overnightYn = stringValue(actual, "overnightYn", "OVERNIGHTYN");
+            if ("Y".equals(overnightYn) || actualEnd < actualStart) {
+                actualEnd += 1440;
+            }
+        }
+        int clippedStart = Math.max(actualStart, plannedStart);
+        int clippedEnd = Math.min(actualEnd, plannedEnd);
+        if (clippedEnd <= clippedStart) {
+            return 0;
+        }
+        return Math.max(0, clippedEnd - clippedStart - breakOverlapMin(shiftInfo, clippedStart, clippedEnd));
+    }
+
+    private Integer numberValue(Map<String, Object> map, String camelKey, String upperKey) {
+        Object value = map.get(camelKey);
+        if (value == null) value = map.get(upperKey);
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        if (value == null || value.toString().isBlank()) {
+            return null;
+        }
+        return Integer.parseInt(value.toString());
     }
 
     private int restoredOtherWorkMinAfterCancel(AttendanceRequestDto request, String weekDate) {
@@ -916,7 +1118,13 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
     }
 
     private boolean canCancelRequest(AttendanceRequestDto request, LoginUserDto loginUser) {
+        if ("ADMIN".equals(loginUser.getRoleCode())) {
+            return true;
+        }
         if (loginUser.getEmpCode().equals(request.getRequesterCode())) {
+            return true;
+        }
+        if (loginUser.getEmpCode().equals(request.getEmpCode())) {
             return true;
         }
         String deptLeader = requestMapper.findDeptLeader(loginUser.getCompany(), request.getDeptCode());

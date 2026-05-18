@@ -82,7 +82,7 @@
           AND (
               (
                   r.REQ_GROUP = 'GENERAL'
-                  AND r.REQ_TYPE IN ('조퇴', '외출', '전반차', '후반차', '오전반차', '오후반차')
+                  AND r.REQ_TYPE IN ('전반차', '후반차', '오전반차', '오후반차')
                   AND YEAR(r.TARGET_DATE) = #{yyyy}
               )
               OR

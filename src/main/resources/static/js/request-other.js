@@ -192,15 +192,18 @@ function renderTable(rows) {
     tbody.innerHTML = rows.map((r, idx) => {
         const selectedWorkCode = r.requestWorkCode || '';
         const existing = existingRequestFor(r, selectedWorkCode) || r;
+        const planBlocked = r.hasWorkPlan === false || r.hasWorkPlan === 0;
         const locked = (existing.status === 'SUBMITTED' || existing.status === 'APPROVED');
         const activeOtherRequest = existing.existingRequestGroup === 'OTHER' && isActiveRequest(existing);
         const blockedByOtherRequest = hasActiveOtherRequest(r) && !activeOtherRequest;
-        const dis = (locked || blockedByOtherRequest) ? 'disabled' : '';
-        const checkDis = blockedByOtherRequest ? 'disabled' : '';
+        const dis = (locked || blockedByOtherRequest || planBlocked) ? 'disabled' : '';
+        const checkDis = (blockedByOtherRequest || planBlocked) ? 'disabled' : '';
         const reasonVal = (existing.reason||'').replace(/"/g,'&quot;');
         const reasonDetailVal = (existing.reasonDetail||'').replace(/"/g,'&quot;');
         const endDateVal = existing.endDate || r.endDate || workDate;
-        const statusHtml = blockedByOtherRequest
+        const statusHtml = planBlocked
+            ? '<span class="badge badge-rejected">근무계획 미설정</span>'
+            : blockedByOtherRequest
             ? '<span class="badge badge-submitted">신청있음</span>'
             : statusBadge(existing.status);
         return '<tr data-idx="'+idx+'">'

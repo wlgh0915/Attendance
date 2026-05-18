@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/default_layout}">
+<head>
+    <meta charset="UTF-8">
+    <title>부서별 주 근태조회</title>
+    <link rel="stylesheet" th:href="@{/css/weekly.css}">
+</head>
+<body>
+<div layout:fragment="content">
+<div class="weekly-page">
+
+    <!-- 상단 컨트롤 -->
+    <div class="weekly-top">
+
+        <!-- 주 네비게이션 -->
+        <div class="weekly-nav">
+            <a th:href="@{/attendance/department/week(workDate=${prevWeekDate}, deptCode=${selectedDept})}">◀</a>
+            <span class="week-label"
+                  th:text="${#strings.substring(weekStart,5,7) + '/' + #strings.substring(weekStart,8,10)
+                           + ' ~ '
+                           + #strings.substring(weekEnd,5,7) + '/' + #strings.substring(weekEnd,8,10)}">
+            </span>
+            <a th:href="@{/attendance/department/week(workDate=${nextWeekDate}, deptCode=${selectedDept})}">▶</a>
+            <a class="today-btn" onclick="goThisWeek()">이번 주</a>
+        </div>
+
+        <!-- 날짜 직접 입력 -->
+        <div class="filter-group">
+            <label>날짜</label>
+            <input type="date" th:value="${workDate}" onchange="onDateChange(this.value)">
+        </div>
+
+        <!-- 부서 선택 -->
+        <div class="filter-group">
+            <label>부서</label>
+            <select onchange="onDeptChange(this.value)">
+                <option th:each="d : ${depts}"
+                        th:value="${d.deptCode}"
+                        th:text="${d.deptName}"
+                        th:selected="${d.deptCode == selectedDept}">
+                </option>
+            </select>
+        </div>
+
+    </div><!-- /weekly-top -->
+
+    <!-- 테이블 -->
+    <div class="weekly-table-wrap">
+        <table class="weekly-table">
+            <thead>
+            <tr>
+                <th class="th-emp">사원</th>
+                <th class="th-work">실근무시간</th>
+                <th th:each="d,i : ${dayDates}"
+                    th:classappend="${i.index == 0 ? 'th-sun' : (i.index == 6 ? 'th-sat' : '')}"
+                    th:text="${#strings.substring(d,5,7) + '/' + #strings.substring(d,8,10) + ' (' + dayNames[i.index] + ')'}">
+                </th>
+            </tr>
+            </thead>
+            <tbody id="weekBody"></tbody>
+        </table>
+    </div>
+
+</div><!-- /weekly-page -->
+
+<script th:inline="javascript">
+    const WEEKLY_DATA   = /*[[${weeklyData}]]*/ [];
+    const WORK_DATE     = /*[[${workDate}]]*/ '';
+    const SELECTED_DEPT = /*[[${selectedDept}]]*/ '';
+</script>
+<script th:src="@{/js/weekly.js}"></script>
+</div><!-- /layout:fragment="content" -->
+</body>
+</html>
