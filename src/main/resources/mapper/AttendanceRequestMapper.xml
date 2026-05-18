@@ -45,8 +45,6 @@
                  ELSE 0
             END                                                   AS plannedWorkMin,
             CASE WHEN absenceInfo.isAbsent = 1 THEN 0
-                 WHEN ar.CHECK_IN IS NULL AND approvedGeneralActual.REQ_TYPE IS NOT NULL
-                 THEN ISNULL(approvedGeneralActual.WORK_MIN, 0)
                  WHEN ar.CHECK_IN IS NULL AND effectiveShiftCalc.RECOGNIZED_NO_RECORD_YN = 'Y'
                  THEN effectiveShiftCalc.WORK_MIN
                  WHEN ar.WORK_MIN IS NOT NULL THEN ar.WORK_MIN
@@ -56,14 +54,10 @@
             weeklyReq.activeWeeklyRequestEffectMin + weeklyActualAdj.weekActualAdjustmentMin AS activeWeeklyRequestEffectMin,
             CASE WHEN absenceInfo.isAbsent = 1
                  THEN 'ABSENT'
-                 WHEN ar.CHECK_IN IS NULL AND approvedGeneralActual.REQ_TYPE IS NOT NULL
-                 THEN approvedGeneralActual.REQ_TYPE
                  ELSE ISNULL(effectiveShift.SHIFT_CODE, '')
             END                                                   AS actualWorkCode,
             CASE WHEN absenceInfo.isAbsent = 1
                  THEN '결근'
-                 WHEN ar.CHECK_IN IS NULL AND approvedGeneralActual.REQ_TYPE IS NOT NULL
-                 THEN approvedGeneralActual.REQ_TYPE
                  ELSE ISNULL(effectiveShift.SHIFT_NAME, '')
             END                                                   AS actualWorkName,
             LEFT(CONVERT(VARCHAR(8), ar.CHECK_IN, 108), 5)         AS checkIn,
@@ -606,21 +600,6 @@
                        ELSE 'N'
                    END AS RECOGNIZED_NO_RECORD_YN
         ) effectiveShiftCalc
-        OUTER APPLY (
-            SELECT TOP 1 er.REQ_TYPE,
-                         eg.WORK_MIN
-            FROM HRTATTENDANCEREQUEST01 er
-            JOIN HRTATTENDANCE_GENERAL01 eg
-              ON eg.COMPANY = er.COMPANY
-             AND eg.REQ_ID = er.REQ_ID
-            WHERE er.COMPANY = h.COMPANY
-              AND er.TARGET_EMP_CODE = h.EMP_CODE
-              AND er.TARGET_DATE = CAST(#{workDate} AS DATE)
-              AND er.REQ_GROUP = 'GENERAL'
-              AND er.STATUS = 'APPROVED'
-              AND er.REQ_TYPE NOT IN ('연장', '조출연장', '휴일근무')
-            ORDER BY er.UPDATED_AT DESC, er.REQ_ID DESC
-        ) approvedGeneralActual
         OUTER APPLY (
             SELECT CASE
                        WHEN CAST(#{workDate} AS DATE) > CAST(#{today} AS DATE) THEN 0
