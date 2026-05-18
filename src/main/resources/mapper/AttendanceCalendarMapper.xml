@@ -65,45 +65,80 @@
     <select id="findRequests"
             resultType="com.company.attendancemanagement.dto.calendar.AttendanceReqSummaryDto">
         <![CDATA[
+        WITH CAL AS (
+            SELECT CAST(#{startDate} AS DATE) AS DT
+            UNION ALL
+            SELECT DATEADD(DAY, 1, DT) FROM CAL
+            WHERE DT < CAST(#{endDate} AS DATE)
+        )
+        -- OTHER(기타근태): TARGET_DATE ~ END_DATE 범위의 각 날짜에 전개
         SELECT
-            CONVERT(VARCHAR(10), r.TARGET_DATE, 23)          AS workDate,
-            r.REQ_ID                                         AS requestId,
-            r.REQ_GROUP                                      AS requestCategory,
-            r.REQ_TYPE                                       AS requestWorkCode,
-            LEFT(CONVERT(VARCHAR(8), g.START_TIME, 108), 5) AS startTime,
-            LEFT(CONVERT(VARCHAR(8), g.END_TIME,   108), 5) AS endTime,
-            r.STATUS                                         AS status,
-            o.CHANGE_SHIFT_CODE                              AS changeShiftCode,
-            cs.SHIFT_NAME                                    AS changeShiftName,
-            CONVERT(VARCHAR(5), cs.WORK_ON_HHMM,  108)      AS changeShiftOnHhmm,
-            CONVERT(VARCHAR(5), cs.WORK_OFF_HHMM, 108)      AS changeShiftOffHhmm,
+            CONVERT(VARCHAR(10), cal.DT, 23)                         AS workDate,
+            r.REQ_ID                                                 AS requestId,
+            r.REQ_GROUP                                              AS requestCategory,
+            r.REQ_TYPE                                               AS requestWorkCode,
+            NULL                                                     AS startTime,
+            NULL                                                     AS endTime,
+            r.STATUS                                                 AS status,
+            o.CHANGE_SHIFT_CODE                                      AS changeShiftCode,
+            cs.SHIFT_NAME                                            AS changeShiftName,
+            CONVERT(VARCHAR(5), cs.WORK_ON_HHMM,  108)               AS changeShiftOnHhmm,
+            CONVERT(VARCHAR(5), cs.WORK_OFF_HHMM, 108)               AS changeShiftOffHhmm,
             CASE
                 WHEN cs.WORK_ON_HHMM IS NOT NULL AND cs.WORK_OFF_HHMM IS NOT NULL
                     THEN DATEDIFF(MINUTE, cs.WORK_ON_HHMM, cs.WORK_OFF_HHMM)
                          - ISNULL(DATEDIFF(MINUTE, cs.BREAK1_START_HHMM, cs.BREAK1_END_HHMM), 0)
                          - ISNULL(DATEDIFF(MINUTE, cs.BREAK2_START_HHMM, cs.BREAK2_END_HHMM), 0)
                 ELSE NULL
-            END                                              AS changeShiftWorkMin
+            END                                                      AS changeShiftWorkMin
+        FROM HRTATTENDANCEREQUEST01 r
+        INNER JOIN HRTATTENDANCE_OTHER01 o    ON r.COMPANY = o.COMPANY AND r.REQ_ID = o.REQ_ID
+        INNER JOIN CAL                        ON cal.DT BETWEEN r.TARGET_DATE AND ISNULL(o.END_DATE, r.TARGET_DATE)
+        LEFT  JOIN HRTSHIFTMASTER01 cs        ON r.COMPANY = cs.COMPANY AND o.CHANGE_SHIFT_CODE = cs.SHIFT_CODE
+        WHERE r.COMPANY         = #{company}
+          AND r.TARGET_EMP_CODE = #{empCode}
+          AND r.REQ_GROUP       = 'OTHER'
+
+        UNION ALL
+
+        -- GENERAL(일반근태): TARGET_DATE 단일 날짜
+        SELECT
+            CONVERT(VARCHAR(10), r.TARGET_DATE, 23)                  AS workDate,
+            r.REQ_ID                                                 AS requestId,
+            r.REQ_GROUP                                              AS requestCategory,
+            r.REQ_TYPE                                               AS requestWorkCode,
+            LEFT(CONVERT(VARCHAR(8), g.START_TIME, 108), 5)          AS startTime,
+            LEFT(CONVERT(VARCHAR(8), g.END_TIME,   108), 5)          AS endTime,
+            r.STATUS                                                 AS status,
+            NULL                                                     AS changeShiftCode,
+            NULL                                                     AS changeShiftName,
+            NULL                                                     AS changeShiftOnHhmm,
+            NULL                                                     AS changeShiftOffHhmm,
+            NULL                                                     AS changeShiftWorkMin
         FROM HRTATTENDANCEREQUEST01 r
         LEFT JOIN HRTATTENDANCE_GENERAL01 g  ON r.COMPANY = g.COMPANY AND r.REQ_ID = g.REQ_ID
-        LEFT JOIN HRTATTENDANCE_OTHER01 o    ON r.COMPANY = o.COMPANY AND r.REQ_ID = o.REQ_ID
-        LEFT JOIN HRTSHIFTMASTER01 cs        ON r.COMPANY = cs.COMPANY AND o.CHANGE_SHIFT_CODE = cs.SHIFT_CODE
-        WHERE r.COMPANY        = #{company}
+        WHERE r.COMPANY         = #{company}
           AND r.TARGET_EMP_CODE = #{empCode}
+          AND r.REQ_GROUP      != 'OTHER'
           AND r.TARGET_DATE BETWEEN CAST(#{startDate} AS DATE) AND CAST(#{endDate} AS DATE)
-        ORDER BY r.TARGET_DATE, r.REQ_ID
+
+        ORDER BY workDate, requestId
+        OPTION (MAXRECURSION 62)
         ]]>
     </select>
 
     <!-- 부서원 목록 -->
     <select id="findEmpsByDept"
             resultType="com.company.attendancemanagement.dto.calendar.EmpSimpleDto">
-        SELECT EMP_CODE AS empCode, EMP_NAME AS empName
-        FROM HRIMASTER01
-        WHERE COMPANY   = #{company}
-          AND DEPT_CODE = #{deptCode}
-          AND RETIRE_DATE IS NULL
-        ORDER BY EMP_CODE
+        SELECT h.EMP_CODE  AS empCode,
+               h.EMP_NAME  AS empName,
+               d.DEPT_NAME AS deptName
+        FROM HRIMASTER01 h
+        LEFT JOIN ORGDEPTMASTER01 d ON h.COMPANY = d.COMPANY AND h.DEPT_CODE = d.DEPT_CODE
+        WHERE h.COMPANY   = #{company}
+          AND h.DEPT_CODE = #{deptCode}
+          AND h.RETIRE_DATE IS NULL
+        ORDER BY h.EMP_CODE
     </select>
 
     <!-- 월별 출퇴근 실적 조회 (캘린더 표시용) -->
