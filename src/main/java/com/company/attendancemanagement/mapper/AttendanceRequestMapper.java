@@ -31,6 +31,8 @@ public interface AttendanceRequestMapper {
 
     int countActiveGeneralRequestInOtherRange(AttendanceRequestDto dto);
 
+    int countSubmittedOtherRequestOnGeneralDate(AttendanceRequestDto dto);
+
     int insertRequestHeader(AttendanceRequestDto dto);
 
     int insertGeneralDetail(AttendanceRequestDto dto);

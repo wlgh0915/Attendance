@@ -967,6 +967,24 @@
           </if>
     </select>
 
+    <select id="countSubmittedOtherRequestOnGeneralDate"
+            parameterType="com.company.attendancemanagement.dto.request.AttendanceRequestDto"
+            resultType="int">
+        SELECT COUNT(*)
+        FROM HRTATTENDANCEREQUEST01 r
+        JOIN HRTATTENDANCE_OTHER01 o
+               ON r.COMPANY = o.COMPANY
+              AND r.REQ_ID = o.REQ_ID
+        WHERE r.COMPANY = #{company}
+          AND r.TARGET_EMP_CODE = #{empCode}
+          AND r.STATUS = 'SUBMITTED'
+          AND r.REQ_GROUP = 'OTHER'
+          AND CAST(#{workDate} AS DATE) BETWEEN o.START_DATE AND o.END_DATE
+          <if test="requestId != null and requestId != ''">
+              AND r.REQ_ID &lt;&gt; #{requestId}
+          </if>
+    </select>
+
     <insert id="insertRequestHeader"
             parameterType="com.company.attendancemanagement.dto.request.AttendanceRequestDto">
         INSERT INTO HRTATTENDANCEREQUEST01 (
