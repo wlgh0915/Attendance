@@ -74,7 +74,7 @@ function requestAdjustMin(day) {
             const min = e < s ? (1440 - s + e) : (e - s);
             if (['연장', '조출연장', '휴일근무'].includes(r.requestWorkCode)) {
                 adj += min;
-            } else if (['조퇴', '외출', '외근', '전반차', '후반차'].includes(r.requestWorkCode)) {
+            } else if (['조퇴', '외출', '외근', '오전반차', '오후반차'].includes(r.requestWorkCode)) {
                 adj -= min;
             }
         });
@@ -135,8 +135,11 @@ function renderCalendar() {
         );
         // 변경 후 근무 시간이 없으면 휴무 근태(연차/병가 등)
         const isLeaveDay = activeOtherReq != null && !activeOtherReq.changeShiftOnHhmm;
+        // 출장 시프트로 변경된 경우 결근 미적용
+        const isBizTripDay = activeOtherReq != null &&
+            activeOtherReq.changeShiftName && activeOtherReq.changeShiftName.includes('출장');
 
-        const hasApprovedLeave = isLeaveDay || (day.requests || []).some(
+        const hasApprovedLeave = isLeaveDay || isBizTripDay || (day.requests || []).some(
             r => r.requestCategory === 'LEAVE' && r.status === 'APPROVED'
         );
         const isAbsent = day.workDayType === 'WORK' &&
@@ -147,10 +150,16 @@ function renderCalendar() {
             weekMin += plannedShiftMin(day);
             weekMin += requestAdjustMin(day);
         }
-        // 실근무 합산: 출근 기록 있는 날 + 연차 등 LEAVE 승인된 날(workMin 저장된 경우)
+        // 실근무 합산: 출근 기록 있는 날 + LEAVE 승인된 날 + 출장 승인된 날
         const hasLeaveApproval = (day.requests || []).some(r => r.requestCategory === 'LEAVE' && r.status === 'APPROVED');
-        if (day.record && day.record.workMin != null && (day.record.checkIn || hasLeaveApproval)) {
+        const approvedBizTrip = (day.requests || []).some(
+            r => r.requestCategory === 'OTHER' && r.status === 'APPROVED' &&
+                 r.changeShiftName && r.changeShiftName.includes('출장')
+        );
+        if (day.record && day.record.workMin != null && (day.record.checkIn || hasLeaveApproval || approvedBizTrip)) {
             weekActualMin += day.record.workMin;
+        } else if (approvedBizTrip) {
+            weekActualMin += plannedShiftMin(day);
         }
 
         const c      = dowToCol(day.dayOfWeekNum);
@@ -231,7 +240,8 @@ function renderCalendar() {
                 r => r.requestCategory === 'OTHER' && ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(r.status)
             );
             const isLvDay = aOther != null && !aOther.changeShiftOnHhmm;
-            const hasLeave = isLvDay || (d.requests || []).some(
+            const isBizTrip = aOther != null && aOther.changeShiftName && aOther.changeShiftName.includes('출장');
+            const hasLeave = isLvDay || isBizTrip || (d.requests || []).some(
                 r => r.requestCategory === 'LEAVE' && r.status === 'APPROVED'
             );
             const absent = d.workDayType === 'WORK' && (!d.record || !d.record.checkIn) && !hasLeave;
@@ -239,9 +249,20 @@ function renderCalendar() {
             return sum + plannedShiftMin(d) + requestAdjustMin(d);
         }, 0);
     const totalActualMin = DAYS
-        .filter(d => d.inCurrentMonth && d.record && d.record.workMin != null
-            && (d.record.checkIn || (d.requests || []).some(r => r.requestCategory === 'LEAVE' && r.status === 'APPROVED')))
-        .reduce((sum, d) => sum + d.record.workMin, 0);
+        .filter(d => d.inCurrentMonth)
+        .reduce((sum, d) => {
+            const hasBizTrip = (d.requests || []).some(
+                r => r.requestCategory === 'OTHER' && r.status === 'APPROVED' &&
+                     r.changeShiftName && r.changeShiftName.includes('출장')
+            );
+            const hasLeave = (d.requests || []).some(r => r.requestCategory === 'LEAVE' && r.status === 'APPROVED');
+            if (d.record && d.record.workMin != null && (d.record.checkIn || hasLeave || hasBizTrip)) {
+                return sum + d.record.workMin;
+            } else if (hasBizTrip) {
+                return sum + plannedShiftMin(d);
+            }
+            return sum;
+        }, 0);
     document.getElementById('monthTotal').textContent =
         '월 총 근무시간: 신청 기준 ' + fmtMin(totalMin) + ' / 급여 산정 기준 ' + fmtMin(totalActualMin);
 }
