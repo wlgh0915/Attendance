@@ -45,8 +45,6 @@
                  ELSE 0
             END                                                   AS plannedWorkMin,
             CASE WHEN absenceInfo.isAbsent = 1 THEN 0
-                 WHEN ar.CHECK_IN IS NULL AND effectiveShiftCalc.RECOGNIZED_NO_RECORD_YN = 'Y'
-                 THEN effectiveShiftCalc.WORK_MIN
                  WHEN ar.WORK_MIN IS NOT NULL THEN ar.WORK_MIN
                  ELSE ar.WORK_MIN
             END                                                   AS actualWorkMin,
@@ -604,10 +602,9 @@
             SELECT CASE
                        WHEN CAST(#{workDate} AS DATE) > CAST(#{today} AS DATE) THEN 0
                        WHEN ar.CHECK_IN IS NOT NULL THEN 0
-                       WHEN effectiveShiftCalc.RECOGNIZED_NO_RECORD_YN = 'Y' THEN 0
                        WHEN CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
-                                WHEN 'WEEKDAY' THEN 'WORK'
-                                WHEN 'ANYDAY'  THEN 'WORK'
+                                 WHEN 'WEEKDAY' THEN 'WORK'
+                                 WHEN 'ANYDAY'  THEN 'WORK'
                                 WHEN 'WEEKEND' THEN 'OFF'
                                 ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
                             END IN ('OFF', 'HOLIDAY') THEN 0
@@ -616,10 +613,10 @@
                             FROM HRTATTENDANCEREQUEST01 er
                             WHERE er.COMPANY = h.COMPANY
                               AND er.TARGET_EMP_CODE = h.EMP_CODE
-                              AND er.TARGET_DATE &lt;= CAST(#{workDate} AS DATE)
-                              AND er.STATUS IN ('DRAFT', 'SUBMITTED', 'APPROVED')
+                              AND er.STATUS = 'APPROVED'
                               AND (
                                     (er.REQ_GROUP = 'OTHER'
+                                     AND er.TARGET_DATE &lt;= CAST(#{workDate} AS DATE)
                                      AND EXISTS (
                                          SELECT 1
                                          FROM HRTATTENDANCE_OTHER01 eo
@@ -627,7 +624,8 @@
                                            AND eo.REQ_ID = er.REQ_ID
                                            AND eo.END_DATE &gt;= CAST(#{workDate} AS DATE)
                                      ))
-                                    OR (er.REQ_GROUP = 'GENERAL'
+                                     OR (er.REQ_GROUP = 'GENERAL'
+                                         AND er.TARGET_DATE = CAST(#{workDate} AS DATE)
                                         AND er.REQ_TYPE NOT IN ('연장', '조출연장', '휴일근무'))
                               )
                        ) THEN 0
