@@ -70,6 +70,7 @@
                     <th>사원명</th>
                     <th>부서코드</th>
                     <th>권한코드</th>
+                    <th class="action-header">관리</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -80,9 +81,13 @@
                     <td th:text="${emp.empName}"></td>
                     <td th:text="${emp.deptCode}"></td>
                     <td th:text="${emp.roleCode}"></td>
+                    <td class="action-cell">
+                        <a th:href="@{/users/{empCode}/edit(empCode=${emp.empCode}, returnDeptCode=${deptCode})}"
+                           class="btn-action btn-edit">수정</a>
+                    </td>
                 </tr>
                 <tr th:if="${#lists.isEmpty(employees)}">
-                    <td colspan="6">해당 부서에 등록된 사원이 없습니다.</td>
+                    <td colspan="7">해당 부서에 등록된 사원이 없습니다.</td>
                 </tr>
                 </tbody>
             </table>
