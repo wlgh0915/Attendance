@@ -19,6 +19,8 @@
         EMP_NAME,
         PASSWORD_HASH,
         DEPT_CODE,
+        POSITION_CODE,
+        DUTY_CODE,
         ROLE_CODE,
         CREATED_AT,
         UPDATED_AT
@@ -29,10 +31,66 @@
         #{empName},
         #{password},
         NULLIF(#{deptCode}, ''),
+        NULLIF(#{positionCode}, ''),
+        NULLIF(#{dutyCode}, ''),
         #{roleCode},
         GETDATE(),
         GETDATE()
         )
     </insert>
+
+    <select id="findUserForEdit" resultType="com.company.attendancemanagement.dto.user.UserUpdateDto">
+        SELECT
+            COMPANY AS company,
+            EMP_CODE AS empCode,
+            EMP_NAME AS empName,
+            DEPT_CODE AS deptCode,
+            POSITION_CODE AS positionCode,
+            CONVERT(VARCHAR(10), POSITION_DATE, 23) AS positionDate,
+            DUTY_CODE AS dutyCode,
+            CONVERT(VARCHAR(10), DUTY_DATE, 23) AS dutyDate,
+            ROLE_CODE AS roleCode
+        FROM HRIMASTER01
+        WHERE COMPANY = #{company}
+          AND EMP_CODE = #{empCode}
+    </select>
+
+    <update id="updateUser">
+        UPDATE HRIMASTER01
+        SET EMP_NAME = #{empName},
+            PASSWORD_HASH = CASE
+                WHEN #{password} IS NULL OR #{password} = '' THEN PASSWORD_HASH
+                ELSE #{password}
+            END,
+            DEPT_CODE = NULLIF(#{deptCode}, ''),
+            POSITION_CODE = NULLIF(#{positionCode}, ''),
+            POSITION_DATE = NULLIF(#{positionDate}, ''),
+            DUTY_CODE = NULLIF(#{dutyCode}, ''),
+            DUTY_DATE = NULLIF(#{dutyDate}, ''),
+            ROLE_CODE = #{roleCode},
+            UPDATED_AT = GETDATE()
+        WHERE COMPANY = #{company}
+          AND EMP_CODE = #{empCode}
+    </update>
+
+    <select id="findActivePositions" resultType="com.company.attendancemanagement.dto.user.PositionOptionDto">
+        SELECT
+            POSITION_CODE AS positionCode,
+            POSITION_NAME AS positionName
+        FROM HRTGRADEINFO01
+        WHERE COMPANY = #{company}
+          AND USE_YN = 'Y'
+        ORDER BY POSITION_CODE
+    </select>
+
+    <select id="findActiveDuties" resultType="com.company.attendancemanagement.dto.user.DutyOptionDto">
+        SELECT
+            DUTY_CODE AS dutyCode,
+            DUTY_NAME AS dutyName
+        FROM HRTDUTYINFO01
+        WHERE COMPANY = #{company}
+          AND USE_YN = 'Y'
+        ORDER BY DUTY_CODE
+    </select>
 
 </mapper>
