@@ -208,20 +208,36 @@ function effectiveShiftSource(row) {
         req.existingRequestGroup === 'OTHER'
         && req.status === 'APPROVED'
         && req.requestWorkCode);
+    const approvedHolidayWork = Object.values((row && row.requestsByWorkCode) || {}).find(req =>
+        isApprovedRequest(req)
+        && req.requestWorkCode === '휴일근무'
+        && req.startTime
+        && req.endTime);
     const actualShift = shiftCodesData.find(s =>
         (row.actualWorkCode && s.shiftCode === row.actualWorkCode)
         || (row.actualWorkName && s.shiftName === row.actualWorkName)
+        || (approvedHolidayWork && (s.shiftCode === approvedHolidayWork.requestWorkCode || s.shiftName === approvedHolidayWork.requestWorkCode))
         || (approvedOtherShift && s.shiftCode === approvedOtherShift.requestWorkCode)
         || (approvedOtherShift && s.shiftName === approvedOtherShift.requestWorkCode));
     if (!actualShift || !actualShift.workOnHhmm || !actualShift.workOffHhmm) return row;
+    const holidayStartTime = approvedHolidayWork
+        ? minuteToTimeState(absoluteMinute(approvedHolidayWork.startTimeType || 'N0', approvedHolidayWork.startTime)).time
+        : actualShift.workOnHhmm;
+    const holidayOffMin = approvedHolidayWork
+        ? absoluteMinute(approvedHolidayWork.endTimeType || 'N0', approvedHolidayWork.endTime)
+        : null;
+    const holidayOffTime = approvedHolidayWork
+        ? minuteToTimeState(holidayOffMin).time
+        : actualShift.workOffHhmm;
     return {
-        shiftOnTime: actualShift.workOnHhmm,
-        shiftOffTime: actualShift.workOffHhmm,
+        shiftOnTime: holidayStartTime,
+        shiftOffTime: holidayOffTime,
+        shiftOffDayOffset: holidayOffMin != null && holidayOffMin >= 1440 ? 1440 : 0,
         break1StartHhmm: actualShift.break1StartHhmm,
         break1EndHhmm: actualShift.break1EndHhmm,
         break2StartHhmm: actualShift.break2StartHhmm,
         break2EndHhmm: actualShift.break2EndHhmm,
-        plannedWorkMin: actualShift.workMinutes || 0
+        plannedWorkMin: approvedHolidayWork ? (approvedHolidayWork.requestWorkMin || 0) : (actualShift.workMinutes || 0)
     };
 }
 
@@ -230,6 +246,7 @@ function halfDayTimeState(row, code) {
     const plannedStart = absoluteMinute('N0', source.shiftOnTime);
     let plannedEnd = absoluteMinute('N0', source.shiftOffTime);
     if (plannedStart == null || plannedEnd == null) return null;
+    plannedEnd += source.shiftOffDayOffset || 0;
     if (plannedEnd <= plannedStart) plannedEnd += 1440;
     const plannedWorkMin = source.plannedWorkMin && source.plannedWorkMin > 0
         ? source.plannedWorkMin
@@ -321,7 +338,8 @@ function effectiveWorkRange(row) {
     const baseEndTime = absoluteMinute('N0', source.shiftOffTime);
     if (baseStart == null || baseEndTime == null) return null;
     let start = baseStart;
-    let end = baseEndTime <= baseStart ? baseEndTime + 1440 : baseEndTime;
+    let end = baseEndTime + (source.shiftOffDayOffset || 0);
+    if (end <= baseStart) end += 1440;
     Object.values(row.requestsByWorkCode || {}).forEach(req => {
         if (!isActiveRequest(req)) return;
         if (req.requestWorkCode === '조출연장') {
@@ -443,6 +461,7 @@ function overtimeBoundary(row) {
     const start = absoluteMinute('N0', source && source.shiftOnTime);
     let end = absoluteMinute('N0', source && source.shiftOffTime);
     if (start == null || end == null) return null;
+    end += source.shiftOffDayOffset || 0;
     if (end <= start) end += 1440;
     return {start, end};
 }
@@ -511,6 +530,7 @@ function plannedRange(row) {
     const start = absoluteMinute('N0', source && source.shiftOnTime);
     let end = absoluteMinute('N0', source && source.shiftOffTime);
     if (start == null || end == null) return null;
+    end += source.shiftOffDayOffset || 0;
     if (end <= start) end += 1440;
     return {
         start,
