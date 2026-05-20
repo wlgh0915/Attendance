@@ -203,9 +203,15 @@ function subtractWorkingMinutes(row, rangeStart, rangeEnd, workMin) {
 }
 
 function effectiveShiftSource(row) {
+    const approvedOtherShift = Object.values((row && row.requestsByWorkCode) || {}).find(req =>
+        req.existingRequestGroup === 'OTHER'
+        && req.status === 'APPROVED'
+        && req.requestWorkCode);
     const actualShift = shiftCodesData.find(s =>
         (row.actualWorkCode && s.shiftCode === row.actualWorkCode)
-        || (row.actualWorkName && s.shiftName === row.actualWorkName));
+        || (row.actualWorkName && s.shiftName === row.actualWorkName)
+        || (approvedOtherShift && s.shiftCode === approvedOtherShift.requestWorkCode)
+        || (approvedOtherShift && s.shiftName === approvedOtherShift.requestWorkCode));
     if (!actualShift || !actualShift.workOnHhmm || !actualShift.workOffHhmm) return row;
     return {
         shiftOnTime: actualShift.workOnHhmm,
@@ -676,7 +682,8 @@ function renderTable(rows) {
             break2EndHhmm: r.break2EndHhmm,
             plannedWorkMin: r.plannedWorkMin,
             actualWorkCode: r.actualWorkCode,
-            actualWorkName: r.actualWorkName
+            actualWorkName: r.actualWorkName,
+            requestsByWorkCode: r.requestsByWorkCode
         };
         const ts = locked
             ? { startTypeDis:false, startDis:false, endTypeDis:false, endDis:false,
@@ -748,7 +755,8 @@ function applyRequestState(tr, r, workCode) {
         break2EndHhmm: r.break2EndHhmm,
         plannedWorkMin: r.plannedWorkMin,
         actualWorkCode: r.actualWorkCode,
-        actualWorkName: r.actualWorkName
+        actualWorkName: r.actualWorkName,
+        requestsByWorkCode: r.requestsByWorkCode
     };
     const ts = locked
         ? { startTypeDis:false, startDis:false, endTypeDis:false, endDis:false,
