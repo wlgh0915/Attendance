@@ -79,6 +79,12 @@
         <span th:each="sc : ${shiftCodes}"
               th:data-code="${sc.shiftCode}"
               th:data-name="${sc.shiftName}"
+              th:data-on="${sc.workOnHhmm}"
+              th:data-off="${sc.workOffHhmm}"
+              th:data-break1-start="${sc.break1StartHhmm}"
+              th:data-break1-end="${sc.break1EndHhmm}"
+              th:data-break2-start="${sc.break2StartHhmm}"
+              th:data-break2-end="${sc.break2EndHhmm}"
               th:data-work-min="${sc.workMinutes}">
         </span>
     </div>

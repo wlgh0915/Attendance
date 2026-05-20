@@ -392,8 +392,9 @@ function actualOverlapMin(row, tr) {
 }
 
 function baseActualWorkMin(row) {
-    if (!row || !workDateIsPastOrToday()) return row && row.plannedWorkMin ? row.plannedWorkMin : 0;
+    if (!row) return 0;
     const plan = plannedRange(row);
+    if (!workDateIsPastOrToday()) return plan ? plan.plannedWorkMin : 0;
     const hasCheckIn = !!row.checkIn;
     if (!hasCheckIn) return row.actualWorkMin || 0;
 
@@ -406,13 +407,13 @@ function baseActualWorkMin(row) {
         actualEnd = plan.end;
     }
 
-    if (actualStart == null || actualEnd == null || !plan || (row.plannedWorkMin || 0) <= 0) {
+    if (actualStart == null || actualEnd == null || !plan || (plan.plannedWorkMin || 0) <= 0) {
         return row.actualWorkMin || 0;
     }
     const baseStart = Math.max(actualStart, plan.start);
     const baseEnd = Math.min(actualEnd, plan.end);
     if (baseEnd <= baseStart) return 0;
-    return Math.max(0, baseEnd - baseStart - breakOverlapMin(row, baseStart, baseEnd));
+    return Math.max(0, baseEnd - baseStart - breakOverlapMin(plan.source, baseStart, baseEnd));
 }
 
 function overtimeBoundary(row) {
@@ -443,7 +444,8 @@ function validateOvertimeOutsideEffectiveWorkTime(dto, row) {
 
 function actualMissingWorkMin(row) {
     if (!row || !workDateIsPastOrToday()) return 0;
-    return Math.max(0, (row.plannedWorkMin || 0) - baseActualWorkMin(row));
+    const plan = plannedRange(row);
+    return Math.max(0, ((plan && plan.plannedWorkMin) || 0) - baseActualWorkMin(row));
 }
 
 function requestEffectForState(state, row) {
@@ -483,11 +485,17 @@ function requestRange(req) {
 }
 
 function plannedRange(row) {
-    const start = absoluteMinute('N0', row && row.shiftOnTime);
-    let end = absoluteMinute('N0', row && row.shiftOffTime);
+    const source = effectiveShiftSource(row);
+    const start = absoluteMinute('N0', source && source.shiftOnTime);
+    let end = absoluteMinute('N0', source && source.shiftOffTime);
     if (start == null || end == null) return null;
     if (end <= start) end += 1440;
-    return {start, end};
+    return {
+        start,
+        end,
+        source,
+        plannedWorkMin: source.plannedWorkMin || 0
+    };
 }
 
 function recognizedActualWorkMin(row, currentState, selectedState) {
@@ -505,11 +513,11 @@ function recognizedActualWorkMin(row, currentState, selectedState) {
     }
 
     let total = hasCheckIn ? 0 : (row.actualWorkMin || 0);
-    if (hasCheckIn && actualStart != null && actualEnd != null && plan && (row.plannedWorkMin || 0) > 0) {
+    if (hasCheckIn && actualStart != null && actualEnd != null && plan && (plan.plannedWorkMin || 0) > 0) {
         const baseStart = Math.max(actualStart, plan.start);
         const baseEnd = Math.min(actualEnd, plan.end);
         if (baseEnd > baseStart) {
-            total += Math.max(0, baseEnd - baseStart - breakOverlapMin(row, baseStart, baseEnd));
+            total += Math.max(0, baseEnd - baseStart - breakOverlapMin(plan.source, baseStart, baseEnd));
         }
     }
 
@@ -528,7 +536,7 @@ function recognizedActualWorkMin(row, currentState, selectedState) {
             if ((req.requestWorkMin || 0) > 0) overlap = Math.min(overlap, req.requestWorkMin);
             total += overlap;
         } else if (category === 'LEAVE') {
-            total -= (req.requestWorkMin || row.plannedWorkMin || 0);
+            total -= (req.requestWorkMin || (plan && plan.plannedWorkMin) || 0);
         }
     });
 
