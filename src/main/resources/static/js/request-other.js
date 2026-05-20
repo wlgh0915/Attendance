@@ -17,6 +17,7 @@ function buildShiftOptions(selected) {
     let opts = '<option value="">-- 선택 --</option>';
     spans.forEach(sp => {
         const code = sp.dataset.code, name = sp.dataset.name;
+        if (code === '휴일근무' || name === '휴일근무') return;
         opts += '<option value="'+code+'"'+(code===selected?' selected':'')+'>'+name+'</option>';
     });
     return opts;
