@@ -6,6 +6,7 @@ const WORK_CODES = {
 
 let currentCategory = 'OVERTIME';
 let tableData = [];
+const HOLIDAY_OVERTIME_MIN = 480;
 
 // 시프트 코드별 시간 정보 (hidden div에서 파싱)
 const shiftCodesData = Array.from(document.querySelectorAll('#shiftTimesData span')).map(sp => ({
@@ -361,6 +362,21 @@ function validateNotPastNextDayWorkStart(dto, row) {
         return false;
     }
     return true;
+}
+
+function holidayWorkMinForOvertime(row) {
+    return Object.values((row && row.requestsByWorkCode) || {})
+        .filter(req => isApprovedRequest(req) && req.requestWorkCode === '휴일근무')
+        .reduce((max, req) => Math.max(max, req.requestWorkMin || 0), 0);
+}
+
+function validateHolidayWorkMinForOvertime(dto, row) {
+    if (!row || currentCategory !== 'OVERTIME') return true;
+    if (dto.requestWorkCode !== '연장' && dto.requestWorkCode !== '조출연장') return true;
+    if (row.workDayType !== 'OFF' && row.workDayType !== 'HOLIDAY') return true;
+    if (holidayWorkMinForOvertime(row) >= HOLIDAY_OVERTIME_MIN) return true;
+    showToast('휴일에는 승인된 휴일근무가 8시간 이상인 경우에만 연장근무를 신청할 수 있습니다.', 'error');
+    return false;
 }
 
 function categoryOfRequest(state) {
@@ -884,6 +900,7 @@ async function doSave() {
         const dto = rowToDto(tr);
         if (!dto.requestWorkCode) { showToast('신청근무를 선택하세요.','error'); return; }
         if (!validateCheckIn(tableData[parseInt(tr.dataset.idx)], currentCategory, dto.requestWorkCode)) return;
+        if (!validateHolidayWorkMinForOvertime(dto, tableData[parseInt(tr.dataset.idx)])) return;
         if (!dto.startTime || !dto.endTime) { showToast('시작/종료 시간을 선택하세요.','error'); return; }
         if (!validateOvertimeOutsideEffectiveWorkTime(dto, tableData[parseInt(tr.dataset.idx)])) return;
         if (!validateWithinEffectiveWorkTime(dto, tableData[parseInt(tr.dataset.idx)])) return;
@@ -934,6 +951,7 @@ async function doSubmit() {
         const existing = currentRequestForRow(tr, tableData[idx]);
         if (!dto.requestWorkCode) { showToast('신청근무를 선택하세요.','error'); return; }
         if (!validateCheckIn(tableData[idx], currentCategory, dto.requestWorkCode)) return;
+        if (!validateHolidayWorkMinForOvertime(dto, tableData[idx])) return;
         if (!dto.startTime || !dto.endTime) { showToast('시작/종료 시간을 선택하세요.','error'); return; }
         if (!validateOvertimeOutsideEffectiveWorkTime(dto, tableData[parseInt(tr.dataset.idx)])) return;
         if (!validateWithinEffectiveWorkTime(dto, tableData[parseInt(tr.dataset.idx)])) return;

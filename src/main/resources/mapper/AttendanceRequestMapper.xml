@@ -1774,6 +1774,25 @@
           AND CHECK_IN IS NOT NULL
     </select>
 
+    <select id="findActiveHolidayWorkMin"
+            parameterType="com.company.attendancemanagement.dto.request.AttendanceRequestDto"
+            resultType="int">
+        SELECT ISNULL(MAX(g.WORK_MIN), 0)
+        FROM HRTATTENDANCEREQUEST01 r
+        JOIN HRTATTENDANCE_GENERAL01 g
+          ON r.COMPANY = g.COMPANY
+         AND r.REQ_ID = g.REQ_ID
+        WHERE r.COMPANY = #{company}
+          AND r.TARGET_EMP_CODE = #{empCode}
+          AND r.TARGET_DATE = CAST(#{workDate} AS DATE)
+          AND r.REQ_GROUP = 'GENERAL'
+          AND r.REQ_TYPE = '휴일근무'
+          AND r.STATUS = 'APPROVED'
+          <if test="requestId != null and requestId != ''">
+              AND r.REQ_ID &lt;&gt; #{requestId}
+          </if>
+    </select>
+
     <select id="findAttendanceRecordInfo" resultType="map">
         SELECT LEFT(CONVERT(VARCHAR(8), CHECK_IN, 108), 5)  AS checkIn,
                LEFT(CONVERT(VARCHAR(8), CHECK_OUT, 108), 5) AS checkOut,

@@ -33,6 +33,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
 
     private static final DateTimeFormatter REQ_ID_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
     private static final int MAX_WEEK_MIN = 3120;
+    private static final int HOLIDAY_OVERTIME_MIN = 480;
 
     @Override
     public Map<String, Object> getFormData(LoginUserDto loginUser) {
@@ -327,6 +328,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             dto.setRequestWorkMin(requestWorkMin);
         }
 
+        validateHolidayWorkMinForOvertime(dto);
         validateOvertimeOutsideEffectiveWorkTime(dto);
 
         if (isBoundedLeaveRequest(dto.getRequestWorkCode())) {
@@ -505,6 +507,22 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         Integer limitMin = requestMapper.findNextDayWorkStartLimitMin(dto);
         if (limitMin != null && endMin > limitMin) {
             throw new IllegalArgumentException("익일 종료 시간은 다음날 예정 출근 또는 조출 신청 시작 시간을 넘길 수 없습니다.");
+        }
+    }
+
+    private void validateHolidayWorkMinForOvertime(AttendanceRequestDto dto) {
+        String workCode = dto.getRequestWorkCode();
+        if (!"연장".equals(workCode) && !"조출연장".equals(workCode)) {
+            return;
+        }
+        String workDayType = requestMapper.findPlannedWorkDayType(
+                dto.getCompany(), dto.getEmpCode(), dto.getWorkDate());
+        if (!"OFF".equals(workDayType) && !"HOLIDAY".equals(workDayType)) {
+            return;
+        }
+        Integer holidayWorkMin = requestMapper.findActiveHolidayWorkMin(dto);
+        if (holidayWorkMin == null || holidayWorkMin < HOLIDAY_OVERTIME_MIN) {
+            throw new IllegalArgumentException("휴일에는 승인된 휴일근무가 8시간 이상인 경우에만 연장근무를 신청할 수 있습니다.");
         }
     }
 
