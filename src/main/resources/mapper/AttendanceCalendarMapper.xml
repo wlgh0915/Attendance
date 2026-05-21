@@ -23,7 +23,10 @@
             CONVERT(VARCHAR(5), s.WORK_OFF_HHMM, 108)                  AS workOffHhmm,
             CASE
                 WHEN s.WORK_ON_HHMM IS NOT NULL AND s.WORK_OFF_HHMM IS NOT NULL
-                    THEN DATEDIFF(MINUTE, s.WORK_ON_HHMM, s.WORK_OFF_HHMM)
+                    THEN CASE WHEN DATEDIFF(MINUTE, s.WORK_ON_HHMM, s.WORK_OFF_HHMM) < 0
+                              THEN DATEDIFF(MINUTE, s.WORK_ON_HHMM, s.WORK_OFF_HHMM) + 1440
+                              ELSE DATEDIFF(MINUTE, s.WORK_ON_HHMM, s.WORK_OFF_HHMM)
+                         END
                          - ISNULL(DATEDIFF(MINUTE, s.BREAK1_START_HHMM, s.BREAK1_END_HHMM), 0)
                          - ISNULL(DATEDIFF(MINUTE, s.BREAK2_START_HHMM, s.BREAK2_END_HHMM), 0)
                 ELSE 0
@@ -86,7 +89,10 @@
             CONVERT(VARCHAR(5), cs.WORK_OFF_HHMM, 108)               AS changeShiftOffHhmm,
             CASE
                 WHEN cs.WORK_ON_HHMM IS NOT NULL AND cs.WORK_OFF_HHMM IS NOT NULL
-                    THEN DATEDIFF(MINUTE, cs.WORK_ON_HHMM, cs.WORK_OFF_HHMM)
+                    THEN CASE WHEN DATEDIFF(MINUTE, cs.WORK_ON_HHMM, cs.WORK_OFF_HHMM) < 0
+                              THEN DATEDIFF(MINUTE, cs.WORK_ON_HHMM, cs.WORK_OFF_HHMM) + 1440
+                              ELSE DATEDIFF(MINUTE, cs.WORK_ON_HHMM, cs.WORK_OFF_HHMM)
+                         END
                          - ISNULL(DATEDIFF(MINUTE, cs.BREAK1_START_HHMM, cs.BREAK1_END_HHMM), 0)
                          - ISNULL(DATEDIFF(MINUTE, cs.BREAK2_START_HHMM, cs.BREAK2_END_HHMM), 0)
                 ELSE NULL

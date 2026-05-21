@@ -131,7 +131,7 @@ function renderCalendar() {
         );
         // 활성 휴일근무 신청
         const hasActiveHolidayReq = (day.requests || []).some(
-            r => r.requestWorkCode === '휴일근무' && ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(r.status)
+            r => r.requestWorkCode === '휴일근무' && ['SUBMITTED', 'APPROVED'].includes(r.status)
         );
         // 변경 후 근무 시간이 없으면 휴무 근태(연차/병가 등)
         const isLeaveDay = activeOtherReq != null && !activeOtherReq.changeShiftOnHhmm;
@@ -207,8 +207,8 @@ function renderCalendar() {
             inner += `<span class="absent-badge">결근</span>`;
         }
 
-        // 4. 근태신청 (연장, 연차, 반차 등) - 취소/반려 제외
-        (day.requests || []).filter(r => r.status !== 'CANCELED' && r.status !== 'REJECTED').forEach(r => {
+        // 4. 근태신청 (연장, 연차, 반차 등) - 미상신/취소/반려 제외
+        (day.requests || []).filter(r => r.status !== 'DRAFT' && r.status !== 'CANCELED' && r.status !== 'REJECTED').forEach(r => {
             const typeLabel = (r.requestCategory === 'OTHER' && r.changeShiftName)
                 ? r.changeShiftName
                 : (r.requestWorkCode || catLabel(r.requestCategory));

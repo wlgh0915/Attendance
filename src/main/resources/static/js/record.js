@@ -61,9 +61,11 @@ async function openModal(btn) {
     document.getElementById('mOvernightYn').value     = d.on !== 'null' ? (d.on  || 'N') : 'N';
     document.getElementById('mWorkMin').value         = d.wm !== 'null' ? (d.wm  || '') : '';
 
-    // 계획 근태코드: DB에 저장된 값이 있으면 사용, 없으면 부서 근무패턴에서 자동 조회
+    // 계획 근태코드: SHIFT_CODE → ACTUAL_SHIFT_CODE(기타근태변경) → 부서 근무패턴 순 우선
     if (d.shift && d.shift !== 'null') {
         document.getElementById('mShiftCode').value = d.shift;
+    } else if (d.actualShift && d.actualShift !== 'null') {
+        document.getElementById('mShiftCode').value = d.actualShift;
     } else {
         try {
             const res     = await fetch(`/attendance/record/planned-shift?empCode=${TARGET_EMP}&yyyymmdd=${d.ymd}`);
