@@ -73,6 +73,10 @@ public class MenuPermissionInterceptor implements HandlerInterceptor {
         if (contextPath != null && !contextPath.isBlank() && uri.startsWith(contextPath)) {
             uri = uri.substring(contextPath.length());
         }
+        int pathParameterIndex = uri.indexOf(';');
+        if (pathParameterIndex >= 0) {
+            uri = uri.substring(0, pathParameterIndex);
+        }
         if (uri.length() > 1 && uri.endsWith("/")) {
             uri = uri.substring(0, uri.length() - 1);
         }

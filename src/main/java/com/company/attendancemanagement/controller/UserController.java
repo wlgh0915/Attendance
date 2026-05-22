@@ -133,6 +133,7 @@ public class UserController {
         model.addAttribute("deptOptions", departmentService.findAllForDropdown(company));
         model.addAttribute("positionOptions", userService.findActivePositions(company));
         model.addAttribute("dutyOptions", userService.findActiveDuties(company));
+        model.addAttribute("roleOptions", userService.findActiveRoles(company));
     }
 
     private String redirectToEmployeeList(String company, String deptCode) {

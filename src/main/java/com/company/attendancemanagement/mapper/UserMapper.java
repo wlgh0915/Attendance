@@ -3,6 +3,7 @@ package com.company.attendancemanagement.mapper;
 import com.company.attendancemanagement.dto.user.UserCreateDto;
 import com.company.attendancemanagement.dto.user.DutyOptionDto;
 import com.company.attendancemanagement.dto.user.PositionOptionDto;
+import com.company.attendancemanagement.dto.user.RoleOptionDto;
 import com.company.attendancemanagement.dto.user.UserUpdateDto;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -25,4 +26,6 @@ public interface UserMapper {
     List<PositionOptionDto> findActivePositions(@Param("company") String company);
 
     List<DutyOptionDto> findActiveDuties(@Param("company") String company);
+
+    List<RoleOptionDto> findActiveRoles(@Param("company") String company);
 }

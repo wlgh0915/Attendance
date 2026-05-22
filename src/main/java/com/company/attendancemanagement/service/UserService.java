@@ -3,6 +3,7 @@ package com.company.attendancemanagement.service;
 import com.company.attendancemanagement.dto.user.UserCreateDto;
 import com.company.attendancemanagement.dto.user.DutyOptionDto;
 import com.company.attendancemanagement.dto.user.PositionOptionDto;
+import com.company.attendancemanagement.dto.user.RoleOptionDto;
 import com.company.attendancemanagement.dto.user.UserUpdateDto;
 import com.company.attendancemanagement.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,10 @@ public class UserService {
 
     public List<DutyOptionDto> findActiveDuties(String company) {
         return userMapper.findActiveDuties(company);
+    }
+
+    public List<RoleOptionDto> findActiveRoles(String company) {
+        return userMapper.findActiveRoles(company);
     }
 
     public UserUpdateDto findUserForEdit(String company, String empCode) {
