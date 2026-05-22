@@ -56,6 +56,10 @@ public class MenuPermissionInterceptor implements HandlerInterceptor {
 
         List<String> permittedUrls = roleMenuMapper.findPermittedMenuUrls(
                 loginUser.getCompany(), loginUser.getRoleCode());
+        request.setAttribute("permittedMenuUrls", permittedUrls);
+        if ("/".equals(uri)) {
+            return true;
+        }
         if (isPermitted(uri, permittedUrls)) {
             return true;
         }
