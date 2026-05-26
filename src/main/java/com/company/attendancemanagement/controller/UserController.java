@@ -36,6 +36,7 @@ public class UserController {
 
         UserCreateDto dto = new UserCreateDto();
         dto.setCompany(loginUser.getCompany());
+        dto.setEmpCode(userService.generateNextEmpCode(loginUser.getCompany()));
 
         model.addAttribute("userCreateDto", dto);
         addUserFormOptions(model, loginUser.getCompany());
@@ -57,6 +58,7 @@ public class UserController {
         dto.setCompany(loginUser.getCompany());
 
         if (bindingResult.hasErrors()) {
+            dto.setEmpCode(userService.generateNextEmpCode(loginUser.getCompany()));
             addUserFormOptions(model, loginUser.getCompany());
             return "user/create";
         }
@@ -64,6 +66,7 @@ public class UserController {
         boolean result = userService.createUser(dto);
 
         if (!result) {
+            dto.setEmpCode(userService.generateNextEmpCode(loginUser.getCompany()));
             bindingResult.reject("duplicate", "이미 존재하는 사번입니다.");
             addUserFormOptions(model, loginUser.getCompany());
             return "user/create";

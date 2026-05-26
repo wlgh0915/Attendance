@@ -12,6 +12,14 @@
         AND EMP_CODE = #{empCode}
     </select>
 
+    <select id="findMaxEmpNumber" resultType="int">
+        SELECT ISNULL(MAX(TRY_CONVERT(INT, SUBSTRING(EMP_CODE, 4, 3))), 0)
+        FROM HRIMASTER01
+        WHERE COMPANY = #{company}
+          AND EMP_CODE LIKE 'EMP[0-9][0-9][0-9]'
+          AND LEN(EMP_CODE) = 6
+    </select>
+
     <insert id="insertUser">
         INSERT INTO HRIMASTER01 (
         COMPANY,

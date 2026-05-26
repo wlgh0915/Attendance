@@ -11,7 +11,6 @@ public class UserCreateDto {
     @NotBlank(message = "회사코드는 필수입니다.")
     private String company;
 
-    @NotBlank(message = "사번은 필수입니다.")
     private String empCode;
 
     @NotBlank(message = "이름은 필수입니다.")

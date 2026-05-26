@@ -16,6 +16,8 @@ public interface UserMapper {
     int countByEmpCode(@Param("company") String company,
                        @Param("empCode") String empCode);
 
+    Integer findMaxEmpNumber(@Param("company") String company);
+
     int insertUser(UserCreateDto dto);
 
     UserUpdateDto findUserForEdit(@Param("company") String company,

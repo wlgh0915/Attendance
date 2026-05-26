@@ -8,6 +8,8 @@ import com.company.attendancemanagement.dto.user.UserUpdateDto;
 import com.company.attendancemanagement.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -19,15 +21,35 @@ public class UserService {
 
     private final UserMapper userMapper;
 
-    public boolean createUser(UserCreateDto dto) {
-        int count = userMapper.countByEmpCode(dto.getCompany(), dto.getEmpCode());
+    public String generateNextEmpCode(String company) {
+        int maxEmpNumber = userMapper.findMaxEmpNumber(company);
+        int nextEmpNumber = maxEmpNumber + 1;
 
-        if (count > 0) {
-            return false;
+        if (nextEmpNumber > 999) {
+            throw new IllegalStateException("Employee code range EMP001-EMP999 is full.");
         }
 
-        userMapper.insertUser(dto);
-        return true;
+        return formatEmpCode(nextEmpNumber);
+    }
+
+    @Transactional(isolation = Isolation.SERIALIZABLE)
+    public boolean createUser(UserCreateDto dto) {
+        int nextEmpNumber = userMapper.findMaxEmpNumber(dto.getCompany()) + 1;
+
+        while (nextEmpNumber <= 999) {
+            String empCode = formatEmpCode(nextEmpNumber);
+            int count = userMapper.countByEmpCode(dto.getCompany(), empCode);
+
+            if (count == 0) {
+                dto.setEmpCode(empCode);
+                userMapper.insertUser(dto);
+                return true;
+            }
+
+            nextEmpNumber++;
+        }
+
+        return false;
     }
 
     public List<PositionOptionDto> findActivePositions(String company) {
@@ -75,5 +97,9 @@ public class UserService {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private String formatEmpCode(int empNumber) {
+        return String.format("EMP%03d", empNumber);
     }
 }

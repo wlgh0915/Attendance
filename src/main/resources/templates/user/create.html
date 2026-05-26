@@ -27,7 +27,7 @@
 
                 <div class="form-group">
                     <label class="required">사번</label>
-                    <input type="text" th:field="*{empCode}" placeholder="사원 번호를 입력하세요">
+                    <input type="text" th:field="*{empCode}" readonly>
                     <div class="error-text" th:errors="*{empCode}"></div>
                 </div>
 
