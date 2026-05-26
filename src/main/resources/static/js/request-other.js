@@ -3,6 +3,12 @@ let tableData = [];
 const shiftCodesData = Array.from(document.querySelectorAll('#shiftOptionsData span')).map(sp => ({
     shiftCode: sp.dataset.code,
     shiftName: sp.dataset.name,
+    workOnHhmm:  sp.dataset.on  || '',
+    workOffHhmm: sp.dataset.off || '',
+    break1StartHhmm: sp.dataset.break1Start || '',
+    break1EndHhmm: sp.dataset.break1End || '',
+    break2StartHhmm: sp.dataset.break2Start || '',
+    break2EndHhmm: sp.dataset.break2End || '',
     workMinutes: sp.dataset.workMin ? parseInt(sp.dataset.workMin, 10) : 0
 }));
 
@@ -11,6 +17,7 @@ function buildShiftOptions(selected) {
     let opts = '<option value="">-- 선택 --</option>';
     spans.forEach(sp => {
         const code = sp.dataset.code, name = sp.dataset.name;
+        if (code === '휴일근무' || name === '휴일근무') return;
         opts += '<option value="'+code+'"'+(code===selected?' selected':'')+'>'+name+'</option>';
     });
     return opts;
@@ -123,12 +130,34 @@ function requestRange(req) {
     return {start, end};
 }
 
+function effectiveShiftSource(row) {
+    const actualShift = shiftCodesData.find(s =>
+        (row.actualWorkCode && s.shiftCode === row.actualWorkCode)
+        || (row.actualWorkName && s.shiftName === row.actualWorkName));
+    if (!actualShift || !actualShift.workOnHhmm || !actualShift.workOffHhmm) return row;
+    return {
+        shiftOnTime: actualShift.workOnHhmm,
+        shiftOffTime: actualShift.workOffHhmm,
+        break1StartHhmm: actualShift.break1StartHhmm,
+        break1EndHhmm: actualShift.break1EndHhmm,
+        break2StartHhmm: actualShift.break2StartHhmm,
+        break2EndHhmm: actualShift.break2EndHhmm,
+        plannedWorkMin: actualShift.workMinutes || 0
+    };
+}
+
 function plannedRange(row) {
-    const start = absoluteMinute('N0', row && row.shiftOnTime);
-    let end = absoluteMinute('N0', row && row.shiftOffTime);
+    const source = effectiveShiftSource(row);
+    const start = absoluteMinute('N0', source && source.shiftOnTime);
+    let end = absoluteMinute('N0', source && source.shiftOffTime);
     if (start == null || end == null) return null;
     if (end <= start) end += 1440;
-    return {start, end};
+    return {
+        start,
+        end,
+        source,
+        plannedWorkMin: source.plannedWorkMin || 0
+    };
 }
 
 function recognizedActualWorkMin(row) {
@@ -146,11 +175,11 @@ function recognizedActualWorkMin(row) {
     }
 
     let total = hasCheckIn ? 0 : (row.actualWorkMin || 0);
-    if (hasCheckIn && actualStart != null && actualEnd != null && plan && (row.plannedWorkMin || 0) > 0) {
+    if (hasCheckIn && actualStart != null && actualEnd != null && plan && (plan.plannedWorkMin || 0) > 0) {
         const baseStart = Math.max(actualStart, plan.start);
         const baseEnd = Math.min(actualEnd, plan.end);
         if (baseEnd > baseStart) {
-            total += Math.max(0, baseEnd - baseStart - breakOverlapMin(row, baseStart, baseEnd));
+            total += Math.max(0, baseEnd - baseStart - breakOverlapMin(plan.source, baseStart, baseEnd));
         }
     }
 
@@ -167,7 +196,7 @@ function recognizedActualWorkMin(row) {
             if ((req.requestWorkMin || 0) > 0) overlap = Math.min(overlap, req.requestWorkMin);
             total += overlap;
         } else if (category === 'LEAVE') {
-            total -= (req.requestWorkMin || row.plannedWorkMin || 0);
+            total -= (req.requestWorkMin || (plan && plan.plannedWorkMin) || 0);
         }
     });
 

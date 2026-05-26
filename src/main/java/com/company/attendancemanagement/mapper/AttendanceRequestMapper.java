@@ -107,6 +107,8 @@ public interface AttendanceRequestMapper {
                                @Param("empCode") String empCode,
                                @Param("workDate") String workDate);
 
+    Integer findActiveHolidayWorkMin(AttendanceRequestDto dto);
+
     Map<String, Object> findAttendanceRecordInfo(@Param("company") String company,
                                                  @Param("empCode") String empCode,
                                                  @Param("workDate") String workDate);

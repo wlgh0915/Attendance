@@ -78,7 +78,7 @@ function renderDayCell(day, colIdx) {
     const dispWorkDayType = activeOtherReq ? (dispOnHhmm ? 'WORK' : 'OFF') : day.workDayType;
 
     const hasActiveHolidayReq = (day.requests || []).some(
-        r => r.requestWorkCode === '휴일근무' && ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(r.status)
+        r => r.requestWorkCode === '휴일근무' && ['SUBMITTED', 'APPROVED'].includes(r.status)
     );
     const isOffOrHoliday = dispWorkDayType === 'OFF' || dispWorkDayType === 'HOLIDAY';
 
@@ -106,14 +106,15 @@ function renderDayCell(day, colIdx) {
     }
 
     // 5. 근태신청 배지
-    (day.requests || []).filter(r => r.status !== 'CANCELED' && r.status !== 'REJECTED').forEach(r => {
+    (day.requests || []).filter(r => r.status !== 'DRAFT' && r.status !== 'CANCELED' && r.status !== 'REJECTED').forEach(r => {
         const typeLabel = (r.requestCategory === 'OTHER' && r.changeShiftName)
             ? r.changeShiftName : (r.requestWorkCode || catLabel(r.requestCategory));
         let timeStr = '';
         if (r.startTime || r.endTime) {
             timeStr = `<span class="shift-time"> ${r.startTime||'--:--'}~${r.endTime||'--:--'}</span>`;
         }
-        inner += `<span class="req-badge"><span class="${reqCls(r.status)}">${typeLabel} ${statusLabel(r.status)}</span>${timeStr}</span>`;
+        const sLabel = r.status !== 'APPROVED' ? ' ' + statusLabel(r.status) : '';
+        inner += `<span class="req-badge"><span class="${reqCls(r.status)}">${typeLabel}${sLabel}</span>${timeStr}</span>`;
     });
 
     if (!inner) inner = '<span style="color:#ccc;font-size:11px;">-</span>';

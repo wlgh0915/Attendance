@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +38,48 @@ public class WeeklyAttendanceServiceImpl implements WeeklyAttendanceService {
 
         for (EmpSimpleDto emp : emps) {
             List<AttendanceDayDto>        days    = calendarMapper.findDailyShifts(company, emp.getEmpCode(), startDate, endDate);
+            List<AttendanceReqSummaryDto> requests = calendarMapper.findRequests(company, emp.getEmpCode(), startDate, endDate);
+            List<DailyAttendanceDto>      records  = calendarMapper.findRecords(company, emp.getEmpCode(), startYmd, endYmd);
+
+            Map<String, List<AttendanceReqSummaryDto>> reqByDate = requests.stream()
+                    .collect(Collectors.groupingBy(AttendanceReqSummaryDto::getWorkDate));
+
+            Map<String, DailyAttendanceDto> recordByDate = records.stream()
+                    .collect(Collectors.toMap(r -> {
+                        String y = r.getYyyymmdd();
+                        return y.substring(0, 4) + "-" + y.substring(4, 6) + "-" + y.substring(6, 8);
+                    }, r -> r));
+
+            days.forEach(day -> {
+                day.setRequests(reqByDate.getOrDefault(day.getWorkDate(), List.of()));
+                day.setRecord(recordByDate.get(day.getWorkDate()));
+            });
+
+            WeeklyEmpDto dto = new WeeklyEmpDto();
+            dto.setEmpCode(emp.getEmpCode());
+            dto.setEmpName(emp.getEmpName());
+            dto.setDeptName(emp.getDeptName());
+            dto.setDays(days);
+            result.add(dto);
+        }
+
+        return result;
+    }
+
+    @Override
+    public List<WeeklyEmpDto> getDeptMonthly(String company, String deptCode, YearMonth ym) {
+        LocalDate monthStart = ym.atDay(1);
+        LocalDate monthEnd   = ym.atEndOfMonth();
+        String    startDate  = monthStart.toString();
+        String    endDate    = monthEnd.toString();
+        String    startYmd   = monthStart.format(YMD);
+        String    endYmd     = monthEnd.format(YMD);
+
+        List<EmpSimpleDto> emps   = calendarMapper.findEmpsByDept(company, deptCode);
+        List<WeeklyEmpDto> result = new ArrayList<>();
+
+        for (EmpSimpleDto emp : emps) {
+            List<AttendanceDayDto>        days     = calendarMapper.findDailyShifts(company, emp.getEmpCode(), startDate, endDate);
             List<AttendanceReqSummaryDto> requests = calendarMapper.findRequests(company, emp.getEmpCode(), startDate, endDate);
             List<DailyAttendanceDto>      records  = calendarMapper.findRecords(company, emp.getEmpCode(), startYmd, endYmd);
 

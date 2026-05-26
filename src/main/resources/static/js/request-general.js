@@ -6,6 +6,7 @@ const WORK_CODES = {
 
 let currentCategory = 'OVERTIME';
 let tableData = [];
+const HOLIDAY_OVERTIME_MIN = 480;
 
 // 시프트 코드별 시간 정보 (hidden div에서 파싱)
 const shiftCodesData = Array.from(document.querySelectorAll('#shiftTimesData span')).map(sp => ({
@@ -203,18 +204,40 @@ function subtractWorkingMinutes(row, rangeStart, rangeEnd, workMin) {
 }
 
 function effectiveShiftSource(row) {
+    const approvedOtherShift = Object.values((row && row.requestsByWorkCode) || {}).find(req =>
+        req.existingRequestGroup === 'OTHER'
+        && req.status === 'APPROVED'
+        && req.requestWorkCode);
+    const approvedHolidayWork = Object.values((row && row.requestsByWorkCode) || {}).find(req =>
+        isApprovedRequest(req)
+        && req.requestWorkCode === '휴일근무'
+        && req.startTime
+        && req.endTime);
     const actualShift = shiftCodesData.find(s =>
         (row.actualWorkCode && s.shiftCode === row.actualWorkCode)
-        || (row.actualWorkName && s.shiftName === row.actualWorkName));
+        || (row.actualWorkName && s.shiftName === row.actualWorkName)
+        || (approvedHolidayWork && (s.shiftCode === approvedHolidayWork.requestWorkCode || s.shiftName === approvedHolidayWork.requestWorkCode))
+        || (approvedOtherShift && s.shiftCode === approvedOtherShift.requestWorkCode)
+        || (approvedOtherShift && s.shiftName === approvedOtherShift.requestWorkCode));
     if (!actualShift || !actualShift.workOnHhmm || !actualShift.workOffHhmm) return row;
+    const holidayStartTime = approvedHolidayWork
+        ? minuteToTimeState(absoluteMinute(approvedHolidayWork.startTimeType || 'N0', approvedHolidayWork.startTime)).time
+        : actualShift.workOnHhmm;
+    const holidayOffMin = approvedHolidayWork
+        ? absoluteMinute(approvedHolidayWork.endTimeType || 'N0', approvedHolidayWork.endTime)
+        : null;
+    const holidayOffTime = approvedHolidayWork
+        ? minuteToTimeState(holidayOffMin).time
+        : actualShift.workOffHhmm;
     return {
-        shiftOnTime: actualShift.workOnHhmm,
-        shiftOffTime: actualShift.workOffHhmm,
+        shiftOnTime: holidayStartTime,
+        shiftOffTime: holidayOffTime,
+        shiftOffDayOffset: holidayOffMin != null && holidayOffMin >= 1440 ? 1440 : 0,
         break1StartHhmm: actualShift.break1StartHhmm,
         break1EndHhmm: actualShift.break1EndHhmm,
         break2StartHhmm: actualShift.break2StartHhmm,
         break2EndHhmm: actualShift.break2EndHhmm,
-        plannedWorkMin: actualShift.workMinutes || 0
+        plannedWorkMin: approvedHolidayWork ? (approvedHolidayWork.requestWorkMin || 0) : (actualShift.workMinutes || 0)
     };
 }
 
@@ -223,6 +246,7 @@ function halfDayTimeState(row, code) {
     const plannedStart = absoluteMinute('N0', source.shiftOnTime);
     let plannedEnd = absoluteMinute('N0', source.shiftOffTime);
     if (plannedStart == null || plannedEnd == null) return null;
+    plannedEnd += source.shiftOffDayOffset || 0;
     if (plannedEnd <= plannedStart) plannedEnd += 1440;
     const plannedWorkMin = source.plannedWorkMin && source.plannedWorkMin > 0
         ? source.plannedWorkMin
@@ -314,7 +338,8 @@ function effectiveWorkRange(row) {
     const baseEndTime = absoluteMinute('N0', source.shiftOffTime);
     if (baseStart == null || baseEndTime == null) return null;
     let start = baseStart;
-    let end = baseEndTime <= baseStart ? baseEndTime + 1440 : baseEndTime;
+    let end = baseEndTime + (source.shiftOffDayOffset || 0);
+    if (end <= baseStart) end += 1440;
     Object.values(row.requestsByWorkCode || {}).forEach(req => {
         if (!isActiveRequest(req)) return;
         if (req.requestWorkCode === '조출연장') {
@@ -357,6 +382,21 @@ function validateNotPastNextDayWorkStart(dto, row) {
     return true;
 }
 
+function holidayWorkMinForOvertime(row) {
+    return Object.values((row && row.requestsByWorkCode) || {})
+        .filter(req => isApprovedRequest(req) && req.requestWorkCode === '휴일근무')
+        .reduce((max, req) => Math.max(max, req.requestWorkMin || 0), 0);
+}
+
+function validateHolidayWorkMinForOvertime(dto, row) {
+    if (!row || currentCategory !== 'OVERTIME') return true;
+    if (dto.requestWorkCode !== '연장' && dto.requestWorkCode !== '조출연장') return true;
+    if (row.workDayType !== 'OFF' && row.workDayType !== 'HOLIDAY') return true;
+    if (holidayWorkMinForOvertime(row) >= HOLIDAY_OVERTIME_MIN) return true;
+    showToast('휴일에는 승인된 휴일근무가 8시간 이상인 경우에만 연장근무를 신청할 수 있습니다.', 'error');
+    return false;
+}
+
 function categoryOfRequest(state) {
     if (!state || state.existingRequestGroup === 'OTHER') return 'OTHER';
     if (state.requestWorkCode === '연장' || state.requestWorkCode === '조출연장') return 'OVERTIME';
@@ -392,8 +432,9 @@ function actualOverlapMin(row, tr) {
 }
 
 function baseActualWorkMin(row) {
-    if (!row || !workDateIsPastOrToday()) return row && row.plannedWorkMin ? row.plannedWorkMin : 0;
+    if (!row) return 0;
     const plan = plannedRange(row);
+    if (!workDateIsPastOrToday()) return plan ? plan.plannedWorkMin : 0;
     const hasCheckIn = !!row.checkIn;
     if (!hasCheckIn) return row.actualWorkMin || 0;
 
@@ -406,13 +447,13 @@ function baseActualWorkMin(row) {
         actualEnd = plan.end;
     }
 
-    if (actualStart == null || actualEnd == null || !plan || (row.plannedWorkMin || 0) <= 0) {
+    if (actualStart == null || actualEnd == null || !plan || (plan.plannedWorkMin || 0) <= 0) {
         return row.actualWorkMin || 0;
     }
     const baseStart = Math.max(actualStart, plan.start);
     const baseEnd = Math.min(actualEnd, plan.end);
     if (baseEnd <= baseStart) return 0;
-    return Math.max(0, baseEnd - baseStart - breakOverlapMin(row, baseStart, baseEnd));
+    return Math.max(0, baseEnd - baseStart - breakOverlapMin(plan.source, baseStart, baseEnd));
 }
 
 function overtimeBoundary(row) {
@@ -420,6 +461,7 @@ function overtimeBoundary(row) {
     const start = absoluteMinute('N0', source && source.shiftOnTime);
     let end = absoluteMinute('N0', source && source.shiftOffTime);
     if (start == null || end == null) return null;
+    end += source.shiftOffDayOffset || 0;
     if (end <= start) end += 1440;
     return {start, end};
 }
@@ -443,7 +485,8 @@ function validateOvertimeOutsideEffectiveWorkTime(dto, row) {
 
 function actualMissingWorkMin(row) {
     if (!row || !workDateIsPastOrToday()) return 0;
-    return Math.max(0, (row.plannedWorkMin || 0) - baseActualWorkMin(row));
+    const plan = plannedRange(row);
+    return Math.max(0, ((plan && plan.plannedWorkMin) || 0) - baseActualWorkMin(row));
 }
 
 function requestEffectForState(state, row) {
@@ -483,11 +526,18 @@ function requestRange(req) {
 }
 
 function plannedRange(row) {
-    const start = absoluteMinute('N0', row && row.shiftOnTime);
-    let end = absoluteMinute('N0', row && row.shiftOffTime);
+    const source = effectiveShiftSource(row);
+    const start = absoluteMinute('N0', source && source.shiftOnTime);
+    let end = absoluteMinute('N0', source && source.shiftOffTime);
     if (start == null || end == null) return null;
+    end += source.shiftOffDayOffset || 0;
     if (end <= start) end += 1440;
-    return {start, end};
+    return {
+        start,
+        end,
+        source,
+        plannedWorkMin: source.plannedWorkMin || 0
+    };
 }
 
 function recognizedActualWorkMin(row, currentState, selectedState) {
@@ -505,11 +555,11 @@ function recognizedActualWorkMin(row, currentState, selectedState) {
     }
 
     let total = hasCheckIn ? 0 : (row.actualWorkMin || 0);
-    if (hasCheckIn && actualStart != null && actualEnd != null && plan && (row.plannedWorkMin || 0) > 0) {
+    if (hasCheckIn && actualStart != null && actualEnd != null && plan && (plan.plannedWorkMin || 0) > 0) {
         const baseStart = Math.max(actualStart, plan.start);
         const baseEnd = Math.min(actualEnd, plan.end);
         if (baseEnd > baseStart) {
-            total += Math.max(0, baseEnd - baseStart - breakOverlapMin(row, baseStart, baseEnd));
+            total += Math.max(0, baseEnd - baseStart - breakOverlapMin(plan.source, baseStart, baseEnd));
         }
     }
 
@@ -528,7 +578,7 @@ function recognizedActualWorkMin(row, currentState, selectedState) {
             if ((req.requestWorkMin || 0) > 0) overlap = Math.min(overlap, req.requestWorkMin);
             total += overlap;
         } else if (category === 'LEAVE') {
-            total -= (req.requestWorkMin || row.plannedWorkMin || 0);
+            total -= (req.requestWorkMin || (plan && plan.plannedWorkMin) || 0);
         }
     });
 
@@ -668,7 +718,8 @@ function renderTable(rows) {
             break2EndHhmm: r.break2EndHhmm,
             plannedWorkMin: r.plannedWorkMin,
             actualWorkCode: r.actualWorkCode,
-            actualWorkName: r.actualWorkName
+            actualWorkName: r.actualWorkName,
+            requestsByWorkCode: r.requestsByWorkCode
         };
         const ts = locked
             ? { startTypeDis:false, startDis:false, endTypeDis:false, endDis:false,
@@ -740,7 +791,8 @@ function applyRequestState(tr, r, workCode) {
         break2EndHhmm: r.break2EndHhmm,
         plannedWorkMin: r.plannedWorkMin,
         actualWorkCode: r.actualWorkCode,
-        actualWorkName: r.actualWorkName
+        actualWorkName: r.actualWorkName,
+        requestsByWorkCode: r.requestsByWorkCode
     };
     const ts = locked
         ? { startTypeDis:false, startDis:false, endTypeDis:false, endDis:false,
@@ -868,6 +920,7 @@ async function doSave() {
         const dto = rowToDto(tr);
         if (!dto.requestWorkCode) { showToast('신청근무를 선택하세요.','error'); return; }
         if (!validateCheckIn(tableData[parseInt(tr.dataset.idx)], currentCategory, dto.requestWorkCode)) return;
+        if (!validateHolidayWorkMinForOvertime(dto, tableData[parseInt(tr.dataset.idx)])) return;
         if (!dto.startTime || !dto.endTime) { showToast('시작/종료 시간을 선택하세요.','error'); return; }
         if (!validateOvertimeOutsideEffectiveWorkTime(dto, tableData[parseInt(tr.dataset.idx)])) return;
         if (!validateWithinEffectiveWorkTime(dto, tableData[parseInt(tr.dataset.idx)])) return;
@@ -918,6 +971,7 @@ async function doSubmit() {
         const existing = currentRequestForRow(tr, tableData[idx]);
         if (!dto.requestWorkCode) { showToast('신청근무를 선택하세요.','error'); return; }
         if (!validateCheckIn(tableData[idx], currentCategory, dto.requestWorkCode)) return;
+        if (!validateHolidayWorkMinForOvertime(dto, tableData[idx])) return;
         if (!dto.startTime || !dto.endTime) { showToast('시작/종료 시간을 선택하세요.','error'); return; }
         if (!validateOvertimeOutsideEffectiveWorkTime(dto, tableData[parseInt(tr.dataset.idx)])) return;
         if (!validateWithinEffectiveWorkTime(dto, tableData[parseInt(tr.dataset.idx)])) return;

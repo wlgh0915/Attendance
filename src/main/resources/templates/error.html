@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>오류 - 근태 관리 시스템</title>
+    <link rel="stylesheet" th:href="@{/css/error.css}">
+</head>
+<body>
+<main class="error-page">
+    <section class="error-panel">
+        <div class="error-code" th:text="${status ?: 'ERROR'}">ERROR</div>
+        <h1 th:text="${status == 403 ? '접근 권한이 없습니다.' :
+                     status == 404 ? '페이지를 찾을 수 없습니다.' :
+                     '요청을 처리할 수 없습니다.'}">
+            요청을 처리할 수 없습니다.
+        </h1>
+        <p th:text="${message != null && !#strings.isEmpty(message) ? message : '잠시 후 다시 시도하거나 관리자에게 문의하세요.'}">
+            잠시 후 다시 시도하거나 관리자에게 문의하세요.
+        </p>
+        <div class="error-actions">
+            <a th:href="@{/}" class="btn-primary">메인으로 이동</a>
+            <button type="button" class="btn-secondary" onclick="history.back()">이전 페이지</button>
+        </div>
+    </section>
+</main>
+</body>
+</html>

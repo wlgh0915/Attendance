@@ -14,35 +14,34 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 
 @Controller
 @RequiredArgsConstructor
-@RequestMapping("/attendance/department/week")
-public class WeeklyAttendanceController {
+@RequestMapping("/attendance/department/month")
+public class AttendanceDeptMonthController {
 
     private final WeeklyAttendanceService weeklyService;
 
+    private static final String[] DAY_NAMES = {"일", "월", "화", "수", "목", "금", "토"};
+
     @GetMapping
-    public String weeklyPage(HttpSession session, Model model,
-                             @RequestParam(required = false) String workDate,
-                             @RequestParam(required = false) String deptCode) {
+    public String monthPage(HttpSession session, Model model,
+                            @RequestParam(required = false) String ym,
+                            @RequestParam(required = false) String deptCode) {
+
         LoginUserDto loginUser = getLoginUser(session);
         if (loginUser == null) return "redirect:/login";
 
         String company = loginUser.getCompany();
 
-        LocalDate date;
+        YearMonth yearMonth;
         try {
-            date = (workDate == null || workDate.isBlank()) ? LocalDate.now() : LocalDate.parse(workDate);
+            yearMonth = (ym == null || ym.isBlank()) ? YearMonth.now() : YearMonth.parse(ym);
         } catch (Exception e) {
-            date = LocalDate.now();
+            yearMonth = YearMonth.now();
         }
-
-        // 주 시작(일요일) 계산: SUNDAY=7 → 0, MON=1, ..., SAT=6
-        int       daysBack  = date.getDayOfWeek().getValue() % 7;
-        LocalDate weekStart = date.minusDays(daysBack);
-        LocalDate weekEnd   = weekStart.plusDays(6);
 
         List<DepartmentDto> depts = weeklyService.getAccessibleDepts(company, loginUser.getDeptCode());
 
@@ -54,27 +53,30 @@ public class WeeklyAttendanceController {
             selectedDept = loginUser.getDeptCode();
         }
 
-        List<WeeklyEmpDto> weeklyData = weeklyService.getWeeklyByDept(company, selectedDept, weekStart);
+        List<WeeklyEmpDto> monthData = weeklyService.getDeptMonthly(company, selectedDept, yearMonth);
 
-        String[] dayDates = new String[7];
-        for (int i = 0; i < 7; i++) {
-            dayDates[i] = weekStart.plusDays(i).toString();
+        int daysInMonth = yearMonth.lengthOfMonth();
+        String[] dayDates  = new String[daysInMonth];
+        String[] dayLabels = new String[daysInMonth];
+
+        for (int i = 0; i < daysInMonth; i++) {
+            LocalDate d = yearMonth.atDay(i + 1);
+            dayDates[i]  = d.toString();
+            int dow = d.getDayOfWeek().getValue() % 7; // 0=일,1=월,...,6=토
+            dayLabels[i] = (i + 1) + "(" + DAY_NAMES[dow] + ")";
         }
 
-        String[] dayNames = {"일","월","화","수","목","금","토"};
-
-        model.addAttribute("weeklyData",   weeklyData);
-        model.addAttribute("weekStart",    weekStart.toString());
-        model.addAttribute("weekEnd",      weekEnd.toString());
-        model.addAttribute("workDate",     date.toString());
-        model.addAttribute("selectedDept", selectedDept);
+        model.addAttribute("monthData",    monthData);
         model.addAttribute("depts",        depts);
+        model.addAttribute("selectedDept", selectedDept);
         model.addAttribute("dayDates",     dayDates);
-        model.addAttribute("dayNames",     dayNames);
-        model.addAttribute("prevWeekDate", weekStart.minusDays(1).toString());
-        model.addAttribute("nextWeekDate", weekEnd.plusDays(1).toString());
+        model.addAttribute("dayLabels",    dayLabels);
+        model.addAttribute("currentYm",    yearMonth.toString());
+        model.addAttribute("prevYm",       yearMonth.minusMonths(1).toString());
+        model.addAttribute("nextYm",       yearMonth.plusMonths(1).toString());
+        model.addAttribute("ymDisplay",    yearMonth.getYear() + "년 " + yearMonth.getMonthValue() + "월");
 
-        return "attendance/weekly";
+        return "attendance/dept-month";
     }
 
     private LoginUserDto getLoginUser(HttpSession session) {

@@ -3,7 +3,7 @@
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
       layout:decorate="~{layouts/default_layout}">
 <head>
-    <title>사원 등록 - 근태 관리 시스템</title>
+    <title>사원 수정 - 근태 관리 시스템</title>
     <link rel="stylesheet" th:href="@{/css/form-common.css}">
 </head>
 <body>
@@ -11,10 +11,17 @@
     <div class="content-wrapper">
         <div class="form-container">
             <div class="form-header">
-                <h2>사원 등록</h2>
+                <h2>사원 수정</h2>
             </div>
 
-            <form th:action="@{/users/new}" th:object="${userCreateDto}" method="post" class="user-form">
+            <form th:action="@{/users/{empCode}/edit(empCode=${userUpdateDto.empCode})}"
+                  th:object="${userUpdateDto}" method="post" class="user-form">
+
+                <input type="hidden" th:field="*{originalPositionCode}">
+                <input type="hidden" th:field="*{originalPositionDate}">
+                <input type="hidden" th:field="*{originalDutyCode}">
+                <input type="hidden" th:field="*{originalDutyDate}">
+                <input type="hidden" th:field="*{returnDeptCode}">
 
                 <div th:if="${#fields.hasGlobalErrors()}" class="toast-data" data-type="error"
                      th:data-message="${#strings.listJoin(#fields.globalErrors(), ' | ')}" style="display:none"></div>
@@ -27,7 +34,7 @@
 
                 <div class="form-group">
                     <label class="required">사번</label>
-                    <input type="text" th:field="*{empCode}" placeholder="사원 번호를 입력하세요">
+                    <input type="text" th:field="*{empCode}" readonly>
                     <div class="error-text" th:errors="*{empCode}"></div>
                 </div>
 
@@ -38,8 +45,8 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="required">비밀번호</label>
-                    <input type="password" th:field="*{password}" placeholder="초기 비밀번호 설정">
+                    <label>비밀번호</label>
+                    <input type="password" th:field="*{password}" placeholder="변경할 때만 입력하세요">
                     <div class="error-text" th:errors="*{password}"></div>
                 </div>
 
@@ -68,6 +75,12 @@
                 </div>
 
                 <div class="form-group">
+                    <label>직위일자</label>
+                    <input type="date" th:field="*{positionDate}">
+                    <div class="error-text" th:errors="*{positionDate}"></div>
+                </div>
+
+                <div class="form-group">
                     <label>직책</label>
                     <select th:field="*{dutyCode}">
                         <option value="">선택하세요</option>
@@ -77,6 +90,12 @@
                         </option>
                     </select>
                     <div class="error-text" th:errors="*{dutyCode}"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>직책일자</label>
+                    <input type="date" th:field="*{dutyDate}">
+                    <div class="error-text" th:errors="*{dutyDate}"></div>
                 </div>
 
                 <div class="form-group">
@@ -91,7 +110,7 @@
                     <div class="error-text" th:errors="*{roleCode}"></div>
                 </div>
 
-                <button type="submit" class="btn-submit">등록하기</button>
+                <button type="submit" class="btn-submit">수정하기</button>
             </form>
         </div>
     </div>

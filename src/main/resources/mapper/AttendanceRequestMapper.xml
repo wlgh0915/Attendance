@@ -45,6 +45,8 @@
                  ELSE 0
             END                                                   AS plannedWorkMin,
             CASE WHEN absenceInfo.isAbsent = 1 THEN 0
+                 WHEN ar.CHECK_IN IS NULL AND effectiveShiftCalc.RECOGNIZED_NO_RECORD_YN = 'Y'
+                 THEN effectiveShiftCalc.WORK_MIN
                  WHEN ar.WORK_MIN IS NOT NULL THEN ar.WORK_MIN
                  ELSE ar.WORK_MIN
             END                                                   AS actualWorkMin,
@@ -584,9 +586,34 @@
             ORDER BY offReq.UPDATED_AT DESC, offReq.REQ_ID DESC
         ) approvedOffShift
         OUTER APPLY (
+            SELECT TOP 1 noRecordShift.SHIFT_CODE
+            FROM HRTATTENDANCEREQUEST01 noRecordReq
+            LEFT JOIN HRTATTENDANCE_OTHER01 noRecordOther
+                   ON noRecordOther.COMPANY = noRecordReq.COMPANY
+                  AND noRecordOther.REQ_ID = noRecordReq.REQ_ID
+            JOIN HRTSHIFTMASTER01 noRecordShift
+                  ON noRecordShift.COMPANY = noRecordReq.COMPANY
+                 AND (
+                       (noRecordReq.REQ_GROUP = 'OTHER'
+                        AND noRecordShift.SHIFT_CODE = noRecordOther.CHANGE_SHIFT_CODE
+                        AND noRecordReq.TARGET_DATE &lt;= CAST(#{workDate} AS DATE)
+                        AND noRecordOther.END_DATE &gt;= CAST(#{workDate} AS DATE))
+                       OR
+                       (noRecordReq.REQ_GROUP = 'GENERAL'
+                        AND noRecordReq.TARGET_DATE = CAST(#{workDate} AS DATE)
+                        AND (noRecordShift.SHIFT_CODE = noRecordReq.REQ_TYPE OR noRecordShift.SHIFT_NAME = noRecordReq.REQ_TYPE))
+                     )
+            WHERE noRecordReq.COMPANY = h.COMPANY
+              AND noRecordReq.TARGET_EMP_CODE = h.EMP_CODE
+              AND noRecordReq.STATUS = 'APPROVED'
+              AND noRecordShift.SHIFT_CODE IN ('10', '16')
+            ORDER BY noRecordReq.UPDATED_AT DESC, noRecordReq.REQ_ID DESC
+        ) approvedNoRecordShift
+        OUTER APPLY (
             SELECT COALESCE(
                        NULLIF(ar.ACTUAL_SHIFT_CODE, ''),
                        NULLIF(approvedOffShift.SHIFT_CODE, ''),
+                       NULLIF(approvedNoRecordShift.SHIFT_CODE, ''),
                        NULLIF(ar.SHIFT_CODE, ''),
                        CASE WHEN r.REQ_GROUP = 'OTHER' AND r.STATUS = 'APPROVED'
                             THEN NULLIF(o.CHANGE_SHIFT_CODE, '') END,
@@ -599,6 +626,13 @@
         OUTER APPLY (
             SELECT CASE
                        WHEN effectiveShift.WORK_ON_HHMM IS NULL OR effectiveShift.WORK_OFF_HHMM IS NULL THEN 0
+                       WHEN effectiveShift.SHIFT_CODE IN ('10', '16')
+                       THEN (CASE WHEN effectiveShift.WORK_OFF_HHMM >= effectiveShift.WORK_ON_HHMM
+                                  THEN DATEDIFF(MINUTE, effectiveShift.WORK_ON_HHMM, effectiveShift.WORK_OFF_HHMM)
+                                  ELSE 1440 + DATEDIFF(MINUTE, effectiveShift.WORK_ON_HHMM, effectiveShift.WORK_OFF_HHMM)
+                             END
+                             - ISNULL(DATEDIFF(MINUTE, effectiveShift.BREAK1_START_HHMM, effectiveShift.BREAK1_END_HHMM), 0)
+                             - ISNULL(DATEDIFF(MINUTE, effectiveShift.BREAK2_START_HHMM, effectiveShift.BREAK2_END_HHMM), 0))
                        WHEN ISNULL(effectiveShift.WORK_DAY_TYPE, '') IN ('OFF', 'HOLIDAY')
                             AND NOT (
                                 effectiveShift.SHIFT_NAME LIKE '%출장%'
@@ -614,7 +648,8 @@
                             - ISNULL(DATEDIFF(MINUTE, effectiveShift.BREAK2_START_HHMM, effectiveShift.BREAK2_END_HHMM), 0)
                    END AS WORK_MIN,
                    CASE
-                       WHEN ISNULL(effectiveShift.WORK_DAY_TYPE, '') IN ('OFF', 'HOLIDAY')
+                       WHEN effectiveShift.SHIFT_CODE IN ('10', '16')
+                            OR ISNULL(effectiveShift.WORK_DAY_TYPE, '') IN ('OFF', 'HOLIDAY')
                             OR effectiveShift.SHIFT_NAME LIKE '%휴가%'
                             OR effectiveShift.SHIFT_NAME LIKE '%반차%'
                             OR effectiveShift.SHIFT_NAME LIKE '%출장%'
@@ -634,6 +669,7 @@
                                 ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
                             END IN ('OFF', 'HOLIDAY') THEN 0
                        WHEN approvedOffShift.SHIFT_CODE IS NOT NULL THEN 0
+                       WHEN effectiveShiftCalc.RECOGNIZED_NO_RECORD_YN = 'Y' THEN 0
                        ELSE 1
                    END AS isAbsent
         ) absenceInfo
@@ -1772,6 +1808,25 @@
           AND EMP_CODE = #{empCode}
           AND YYYYMMDD = REPLACE(#{workDate}, '-', '')
           AND CHECK_IN IS NOT NULL
+    </select>
+
+    <select id="findActiveHolidayWorkMin"
+            parameterType="com.company.attendancemanagement.dto.request.AttendanceRequestDto"
+            resultType="int">
+        SELECT ISNULL(MAX(g.WORK_MIN), 0)
+        FROM HRTATTENDANCEREQUEST01 r
+        JOIN HRTATTENDANCE_GENERAL01 g
+          ON r.COMPANY = g.COMPANY
+         AND r.REQ_ID = g.REQ_ID
+        WHERE r.COMPANY = #{company}
+          AND r.TARGET_EMP_CODE = #{empCode}
+          AND r.TARGET_DATE = CAST(#{workDate} AS DATE)
+          AND r.REQ_GROUP = 'GENERAL'
+          AND r.REQ_TYPE = '휴일근무'
+          AND r.STATUS = 'APPROVED'
+          <if test="requestId != null and requestId != ''">
+              AND r.REQ_ID &lt;&gt; #{requestId}
+          </if>
     </select>
 
     <select id="findAttendanceRecordInfo" resultType="map">

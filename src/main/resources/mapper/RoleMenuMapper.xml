@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.company.attendancemanagement.mapper.RoleMenuMapper">
+
+    <select id="findPermittedMenuUrls" resultType="string">
+        SELECT DISTINCT m.MENU_URL
+        FROM SYS_ROLE_MENU01 rm
+        JOIN SYS_MENU01 m
+          ON m.COMPANY = rm.COMPANY
+         AND m.MENU_ID = rm.MENU_ID
+        WHERE rm.COMPANY = #{company}
+          AND rm.ROLE_CODE = #{roleCode}
+          AND m.USE_YN = 'Y'
+          AND m.MENU_URL IS NOT NULL
+          AND LTRIM(RTRIM(m.MENU_URL)) &lt;&gt; ''
+    </select>
+
+</mapper>
