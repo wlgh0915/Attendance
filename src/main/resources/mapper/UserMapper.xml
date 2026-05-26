@@ -34,7 +34,7 @@
         NULLIF(#{positionCode}, ''),
         NULLIF(#{dutyCode}, ''),
         #{roleCode},
-        GETDATE(),
+        COALESCE(NULLIF(#{hireDate}, ''), GETDATE()),
         GETDATE()
         )
     </insert>
@@ -44,6 +44,7 @@
             COMPANY AS company,
             EMP_CODE AS empCode,
             EMP_NAME AS empName,
+            CONVERT(VARCHAR(10), CREATED_AT, 23) AS hireDate,
             DEPT_CODE AS deptCode,
             POSITION_CODE AS positionCode,
             CONVERT(VARCHAR(10), POSITION_DATE, 23) AS positionDate,

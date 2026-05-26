@@ -41,4 +41,5 @@ public interface DepartmentMapper {
     void closeCurrentTransfer(@Param("company")  String company,
                               @Param("empCode")  String empCode,
                               @Param("endDate")  String endDate);
+
 }

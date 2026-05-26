@@ -1,9 +1,7 @@
 package com.company.attendancemanagement.service;
 
-import com.company.attendancemanagement.dto.pattern.ShiftCodeDto;
 import com.company.attendancemanagement.dto.record.AttendanceRecordDto;
 import com.company.attendancemanagement.mapper.AttendanceRecordMapper;
-import com.company.attendancemanagement.mapper.pattern.WorkPatternMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -22,7 +20,6 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
     private static final DateTimeFormatter YMD = DateTimeFormatter.BASIC_ISO_DATE;
 
     private final AttendanceRecordMapper recordMapper;
-    private final WorkPatternMapper workPatternMapper;
 
     @Override
     public List<AttendanceRecordDto> findByMonth(String company, String empCode,
@@ -106,21 +103,40 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
         if (earlyApproval != null && earlyApproval.get("startTime") != null) {
             int approvedEarlyStart = toMinutes(earlyApproval.get("startTime").toString());
             effectiveInMin = Math.max(actualInMin, approvedEarlyStart);
-        } else if (earlyApproval == null) {
+        } else {
+            // 조출연장 미승인 또는 startTime 없는 경우 → 계획 출근시간으로 cap
             int plannedOnMin = toMinutes(planned.get("workOnHhmm").toString());
             effectiveInMin = Math.max(actualInMin, plannedOnMin);
         }
 
-        // 연장 미승인 시 계획 퇴근시간 이후 시간은 인정하지 않음
-        boolean hasOvertimeApproval = overtimes.stream()
-                .anyMatch(r -> "연장".equals(r.get("reqType")));
+        // 연장 승인 시 승인 종료시간까지만, 미승인·endTime없는 경우 계획 퇴근시간까지만 인정
+        Map<String, Object> overtimeApproval = overtimes.stream()
+                .filter(r -> "연장".equals(r.get("reqType")))
+                .findFirst().orElse(null);
         int effectiveOutMin = actualOutMin;
-        if (!hasOvertimeApproval) {
+        if (overtimeApproval != null && overtimeApproval.get("endTime") != null) {
+            int approvedEndMin = toMinutes(overtimeApproval.get("endTime").toString());
+            String endTimeType = String.valueOf(overtimeApproval.getOrDefault("endTimeType", "N0"));
+            if ("N1".equals(endTimeType) || approvedEndMin == 0) {
+                approvedEndMin += 1440;
+            }
+            effectiveOutMin = Math.min(actualOutMin, approvedEndMin);
+        } else {
+            // 연장 미승인 또는 endTime 없는 경우 → 계획 퇴근시간으로 cap
             int plannedOffMin = toMinutes(planned.get("workOffHhmm").toString());
             if (actualOutMin > 1440 && plannedOffMin < toMinutes(planned.get("workOnHhmm").toString())) {
                 plannedOffMin += 1440;
             }
             effectiveOutMin = Math.min(actualOutMin, plannedOffMin);
+        }
+
+        // 조퇴 승인 시 조퇴 시작시간까지만 인정
+        Map<String, Object> earlyLeave = overtimes.stream()
+                .filter(r -> "조퇴".equals(r.get("reqType")))
+                .findFirst().orElse(null);
+        if (earlyLeave != null && earlyLeave.get("startTime") != null) {
+            int leaveStartMin = toMinutes(earlyLeave.get("startTime").toString());
+            effectiveOutMin = Math.min(effectiveOutMin, leaveStartMin);
         }
 
         int minutes = effectiveOutMin - effectiveInMin;
@@ -192,22 +208,30 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
     }
 
     private void calculateLate(AttendanceRecordDto dto) {
-        if (dto.getCheckIn() == null || dto.getShiftCode() == null) {
+        if (dto.getCheckIn() == null) {
             dto.setLateYn("N");
             dto.setLateMin(0);
             return;
         }
 
-        ShiftCodeDto shift = workPatternMapper.findShiftByCode(dto.getCompany(), dto.getShiftCode());
-        if (shift == null || shift.getWorkOnHhmm() == null
-                || "OFF".equals(shift.getWorkDayType())
-                || "HOLIDAY".equals(shift.getWorkDayType())) {
+        // OTHER 근무변경 승인이 반영된 실제 시프트 기준으로 지각 판단
+        Map<String, Object> planned = recordMapper.findPlannedShift(
+                dto.getCompany(), dto.getEmpCode(), dto.getYyyymmdd());
+
+        if (planned == null || planned.get("workOnHhmm") == null) {
             dto.setLateYn("N");
             dto.setLateMin(0);
             return;
         }
 
-        int scheduled = toMinutes(shift.getWorkOnHhmm());
+        String workDayType = planned.get("workDayType") != null ? planned.get("workDayType").toString() : "";
+        if ("OFF".equals(workDayType) || "HOLIDAY".equals(workDayType)) {
+            dto.setLateYn("N");
+            dto.setLateMin(0);
+            return;
+        }
+
+        int scheduled = toMinutes(planned.get("workOnHhmm").toString());
         int actual = toMinutes(dto.getCheckIn());
 
         if (actual > scheduled) {

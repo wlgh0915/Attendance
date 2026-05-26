@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -58,18 +59,24 @@ public class AttendanceCalendarController {
             selectedDept = loginUser.getDeptCode();
         }
 
-        // 사원 목록: ADMIN만 조회
+        // 사원 목록: ADMIN만 조회, 본인 사번 맨 위 → 나머지 오름차순
+        String myEmp = loginUser.getEmpCode();
         List<EmpSimpleDto> emps = isAdmin
                 ? calendarService.getEmpsByDept(company, selectedDept) : List.of();
+        if (isAdmin) {
+            emps.sort(Comparator.comparing((EmpSimpleDto e) -> e.getEmpCode().equals(myEmp) ? 0 : 1)
+                    .thenComparing(EmpSimpleDto::getEmpCode));
+        }
 
-        // 사원 결정: ADMIN은 파라미터 → 부서 첫 사원 순으로, USER는 항상 본인
+        // 사원 결정: 파라미터 → 본인(해당 부서 소속 시) → 첫 번째 사원
         String targetEmp;
         if (isAdmin && empCode != null && !empCode.isBlank()) {
             targetEmp = empCode;
         } else if (isAdmin && !emps.isEmpty()) {
-            targetEmp = emps.get(0).getEmpCode();
+            boolean selfInList = emps.stream().anyMatch(e -> e.getEmpCode().equals(myEmp));
+            targetEmp = selfInList ? myEmp : emps.get(0).getEmpCode();
         } else {
-            targetEmp = loginUser.getEmpCode();
+            targetEmp = myEmp;
         }
 
         List<AttendanceDayDto> days    = calendarService.getCalendar(company, targetEmp, yearMonth);
@@ -107,6 +114,9 @@ public class AttendanceCalendarController {
         if (!allowed) return ResponseEntity.status(403).build();
 
         List<EmpSimpleDto> emps = calendarService.getEmpsByDept(loginUser.getCompany(), deptCode);
+        String myEmp = loginUser.getEmpCode();
+        emps.sort(Comparator.comparing((EmpSimpleDto e) -> e.getEmpCode().equals(myEmp) ? 0 : 1)
+                .thenComparing(EmpSimpleDto::getEmpCode));
         return ResponseEntity.ok(emps);
     }
 

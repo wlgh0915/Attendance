@@ -19,7 +19,11 @@ public class UserUpdateDto {
 
     private String password;
 
+    private String hireDate;
+
     private String deptCode;
+
+    private String originalDeptCode;
 
     private String positionCode;
 

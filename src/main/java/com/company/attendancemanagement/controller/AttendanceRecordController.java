@@ -60,16 +60,22 @@ public class AttendanceRecordController {
             selectedDept = loginUser.getDeptCode();
         }
 
+        String myEmp = loginUser.getEmpCode();
         List<EmpSimpleDto> emps = isAdmin
                 ? calendarService.getEmpsByDept(company, selectedDept) : List.of();
+        if (isAdmin) {
+            emps.sort(Comparator.comparing((EmpSimpleDto e) -> e.getEmpCode().equals(myEmp) ? 0 : 1)
+                    .thenComparing(EmpSimpleDto::getEmpCode));
+        }
 
         String targetEmp;
         if (isAdmin && empCode != null && !empCode.isBlank()) {
             targetEmp = empCode;
         } else if (isAdmin && !emps.isEmpty()) {
-            targetEmp = emps.get(0).getEmpCode();
+            boolean selfInList = emps.stream().anyMatch(e -> e.getEmpCode().equals(myEmp));
+            targetEmp = selfInList ? myEmp : emps.get(0).getEmpCode();
         } else {
-            targetEmp = loginUser.getEmpCode();
+            targetEmp = myEmp;
         }
 
         // DB에서 해당 월 실적 조회

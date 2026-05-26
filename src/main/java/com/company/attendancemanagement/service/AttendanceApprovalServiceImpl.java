@@ -74,6 +74,17 @@ public class AttendanceApprovalServiceImpl implements AttendanceApprovalService 
                 recordService.recalculateIfRecordExists(
                         request.getCompany(), request.getEmpCode(), yyyymmdd);
             }
+            // 근무변경(OTHER) 승인 시: 해당 기간 전체 날짜 실적 재계산
+            if (request != null && "OTHER".equals(request.getRequestCategory())
+                    && request.getWorkDate() != null && request.getEndDate() != null) {
+                LocalDate start = LocalDate.parse(request.getWorkDate());
+                LocalDate end   = LocalDate.parse(request.getEndDate());
+                for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
+                    recordService.recalculateIfRecordExists(
+                            request.getCompany(), request.getEmpCode(),
+                            d.toString().replace("-", ""));
+                }
+            }
         }
     }
 

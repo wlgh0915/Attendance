@@ -46,7 +46,17 @@ function earlyMin(day) {
 }
 
 function hasShiftMismatch(day) {
-    return day && day.record && day.record.shiftCode && day.shiftCode && day.record.shiftCode !== day.shiftCode;
+    if (!day || !day.record || !day.record.shiftCode) return false;
+    const approvedOther = (day.requests || []).find(
+        r => r.requestCategory === 'OTHER' && r.status === 'APPROVED' && r.changeShiftCode
+    );
+    // OFF/HOLIDAY 날에 근무변경(OTHER) 승인 없으면 비교 대상 시프트 없음 (휴일근무 등)
+    if ((day.workDayType === 'OFF' || day.workDayType === 'HOLIDAY') && !approvedOther) return false;
+    const effectiveShiftCode = approvedOther ? approvedOther.changeShiftCode : day.shiftCode;
+    if (!effectiveShiftCode) return false;
+    // OTHER 승인으로 ACTUAL_SHIFT_CODE가 설정된 경우 그것을 기준으로 비교
+    const recordCode = day.record.actualShiftCode || day.record.shiftCode;
+    return recordCode !== effectiveShiftCode;
 }
 
 // 시프트 계획 근무분 (근무변경 승인 시 변경된 시프트 기준)
@@ -156,9 +166,9 @@ function renderCalendar() {
             r => r.requestCategory === 'OTHER' && r.status === 'APPROVED' &&
                  r.changeShiftName && r.changeShiftName.includes('출장')
         );
-        if (day.record && day.record.workMin != null && (day.record.checkIn || hasLeaveApproval || approvedBizTrip)) {
+        if (day.record && day.record.workMin != null && day.record.checkIn) {
             weekActualMin += day.record.workMin;
-        } else if (approvedBizTrip) {
+        } else if (hasLeaveApproval || approvedBizTrip) {
             weekActualMin += plannedShiftMin(day);
         }
 
@@ -256,9 +266,9 @@ function renderCalendar() {
                      r.changeShiftName && r.changeShiftName.includes('출장')
             );
             const hasLeave = (d.requests || []).some(r => r.requestCategory === 'LEAVE' && r.status === 'APPROVED');
-            if (d.record && d.record.workMin != null && (d.record.checkIn || hasLeave || hasBizTrip)) {
+            if (d.record && d.record.workMin != null && d.record.checkIn) {
                 return sum + d.record.workMin;
-            } else if (hasBizTrip) {
+            } else if (hasLeave || hasBizTrip) {
                 return sum + plannedShiftMin(d);
             }
             return sum;
