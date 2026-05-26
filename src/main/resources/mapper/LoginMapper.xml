@@ -18,4 +18,13 @@
             AND PASSWORD_HASH = #{password}
     </select>
 
+    <select id="findActiveCompanies" resultType="com.company.attendancemanagement.dto.login.CompanyOptionDto">
+        SELECT
+            COMPANY AS company,
+            COMPANY_NAME AS companyName
+        FROM ORGCOMPANYMASTER01
+        WHERE USE_YN = 'Y'
+        ORDER BY COMPANY
+    </select>
+
 </mapper>

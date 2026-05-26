@@ -20,7 +20,13 @@
 
         <div class="form-group">
             <label>회사코드</label>
-            <input type="text" th:field="*{company}" placeholder="회사 코드를 입력하세요">
+            <select th:field="*{company}">
+                <option value="">회사를 선택하세요</option>
+                <option th:each="company : ${companyOptions}"
+                        th:value="${company.company}"
+                        th:text="${company.company} + ' - ' + ${company.companyName}">
+                </option>
+            </select>
             <div class="error-msg" th:errors="*{company}"></div>
         </div>
 

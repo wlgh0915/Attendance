@@ -23,21 +23,25 @@ public class LoginController {
     @GetMapping("/login")
     public String loginForm(Model model) {
         model.addAttribute("loginRequestDto", new LoginRequestDto());
+        addLoginFormOptions(model);
         return "login";
     }
 
     @PostMapping("/login")
     public String login(@Valid @ModelAttribute("loginRequestDto") LoginRequestDto loginRequestDto,
                         BindingResult bindingResult,
+                        Model model,
                         HttpSession session) {
 
         if (bindingResult.hasErrors()) {
+            addLoginFormOptions(model);
             return "login";
         }
 
         LoginUserDto loginUser = loginService.login(loginRequestDto);
 
         if (loginUser == null) {
+            addLoginFormOptions(model);
             bindingResult.reject("loginFail", "로그인 정보가 올바르지 않습니다.");
             return "login";
         }
@@ -50,5 +54,9 @@ public class LoginController {
     public String logout(HttpSession session) {
         session.invalidate();
         return "redirect:/login";
+    }
+
+    private void addLoginFormOptions(Model model) {
+        model.addAttribute("companyOptions", loginService.findActiveCompanies());
     }
 }
