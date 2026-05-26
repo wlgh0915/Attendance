@@ -99,9 +99,13 @@
             h.EMP_CODE AS empCode,
             h.EMP_NAME AS empName,
             h.DEPT_CODE AS deptCode,
-            h.ROLE_CODE AS roleCode
+            d.DEPT_NAME AS deptName,
+            h.ROLE_CODE AS roleCode,
+            r.ROLE_NAME AS roleName
         FROM HRIMASTER01 h
         LEFT JOIN ORGCOMPANYMASTER01 c ON h.COMPANY = c.COMPANY
+        LEFT JOIN ORGDEPTMASTER01 d ON h.COMPANY = d.COMPANY AND h.DEPT_CODE = d.DEPT_CODE
+        LEFT JOIN SYS_ROLE01 r ON h.COMPANY = r.COMPANY AND h.ROLE_CODE = r.ROLE_CODE
         WHERE h.COMPANY = #{company}
           AND h.DEPT_CODE = #{deptCode}
         ORDER BY h.EMP_CODE
@@ -140,9 +144,13 @@
             h.EMP_CODE AS empCode,
             h.EMP_NAME AS empName,
             h.DEPT_CODE AS deptCode,
-            h.ROLE_CODE AS roleCode
+            d.DEPT_NAME AS deptName,
+            h.ROLE_CODE AS roleCode,
+            r.ROLE_NAME AS roleName
         FROM HRIMASTER01 h
         LEFT JOIN ORGCOMPANYMASTER01 c ON h.COMPANY = c.COMPANY
+        LEFT JOIN ORGDEPTMASTER01 d ON h.COMPANY = d.COMPANY AND h.DEPT_CODE = d.DEPT_CODE
+        LEFT JOIN SYS_ROLE01 r ON h.COMPANY = r.COMPANY AND h.ROLE_CODE = r.ROLE_CODE
         WHERE h.COMPANY = #{company}
           AND h.DEPT_CODE IS NULL
           AND h.RETIRE_DATE IS NULL

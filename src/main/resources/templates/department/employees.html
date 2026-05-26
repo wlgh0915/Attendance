@@ -68,8 +68,8 @@
                     <th>회사명</th>
                     <th>사번</th>
                     <th>사원명</th>
-                    <th>부서코드</th>
-                    <th>권한코드</th>
+                    <th>부서명</th>
+                    <th>권한</th>
                     <th class="action-header">관리</th>
                 </tr>
                 </thead>
@@ -79,8 +79,8 @@
                     <td th:text="${emp.companyName}"></td>
                     <td th:text="${emp.empCode}"></td>
                     <td th:text="${emp.empName}"></td>
-                    <td th:text="${emp.deptCode}"></td>
-                    <td th:text="${emp.roleCode}"></td>
+                    <td th:text="${emp.deptName}"></td>
+                    <td th:text="${emp.roleName}"></td>
                     <td class="action-cell">
                         <a th:href="@{/users/{empCode}/edit(empCode=${emp.empCode}, returnDeptCode=${deptCode})}"
                            class="btn-action btn-edit">수정</a>
