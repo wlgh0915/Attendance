@@ -28,7 +28,9 @@
         PASSWORD_HASH,
         DEPT_CODE,
         POSITION_CODE,
+        POSITION_DATE,
         DUTY_CODE,
+        DUTY_DATE,
         ROLE_CODE,
         CREATED_AT,
         UPDATED_AT
@@ -40,7 +42,9 @@
         #{password},
         NULLIF(#{deptCode}, ''),
         NULLIF(#{positionCode}, ''),
+        NULLIF(#{positionDate}, ''),
         NULLIF(#{dutyCode}, ''),
+        NULLIF(#{dutyDate}, ''),
         #{roleCode},
         COALESCE(NULLIF(#{hireDate}, ''), GETDATE()),
         GETDATE()

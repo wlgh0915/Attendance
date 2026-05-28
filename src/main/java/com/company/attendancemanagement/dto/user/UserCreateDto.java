@@ -25,7 +25,11 @@ public class UserCreateDto {
 
     private String positionCode;
 
+    private String positionDate;
+
     private String dutyCode;
+
+    private String dutyDate;
 
     @NotBlank(message = "권한코드는 필수입니다.")
     private String roleCode;

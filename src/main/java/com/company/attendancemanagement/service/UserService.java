@@ -45,6 +45,7 @@ public class UserService {
 
             if (count == 0) {
                 dto.setEmpCode(empCode);
+                applyInitialPositionAndDutyDates(dto);
                 userMapper.insertUser(dto);
                 return true;
             }
@@ -53,6 +54,16 @@ public class UserService {
         }
 
         return false;
+    }
+
+    private void applyInitialPositionAndDutyDates(UserCreateDto dto) {
+        String today = LocalDate.now().toString();
+        if (!isBlank(dto.getPositionCode()) && isBlank(dto.getPositionDate())) {
+            dto.setPositionDate(today);
+        }
+        if (!isBlank(dto.getDutyCode()) && isBlank(dto.getDutyDate())) {
+            dto.setDutyDate(today);
+        }
     }
 
     public List<PositionOptionDto> findActivePositions(String company) {
