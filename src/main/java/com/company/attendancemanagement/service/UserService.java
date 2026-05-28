@@ -47,6 +47,7 @@ public class UserService {
                 dto.setEmpCode(empCode);
                 applyInitialPositionAndDutyDates(dto);
                 userMapper.insertUser(dto);
+                insertInitialTransferHistory(dto);
                 return true;
             }
 
@@ -54,6 +55,30 @@ public class UserService {
         }
 
         return false;
+    }
+
+    private void insertInitialTransferHistory(UserCreateDto dto) {
+        if (isBlank(dto.getDeptCode())) {
+            return;
+        }
+
+        String startDate = !isBlank(dto.getHireDate())
+                ? dto.getHireDate()
+                : LocalDate.now().toString();
+
+        DeptTransferDto transfer = new DeptTransferDto();
+        transfer.setCompany(dto.getCompany());
+        transfer.setEmpCode(dto.getEmpCode());
+        transfer.setDeptCode(dto.getDeptCode());
+        transfer.setStartDate(startDate);
+
+        int sameDateHistory = departmentMapper.countTransferHistoryByStartDate(
+                dto.getCompany(), dto.getEmpCode(), startDate);
+        if (sameDateHistory > 0) {
+            departmentMapper.updateTransferHistoryByStartDate(transfer);
+        } else {
+            departmentMapper.insertTransferHistory(transfer);
+        }
     }
 
     private void applyInitialPositionAndDutyDates(UserCreateDto dto) {
