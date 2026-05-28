@@ -42,4 +42,9 @@ public interface AttendanceRecordMapper {
                        @Param("weekStart")  String weekStart,
                        @Param("weekEnd")    String weekEnd,
                        @Param("excludeYmd") String excludeYmd);
+
+    /** 오늘 미출근자 목록 (접근 가능 부서 기준) */
+    List<Map<String, Object>> findAbsentToday(@Param("company")   String company,
+                                              @Param("today")     String today,
+                                              @Param("deptCodes") List<String> deptCodes);
 }

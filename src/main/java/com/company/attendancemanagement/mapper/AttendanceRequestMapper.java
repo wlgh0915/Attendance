@@ -69,6 +69,8 @@ public interface AttendanceRequestMapper {
 
     String findDeptLeader(@Param("company") String company, @Param("deptCode") String deptCode);
 
+    int countSubmittedRequests(@Param("company") String company, @Param("empCode") String empCode);
+
     List<DepartmentDto> findDeptListForDropdown(@Param("company") String company);
 
     List<DepartmentDto> findAccessibleDepts(@Param("company") String company, @Param("deptCode") String deptCode);

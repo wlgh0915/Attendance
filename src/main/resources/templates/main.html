@@ -28,10 +28,6 @@
                     </h2>
                     <p class="hero-sub">오늘도 기분 좋은 하루 되세요. 현재 업무 상태와 출결 현황을 한눈에 확인하세요.</p>
                 </div>
-                <div class="hero-actions">
-                    <a href="#" class="btn-hero-primary">내 정보 확인하기</a>
-                    <a href="#" class="btn-hero-outline">시스템 사용법</a>
-                </div>
             </div>
             <div class="hero-clock">
                 <div class="clock-icon">
@@ -106,7 +102,7 @@
                 </div>
             </div>
 
-            <!-- Col 2: 누적 근무시간 + 지각 -->
+            <!-- Col 2: 누적 근무시간 -->
             <div class="widget-col">
                 <div class="card card--hours">
                     <div class="stat-icon stat-icon--blue">
@@ -132,34 +128,10 @@
                             목표까지 0h 0m 남았습니다.
                         </p>
                     </div>
-                </div>
-                <div class="card card--late">
-                    <div class="stat-icon stat-icon--red">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                             fill="none" stroke="currentColor" stroke-width="2"
-                             stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                            <line x1="12" y1="9" x2="12" y2="13"/>
-                            <line x1="12" y1="17" x2="12.01" y2="17"/>
-                        </svg>
-                    </div>
-                    <div class="stat-label">이번 달 지각</div>
-                    <div class="stat-value" th:text="${lateCount} + '회'">0회</div>
-                    <div class="late-badge-box" th:if="${lateCount == 0}">
-                        <span>성실 근태 대상자 후보</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                             fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                        </svg>
-                    </div>
-                    <div class="late-badge-box late-badge-box--warn" th:unless="${lateCount == 0}">
-                        <span>이번 달 지각 <strong th:text="${lateCount}">0</strong>회 발생</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                             fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <line x1="12" y1="8" x2="12" y2="12"/>
-                            <line x1="12" y1="16" x2="12.01" y2="16"/>
-                        </svg>
+                    <div class="hours-late-row">
+                        <span class="hours-late-label">이번 달 지각</span>
+                        <span th:class="'hours-late-val ' + ${lateCount == 0 ? 'hours-late-ok' : 'hours-late-warn'}"
+                              th:text="${lateCount} + '회'">0회</span>
                     </div>
                 </div>
             </div>
@@ -211,18 +183,120 @@
 
         </div>
 
-        <!-- 공지사항 -->
-        <div class="card card--notice">
-            <h3 class="card-title" style="margin-bottom:16px;">공지사항</h3>
-            <div class="notice-item">
-                <div class="notice-dot"></div>
-                <p class="notice-text">하반기 유연근무제 확대 시행 안내</p>
-                <span class="notice-date">2024.05.22</span>
+        <!-- ── 두 번째 위젯 행 ── -->
+        <div class="stat-row">
+
+            <!-- 오늘 출퇴근 상태 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">오늘 출퇴근 현황</h3>
+                    <span th:class="'today-status-badge ' + ${todayRecord == null or todayRecord.checkIn == null ? 'tsb-absent' : (todayRecord.checkOut == null ? 'tsb-working' : 'tsb-done')}"
+                          th:text="${todayRecord == null or todayRecord.checkIn == null ? '미출근' : (todayRecord.checkOut == null ? '근무중' : '퇴근완료')}">미출근</span>
+                </div>
+                <div class="today-ci-rows">
+                    <div class="today-ci-row">
+                        <span class="today-ci-icon today-ci-icon--in">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2.5">
+                                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                                <path d="M21 16v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3"/>
+                            </svg>
+                        </span>
+                        <span class="today-ci-label">출근</span>
+                        <span class="today-ci-time"
+                              th:text="${todayRecord != null and todayRecord.checkIn != null ? todayRecord.checkIn : '-'}">-</span>
+                    </div>
+                    <div class="today-ci-row">
+                        <span class="today-ci-icon today-ci-icon--out">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2.5">
+                                <polyline points="9 21 3 21 3 15"/><line x1="14" y1="10" x2="3" y2="21"/>
+                                <path d="M3 8V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"/>
+                            </svg>
+                        </span>
+                        <span class="today-ci-label">퇴근</span>
+                        <span class="today-ci-time"
+                              th:text="${todayRecord != null and todayRecord.checkOut != null ? todayRecord.checkOut : (todayRecord != null and todayRecord.checkIn != null ? '근무중' : '-')}">-</span>
+                    </div>
+                </div>
             </div>
-            <div class="notice-item">
-                <div class="notice-dot"></div>
-                <p class="notice-text">2024년 여름 휴가 일정 공지</p>
-                <span class="notice-date">2024.05.15</span>
+
+            <!-- 이번 달 근무 요약 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">이번달 근무 요약</h3>
+                </div>
+                <div class="month-stats">
+                    <div class="ms-item">
+                        <div class="ms-val" th:text="${monthWorkDays} + '일'">0일</div>
+                        <div class="ms-label">출근일수</div>
+                    </div>
+                    <div class="ms-divider"></div>
+                    <div class="ms-item">
+                        <div class="ms-val ms-val--red" th:text="${lateCount} + '회'">0회</div>
+                        <div class="ms-label">지각</div>
+                    </div>
+                    <div class="ms-divider"></div>
+                    <div class="ms-item">
+                        <div class="ms-val ms-val--blue" th:text="${monthWorkTime}">0h 0m</div>
+                        <div class="ms-label">총 근무</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 대기 중인 신청 건수 -->
+            <div class="card">
+                <div class="stat-icon stat-icon--amber">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="12" y1="18" x2="12" y2="12"/>
+                        <line x1="9" y1="15" x2="15" y2="15"/>
+                    </svg>
+                </div>
+                <div class="stat-label">대기 중인 신청</div>
+                <div class="stat-value" th:text="${pendingCount} + '건'">0건</div>
+                <a th:href="@{/attendance/request/history}" class="pending-link">신청내역 확인하기 →</a>
+            </div>
+
+        </div>
+
+        <!-- ── 미출근자 현황 (관리자·팀장만) ── -->
+        <div class="card card--absent" th:if="${canViewAll}">
+            <div class="card-header">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <h3 class="card-title">오늘 미출근 현황</h3>
+                    <span class="absent-count-badge"
+                          th:text="${#lists.size(absentList)} + '명'">0명</span>
+                </div>
+                <a th:href="@{/attendance/department/week}" class="absent-detail-link">주간 근태조회 →</a>
+            </div>
+
+            <!-- 전원 출근 완료 -->
+            <div class="absent-all-ok" th:if="${#lists.isEmpty(absentList)}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                     fill="none" stroke="#22c55e" stroke-width="2.5">
+                    <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                </svg>
+                <span>접근 가능한 부서 전원 출근 완료</span>
+            </div>
+
+            <!-- 미출근자 목록 -->
+            <div class="absent-table-wrap" th:unless="${#lists.isEmpty(absentList)}">
+                <table class="absent-table">
+                    <thead>
+                    <tr><th>사번</th><th>이름</th><th>부서</th></tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="emp : ${absentList}">
+                        <td th:text="${emp.empCode}">-</td>
+                        <td th:text="${emp.empName}">-</td>
+                        <td th:text="${emp.deptName}">-</td>
+                    </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 

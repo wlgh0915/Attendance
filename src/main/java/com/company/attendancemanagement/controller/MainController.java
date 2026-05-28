@@ -1,9 +1,11 @@
 package com.company.attendancemanagement.controller;
 
 import com.company.attendancemanagement.common.SessionConst;
+import com.company.attendancemanagement.dto.department.DepartmentDto;
 import com.company.attendancemanagement.dto.login.LoginUserDto;
 import com.company.attendancemanagement.dto.record.AttendanceRecordDto;
 import com.company.attendancemanagement.mapper.AttendanceRecordMapper;
+import com.company.attendancemanagement.mapper.AttendanceRequestMapper;
 import com.company.attendancemanagement.service.AnnualLeaveService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +18,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -25,8 +28,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MainController {
 
-    private final AttendanceRecordMapper recordMapper;
-    private final AnnualLeaveService     annualLeaveService;
+    private final AttendanceRecordMapper  recordMapper;
+    private final AttendanceRequestMapper requestMapper;
+    private final AnnualLeaveService      annualLeaveService;
 
     private static final DateTimeFormatter YMD       = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final String[]          DAY_LABELS = {"일", "월", "화", "수", "목", "금", "토"};
@@ -107,6 +111,50 @@ public class MainController {
             availableLeave = leave.stripTrailingZeros().toPlainString();
         } catch (Exception ignored) {}
         model.addAttribute("availableLeave", availableLeave);
+
+        // 4. 오늘 출퇴근 상태
+        AttendanceRecordDto todayRecord = null;
+        try {
+            todayRecord = recordMapper.findByDay(company, empCode, today.format(YMD));
+        } catch (Exception ignored) {}
+        model.addAttribute("todayRecord", todayRecord);
+
+        // 5. 이번 달 근무 요약
+        int monthWorkDays = (int) monthRecords.stream()
+                .filter(r -> r.getCheckIn() != null && !r.getCheckIn().isBlank())
+                .count();
+        int monthWorkMin = monthRecords.stream()
+                .filter(r -> r.getCheckIn() != null && !r.getCheckIn().isBlank() && r.getWorkMin() != null)
+                .mapToInt(AttendanceRecordDto::getWorkMin)
+                .sum();
+        model.addAttribute("monthWorkDays", monthWorkDays);
+        model.addAttribute("monthWorkTime", fmtMin(monthWorkMin));
+
+        // 6. 대기 중인 신청 건수
+        int pendingCount = 0;
+        try {
+            pendingCount = requestMapper.countSubmittedRequests(company, empCode);
+        } catch (Exception ignored) {}
+        model.addAttribute("pendingCount", pendingCount);
+
+        // 7. 관리자/팀장: 오늘 미출근자 현황
+        String deptLeaderCode = requestMapper.findDeptLeader(company, loginUser.getDeptCode());
+        boolean isDeptLeader  = empCode.equals(deptLeaderCode);
+        boolean isAdmin       = "ADMIN".equals(loginUser.getRoleCode());
+        boolean canViewAll    = isAdmin || isDeptLeader;
+        model.addAttribute("canViewAll", canViewAll);
+
+        if (canViewAll) {
+            List<String> accessibleCodes = requestMapper.findAccessibleDepts(company, loginUser.getDeptCode())
+                    .stream().map(DepartmentDto::getDeptCode).collect(Collectors.toList());
+            List<Map<String, Object>> absentList = Collections.emptyList();
+            try {
+                if (!accessibleCodes.isEmpty()) {
+                    absentList = recordMapper.findAbsentToday(company, today.format(YMD), accessibleCodes);
+                }
+            } catch (Exception ignored) {}
+            model.addAttribute("absentList", absentList);
+        }
 
         return "main";
     }
