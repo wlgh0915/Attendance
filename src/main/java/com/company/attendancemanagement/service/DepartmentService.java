@@ -62,12 +62,13 @@ public class DepartmentService {
                                     String deptCode, String transferDate) {
         if (empCodes == null || empCodes.isEmpty()) return;
 
-        String startDate = (transferDate == null || transferDate.isBlank())
-                ? LocalDate.now().toString()
-                : transferDate;
+        String startDate = (transferDate != null && !transferDate.isBlank())
+                ? transferDate
+                : "2000-01-01";
         String endDate = LocalDate.parse(startDate).minusDays(1).toString();
 
         for (String empCode : empCodes) {
+
             departmentMapper.closeCurrentTransfer(company, empCode, endDate);
 
             DeptTransferDto transfer = new DeptTransferDto();

@@ -19,6 +19,8 @@ public class UserCreateDto {
     @NotBlank(message = "비밀번호는 필수입니다.")
     private String password;
 
+    private String hireDate;
+
     private String deptCode;
 
     private String positionCode;

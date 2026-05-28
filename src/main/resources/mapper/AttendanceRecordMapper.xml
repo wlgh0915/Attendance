@@ -138,7 +138,7 @@
           AND r.TARGET_DATE     = CAST(#{yyyymmdd} AS DATE)
           AND r.STATUS          = 'APPROVED'
           AND r.REQ_GROUP       = 'GENERAL'
-          AND r.REQ_TYPE IN ('연장', '조출연장', '휴일근무')
+          AND r.REQ_TYPE IN ('연장', '조출연장', '휴일근무', '조퇴')
         ]]>
     </select>
 

@@ -1,10 +1,12 @@
 package com.company.attendancemanagement.service;
 
+import com.company.attendancemanagement.dto.department.DeptTransferDto;
 import com.company.attendancemanagement.dto.user.UserCreateDto;
 import com.company.attendancemanagement.dto.user.DutyOptionDto;
 import com.company.attendancemanagement.dto.user.PositionOptionDto;
 import com.company.attendancemanagement.dto.user.RoleOptionDto;
 import com.company.attendancemanagement.dto.user.UserUpdateDto;
+import com.company.attendancemanagement.mapper.DepartmentMapper;
 import com.company.attendancemanagement.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +22,7 @@ import java.util.Objects;
 public class UserService {
 
     private final UserMapper userMapper;
+    private final DepartmentMapper departmentMapper;
 
     public String generateNextEmpCode(String company) {
         int maxEmpNumber = userMapper.findMaxEmpNumber(company);
@@ -67,6 +70,7 @@ public class UserService {
     public UserUpdateDto findUserForEdit(String company, String empCode) {
         UserUpdateDto dto = userMapper.findUserForEdit(company, empCode);
         if (dto != null) {
+            dto.setOriginalDeptCode(dto.getDeptCode());
             dto.setOriginalPositionCode(dto.getPositionCode());
             dto.setOriginalDutyCode(dto.getDutyCode());
             dto.setOriginalPositionDate(dto.getPositionDate());
@@ -75,6 +79,7 @@ public class UserService {
         return dto;
     }
 
+    @Transactional
     public boolean updateUser(UserUpdateDto dto) {
         if (isChanged(dto.getOriginalPositionCode(), dto.getPositionCode())
                 && !isChanged(dto.getOriginalPositionDate(), dto.getPositionDate())) {
@@ -84,7 +89,27 @@ public class UserService {
                 && !isChanged(dto.getOriginalDutyDate(), dto.getDutyDate())) {
             dto.setDutyDate(LocalDate.now().toString());
         }
-        return userMapper.updateUser(dto) > 0;
+        boolean updated = userMapper.updateUser(dto) > 0;
+        if (updated && isChanged(dto.getOriginalDeptCode(), dto.getDeptCode())
+                && !isBlank(dto.getDeptCode())) {
+            String startDate;
+            if (isBlank(dto.getOriginalDeptCode())) {
+                startDate = !isBlank(dto.getHireDate())
+                        ? dto.getHireDate()
+                        : LocalDate.now().toString();
+            } else {
+                startDate = LocalDate.now().toString();
+            }
+            String endDate = LocalDate.parse(startDate).minusDays(1).toString();
+            departmentMapper.closeCurrentTransfer(dto.getCompany(), dto.getEmpCode(), endDate);
+            DeptTransferDto transfer = new DeptTransferDto();
+            transfer.setCompany(dto.getCompany());
+            transfer.setEmpCode(dto.getEmpCode());
+            transfer.setDeptCode(dto.getDeptCode());
+            transfer.setStartDate(startDate);
+            departmentMapper.insertTransferHistory(transfer);
+        }
+        return updated;
     }
 
     private boolean isChanged(String before, String after) {

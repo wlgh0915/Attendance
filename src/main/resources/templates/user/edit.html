@@ -17,6 +17,7 @@
             <form th:action="@{/users/{empCode}/edit(empCode=${userUpdateDto.empCode})}"
                   th:object="${userUpdateDto}" method="post" class="user-form">
 
+                <input type="hidden" th:field="*{hireDate}">
                 <input type="hidden" th:field="*{originalPositionCode}">
                 <input type="hidden" th:field="*{originalPositionDate}">
                 <input type="hidden" th:field="*{originalDutyCode}">
@@ -48,6 +49,11 @@
                     <label>비밀번호</label>
                     <input type="password" th:field="*{password}" placeholder="변경할 때만 입력하세요">
                     <div class="error-text" th:errors="*{password}"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>입사일</label>
+                    <input type="date" th:value="*{hireDate}" readonly>
                 </div>
 
                 <div class="form-group">
