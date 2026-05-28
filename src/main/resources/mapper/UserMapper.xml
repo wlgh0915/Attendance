@@ -82,6 +82,21 @@
           AND EMP_CODE = #{empCode}
     </update>
 
+    <select id="findRoleCode" resultType="String">
+        SELECT ROLE_CODE
+        FROM HRIMASTER01
+        WHERE COMPANY = #{company}
+          AND EMP_CODE = #{empCode}
+    </select>
+
+    <update id="updateRoleCode">
+        UPDATE HRIMASTER01
+        SET ROLE_CODE = #{roleCode},
+            UPDATED_AT = GETDATE()
+        WHERE COMPANY = #{company}
+          AND EMP_CODE = #{empCode}
+    </update>
+
     <select id="findActivePositions" resultType="com.company.attendancemanagement.dto.user.PositionOptionDto">
         SELECT
             POSITION_CODE AS positionCode,

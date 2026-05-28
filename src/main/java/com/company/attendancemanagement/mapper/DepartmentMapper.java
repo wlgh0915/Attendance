@@ -28,6 +28,19 @@ public interface DepartmentMapper {
     String findCompanyName(@Param("company") String company);
     DepartmentDto findByDeptCode(String company, String deptCode);
 
+    int countLeaderInOtherDept(@Param("company") String company,
+                               @Param("empCode") String empCode,
+                               @Param("deptCode") String deptCode);
+
+    int countDeptLedByEmp(@Param("company") String company,
+                          @Param("empCode") String empCode);
+
+    String findDeptLedByEmp(@Param("company") String company,
+                            @Param("empCode") String empCode);
+
+    String findEmployeeDeptCode(@Param("company") String company,
+                                @Param("empCode") String empCode);
+
     int countEmployeesByDept(@Param("company") String company,
                              @Param("deptCode") String deptCode);
 
@@ -38,8 +51,15 @@ public interface DepartmentMapper {
 
     void insertTransferHistory(DeptTransferDto dto);
 
+    int countTransferHistoryByStartDate(@Param("company") String company,
+                                        @Param("empCode") String empCode,
+                                        @Param("startDate") String startDate);
+
+    int updateTransferHistoryByStartDate(DeptTransferDto dto);
+
     void closeCurrentTransfer(@Param("company")  String company,
                               @Param("empCode")  String empCode,
+                              @Param("startDate") String startDate,
                               @Param("endDate")  String endDate);
 
 }

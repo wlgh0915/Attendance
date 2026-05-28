@@ -25,6 +25,13 @@ public interface UserMapper {
 
     int updateUser(UserUpdateDto dto);
 
+    String findRoleCode(@Param("company") String company,
+                        @Param("empCode") String empCode);
+
+    int updateRoleCode(@Param("company") String company,
+                       @Param("empCode") String empCode,
+                       @Param("roleCode") String roleCode);
+
     List<PositionOptionDto> findActivePositions(@Param("company") String company);
 
     List<DutyOptionDto> findActiveDuties(@Param("company") String company);

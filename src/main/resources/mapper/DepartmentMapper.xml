@@ -130,6 +130,36 @@
           AND d.DEPT_CODE = #{deptCode}
     </select>
 
+    <select id="countLeaderInOtherDept" resultType="int">
+        SELECT COUNT(*)
+        FROM ORGDEPTMASTER01
+        WHERE COMPANY = #{company}
+          AND DEPT_LEADER = #{empCode}
+          AND DEPT_CODE &lt;&gt; #{deptCode}
+    </select>
+
+    <select id="countDeptLedByEmp" resultType="int">
+        SELECT COUNT(*)
+        FROM ORGDEPTMASTER01
+        WHERE COMPANY = #{company}
+          AND DEPT_LEADER = #{empCode}
+    </select>
+
+    <select id="findDeptLedByEmp" resultType="String">
+        SELECT TOP 1 DEPT_CODE
+        FROM ORGDEPTMASTER01
+        WHERE COMPANY = #{company}
+          AND DEPT_LEADER = #{empCode}
+        ORDER BY DEPT_CODE
+    </select>
+
+    <select id="findEmployeeDeptCode" resultType="String">
+        SELECT DEPT_CODE
+        FROM HRIMASTER01
+        WHERE COMPANY = #{company}
+          AND EMP_CODE = #{empCode}
+    </select>
+
     <select id="findCompanyName" resultType="String">
         SELECT COMPANY_NAME
         FROM ORGCOMPANYMASTER01
@@ -180,11 +210,29 @@
         VALUES (#{company}, #{empCode}, #{deptCode}, #{startDate}, #{endDate}, GETDATE())
     </insert>
 
+    <select id="countTransferHistoryByStartDate" resultType="int">
+        SELECT COUNT(*)
+        FROM HRIDEPTTRANSFER01
+        WHERE COMPANY = #{company}
+          AND EMP_CODE = #{empCode}
+          AND START_DATE = #{startDate}
+    </select>
+
+    <update id="updateTransferHistoryByStartDate">
+        UPDATE HRIDEPTTRANSFER01
+        SET DEPT_CODE = #{deptCode},
+            END_DATE = #{endDate}
+        WHERE COMPANY = #{company}
+          AND EMP_CODE = #{empCode}
+          AND START_DATE = #{startDate}
+    </update>
+
     <update id="closeCurrentTransfer">
         UPDATE HRIDEPTTRANSFER01
         SET END_DATE = #{endDate}
         WHERE COMPANY  = #{company}
           AND EMP_CODE = #{empCode}
+          AND START_DATE &lt; #{startDate}
           AND END_DATE IS NULL
     </update>
 

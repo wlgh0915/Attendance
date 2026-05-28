@@ -121,7 +121,14 @@ public class UserController {
             return "user/edit";
         }
 
-        boolean result = userService.updateUser(dto);
+        boolean result;
+        try {
+            result = userService.updateUser(dto);
+        } catch (IllegalArgumentException e) {
+            bindingResult.reject("invalidRole", e.getMessage());
+            addUserFormOptions(model, loginUser.getCompany());
+            return "user/edit";
+        }
         if (!result) {
             bindingResult.reject("updateFailed", "사원 수정에 실패했습니다.");
             addUserFormOptions(model, loginUser.getCompany());

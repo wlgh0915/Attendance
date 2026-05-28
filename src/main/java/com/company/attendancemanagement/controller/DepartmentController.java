@@ -79,7 +79,16 @@ public class DepartmentController {
             return "department/create";
         }
 
-        boolean result = departmentService.createDepartment(dto);
+        boolean result;
+        try {
+            result = departmentService.createDepartment(dto);
+        } catch (IllegalArgumentException e) {
+            bindingResult.reject("invalidDeptLeader", e.getMessage());
+            model.addAttribute("deptOptions", departmentService.findAllForDropdown(loginUser.getCompany()));
+            model.addAttribute("employeeOptions", departmentService.findActiveEmployees(loginUser.getCompany()));
+            model.addAttribute("workPatternOptions", workPatternService.getPatternList(loginUser.getCompany()));
+            return "department/create";
+        }
 
         if (!result) {
             bindingResult.reject("duplicate", "이미 존재하는 부서코드입니다.");
@@ -135,8 +144,12 @@ public class DepartmentController {
         } else if (targetDeptCode == null || targetDeptCode.isBlank()) {
             redirectAttributes.addFlashAttribute("errorMessage", "이동할 부서를 선택해주세요.");
         } else {
-            departmentService.moveEmployeesToDept(company, empCodes, targetDeptCode, transferDate);
-            redirectAttributes.addFlashAttribute("successMessage", "부서 변경에 성공했습니다.");
+            try {
+                departmentService.moveEmployeesToDept(company, empCodes, targetDeptCode, transferDate);
+                redirectAttributes.addFlashAttribute("successMessage", "부서 변경에 성공했습니다.");
+            } catch (IllegalArgumentException e) {
+                redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            }
         }
 
         if (currentDeptCode == null || currentDeptCode.isEmpty()) {
@@ -203,8 +216,12 @@ public class DepartmentController {
             return "redirect:/departments/employees/unassigned?company=" + company + "&deptCode=" + deptCode;
         }
 
-        departmentService.moveEmployeesToDept(company, empCodes, deptCode, null);
-        redirectAttributes.addFlashAttribute("successMessage", "사원 추가에 성공했습니다.");
+        try {
+            departmentService.moveEmployeesToDept(company, empCodes, deptCode, null);
+            redirectAttributes.addFlashAttribute("successMessage", "사원 추가에 성공했습니다.");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
         return "redirect:/departments/employees?company=" + company + "&deptCode=" + deptCode;
     }
 
@@ -272,7 +289,16 @@ public class DepartmentController {
             return "department/edit";
         }
 
-        boolean result = departmentService.updateDepartment(dto);
+        boolean result;
+        try {
+            result = departmentService.updateDepartment(dto);
+        } catch (IllegalArgumentException e) {
+            bindingResult.reject("invalidDeptLeader", e.getMessage());
+            model.addAttribute("deptOptions", departmentService.findAllForDropdown(loginUser.getCompany()));
+            model.addAttribute("employeeOptions", departmentService.findActiveEmployees(loginUser.getCompany()));
+            model.addAttribute("workPatternOptions", workPatternService.getPatternList(loginUser.getCompany()));
+            return "department/edit";
+        }
 
         if (!result) {
             bindingResult.reject("updateFailed", "부서에 소속된 직원이 있으면 사용 여부를 N으로 변경할 수 없습니다.");
