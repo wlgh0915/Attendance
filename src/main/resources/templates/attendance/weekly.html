@@ -11,59 +11,178 @@
 <div layout:fragment="content">
 <div class="weekly-page">
 
-    <!-- 상단 컨트롤 -->
+    <!-- 페이지 헤더 -->
     <div class="weekly-top">
-
-        <!-- 주 네비게이션 -->
-        <div class="weekly-nav">
-            <a th:href="@{/attendance/department/week(workDate=${prevWeekDate}, deptCode=${selectedDept})}">◀</a>
-            <span class="week-label"
-                  th:text="${#strings.substring(weekStart,5,7) + '/' + #strings.substring(weekStart,8,10)
-                           + ' ~ '
-                           + #strings.substring(weekEnd,5,7) + '/' + #strings.substring(weekEnd,8,10)}">
-            </span>
-            <a th:href="@{/attendance/department/week(workDate=${nextWeekDate}, deptCode=${selectedDept})}">▶</a>
-            <a class="today-btn" onclick="goThisWeek()">이번 주</a>
+        <div class="weekly-top-left">
+            <h2 class="weekly-title">부서별 주 근태조회</h2>
+            <p class="weekly-subtitle">부서별 주간 근무 현황 및 근태 위반 사항을 실시간으로 확인합니다.</p>
         </div>
-
-        <!-- 날짜 직접 입력 -->
-        <div class="filter-group">
-            <label>날짜</label>
-            <input type="date" th:value="${workDate}" onchange="onDateChange(this.value)">
+        <div class="weekly-top-actions">
+            <button class="btn-export" onclick="exportExcel()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                엑셀 내보내기
+            </button>
+            <button class="btn-print" onclick="window.print()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 6 2 18 2 18 9"/>
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                    <rect x="6" y="14" width="12" height="8"/>
+                </svg>
+                인쇄하기
+            </button>
         </div>
-
-        <!-- 부서 선택 -->
-        <div class="filter-group">
-            <label>부서</label>
-            <select onchange="onDeptChange(this.value)">
-                <option th:each="d : ${depts}"
-                        th:value="${d.deptCode}"
-                        th:text="${d.deptName}"
-                        th:selected="${d.deptCode == selectedDept}">
-                </option>
-            </select>
-        </div>
-
-    </div><!-- /weekly-top -->
-
-    <!-- 테이블 -->
-    <div class="weekly-table-wrap">
-        <table class="weekly-table">
-            <thead>
-            <tr>
-                <th class="th-emp">사원</th>
-                <th class="th-work">실근무시간</th>
-                <th th:each="d,i : ${dayDates}"
-                    th:classappend="${i.index == 0 ? 'th-sun' : (i.index == 6 ? 'th-sat' : '')}"
-                    th:text="${#strings.substring(d,5,7) + '/' + #strings.substring(d,8,10) + ' (' + dayNames[i.index] + ')'}">
-                </th>
-            </tr>
-            </thead>
-            <tbody id="weekBody"></tbody>
-        </table>
     </div>
 
-</div><!-- /weekly-page -->
+    <!-- 필터 카드 -->
+    <div class="weekly-filter-card">
+        <div class="filter-left">
+            <!-- 주 네비게이션 -->
+            <div class="weekly-nav">
+                <a th:href="@{/attendance/department/week(workDate=${prevWeekDate}, deptCode=${selectedDept})}" class="nav-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                </a>
+                <div class="week-display-box">
+                    <span class="week-range"
+                          th:text="${#strings.substring(weekStart,5,7) + '/' + #strings.substring(weekStart,8,10)
+                                   + ' ~ '
+                                   + #strings.substring(weekEnd,5,7) + '/' + #strings.substring(weekEnd,8,10)}">
+                        05/20 ~ 05/26
+                    </span>
+                </div>
+                <a th:href="@{/attendance/department/week(workDate=${nextWeekDate}, deptCode=${selectedDept})}" class="nav-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                </a>
+                <button class="today-btn" onclick="goThisWeek()">이번 주</button>
+            </div>
+
+            <!-- 범례 -->
+            <div class="status-legend">
+                <span class="legend-item"><span class="dot dot-normal"></span>정상출근</span>
+                <span class="legend-item"><span class="dot dot-late"></span>지각/결근</span>
+                <span class="legend-item"><span class="dot dot-leave"></span>휴무/연차</span>
+                <button class="refresh-btn" onclick="location.reload()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="23 4 23 10 17 10"/>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="filter-right">
+            <div class="filter-group">
+                <label class="filter-label">날짜</label>
+                <input type="date" class="filter-input" th:value="${workDate}" onchange="onDateChange(this.value)">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">부서</label>
+                <select class="filter-select" onchange="onDeptChange(this.value)">
+                    <option th:each="d : ${depts}"
+                            th:value="${d.deptCode}"
+                            th:text="${d.deptName}"
+                            th:selected="${d.deptCode == selectedDept}">
+                    </option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- 주간 테이블 카드 -->
+    <div class="weekly-table-card">
+        <div class="weekly-table-wrap">
+            <table class="weekly-table">
+                <thead>
+                <tr>
+                    <th class="th-emp">사원 정보</th>
+                    <th class="th-work">실근무시간</th>
+                    <th th:each="d,i : ${dayDates}"
+                        th:classappend="${i.index == 0 ? ' th-sun' : (i.index == 6 ? ' th-sat' : '')}">
+                        <div class="th-date-wrap">
+                            <span class="th-date-num" th:text="${#strings.substring(d,5,7) + '/' + #strings.substring(d,8,10)}">05/20</span>
+                            <span class="th-day-name" th:text="${dayNames[i.index]}">월</span>
+                        </div>
+                    </th>
+                </tr>
+                </thead>
+                <tbody id="weekBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 하단 통계 카드 -->
+    <div class="weekly-summary-grid">
+        <div class="summary-card">
+            <div class="card-header">
+                <span class="card-title">전체 출근율</span>
+                <div class="card-icon-wrap icon-blue">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="#2563eb" stroke-width="2">
+                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                        <polyline points="17 6 23 6 23 12"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="card-value"><span id="stat-attend-rate">-</span></div>
+            <p class="card-desc" id="stat-attend-desc">조회 후 표시됩니다</p>
+        </div>
+        <div class="summary-card">
+            <div class="card-header">
+                <span class="card-title">주간 지각 건수</span>
+                <div class="card-icon-wrap icon-red">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="#dc2626" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="card-value"><span id="stat-late-count">-</span></div>
+            <p class="card-desc" id="stat-late-desc">조회 후 표시됩니다</p>
+        </div>
+        <div class="summary-card">
+            <div class="card-header">
+                <span class="card-title">평균 근무 시간</span>
+                <div class="card-icon-wrap icon-slate">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="#475569" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="card-value"><span id="stat-avg-work">-</span></div>
+            <p class="card-desc" id="stat-avg-desc">조회 후 표시됩니다</p>
+        </div>
+        <div class="summary-card">
+            <div class="card-header">
+                <span class="card-title">근태 신청 대기</span>
+                <div class="card-icon-wrap icon-amber">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="#d97706" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="card-value"><span id="stat-pending-count">-</span></div>
+            <p class="card-desc" id="stat-pending-desc">조회 후 표시됩니다</p>
+        </div>
+    </div>
+
+</div>
 
 <script th:inline="javascript">
     const WEEKLY_DATA   = /*[[${weeklyData}]]*/ [];

@@ -3,103 +3,190 @@
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
       layout:decorate="~{layouts/default_layout}">
 <head>
-    <title>사원 등록 - 근태 관리 시스템</title>
+    <meta charset="UTF-8">
+    <title>사원 등록</title>
     <link rel="stylesheet" th:href="@{/css/form-common.css}">
+    <link rel="stylesheet" th:href="@{/css/user-create.css}">
 </head>
 <body>
 <div layout:fragment="content">
-    <div class="content-wrapper">
-        <div class="form-container">
-            <div class="form-header">
-                <h2>사원 등록</h2>
+<div class="uc-page">
+
+    <!-- 페이지 헤더 -->
+    <div class="uc-top">
+        <div>
+            <h2 class="uc-title">사원 등록</h2>
+            <p class="uc-subtitle">새로운 사원을 시스템에 등록하고 권한을 부여합니다.</p>
+        </div>
+        <a th:href="@{/users}" class="btn-uc-back">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="15 18 9 12 15 6"/>
+            </svg>
+            목록으로
+        </a>
+    </div>
+
+    <!-- 폼 카드 -->
+    <form th:action="@{/users/new}" th:object="${userCreateDto}" method="post" class="uc-form">
+
+        <!-- 전역 에러 토스트 -->
+        <div th:if="${#fields.hasGlobalErrors()}" class="toast-data" data-type="error"
+             th:data-message="${#strings.listJoin(#fields.globalErrors(), ' | ')}" style="display:none"></div>
+
+        <div class="uc-card">
+
+            <!-- ── 기본 정보 섹션 ── -->
+            <div class="uc-section">
+                <div class="uc-section-header">
+                    <div class="uc-section-icon icon-blue">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                             fill="none" stroke="#2563eb" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                    </div>
+                    <h3 class="uc-section-title">기본 정보</h3>
+                </div>
+
+                <div class="uc-grid">
+
+                    <div class="uc-field">
+                        <label class="uc-label">회사코드</label>
+                        <input type="text" th:field="*{company}" class="uc-input uc-readonly" readonly>
+                        <div class="uc-error" th:errors="*{company}"></div>
+                    </div>
+
+                    <div class="uc-field">
+                        <label class="uc-label">사번 <span class="uc-auto">(자동 생성)</span></label>
+                        <input type="text" th:field="*{empCode}" class="uc-input uc-readonly" readonly>
+                        <div class="uc-error" th:errors="*{empCode}"></div>
+                    </div>
+
+                    <div class="uc-field">
+                        <label class="uc-label uc-required">이름</label>
+                        <input type="text" th:field="*{empName}" class="uc-input" placeholder="성함을 입력하세요">
+                        <div class="uc-error" th:errors="*{empName}"></div>
+                    </div>
+
+                    <div class="uc-field">
+                        <label class="uc-label uc-required">비밀번호</label>
+                        <input type="password" th:field="*{password}" class="uc-input" placeholder="초기 비밀번호 설정">
+                        <div class="uc-error" th:errors="*{password}"></div>
+                    </div>
+
+                    <div class="uc-field">
+                        <label class="uc-label">입사일</label>
+                        <input type="date" th:field="*{hireDate}" class="uc-input">
+                    </div>
+
+                </div>
             </div>
 
-            <form th:action="@{/users/new}" th:object="${userCreateDto}" method="post" class="user-form">
+            <div class="uc-divider"></div>
 
-                <div th:if="${#fields.hasGlobalErrors()}" class="toast-data" data-type="error"
-                     th:data-message="${#strings.listJoin(#fields.globalErrors(), ' | ')}" style="display:none"></div>
-
-                <div class="form-group">
-                    <label class="required">회사코드</label>
-                    <input type="text" th:field="*{company}" readonly>
-                    <div class="error-text" th:errors="*{company}"></div>
+            <!-- ── 조직 정보 섹션 ── -->
+            <div class="uc-section">
+                <div class="uc-section-header">
+                    <div class="uc-section-icon icon-slate">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                             fill="none" stroke="#475569" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                            <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                        </svg>
+                    </div>
+                    <h3 class="uc-section-title">조직 정보</h3>
                 </div>
 
-                <div class="form-group">
-                    <label class="required">사번</label>
-                    <input type="text" th:field="*{empCode}" readonly>
-                    <div class="error-text" th:errors="*{empCode}"></div>
-                </div>
+                <div class="uc-grid">
 
-                <div class="form-group">
-                    <label class="required">이름</label>
-                    <input type="text" th:field="*{empName}" placeholder="성함을 입력하세요">
-                    <div class="error-text" th:errors="*{empName}"></div>
-                </div>
+                    <div class="uc-field">
+                        <label class="uc-label">부서</label>
+                        <select th:field="*{deptCode}" class="uc-select">
+                            <option value="">선택하세요</option>
+                            <option th:each="dept : ${deptOptions}"
+                                    th:value="${dept.deptCode}"
+                                    th:text="${dept.deptCode + ' - ' + dept.deptName}">
+                            </option>
+                        </select>
+                        <div class="uc-error" th:errors="*{deptCode}"></div>
+                    </div>
 
-                <div class="form-group">
-                    <label class="required">비밀번호</label>
-                    <input type="password" th:field="*{password}" placeholder="초기 비밀번호 설정">
-                    <div class="error-text" th:errors="*{password}"></div>
-                </div>
+                    <div class="uc-field">
+                        <label class="uc-label">직위</label>
+                        <select th:field="*{positionCode}" class="uc-select">
+                            <option value="">선택하세요</option>
+                            <option th:each="position : ${positionOptions}"
+                                    th:value="${position.positionCode}"
+                                    th:text="${position.positionCode + ' - ' + position.positionName}">
+                            </option>
+                        </select>
+                        <div class="uc-error" th:errors="*{positionCode}"></div>
+                    </div>
 
-                <div class="form-group">
-                    <label>입사일</label>
-                    <input type="date" th:field="*{hireDate}">
-                </div>
+                    <div class="uc-field">
+                        <label class="uc-label">직책</label>
+                        <select th:field="*{dutyCode}" class="uc-select">
+                            <option value="">선택하세요</option>
+                            <option th:each="duty : ${dutyOptions}"
+                                    th:value="${duty.dutyCode}"
+                                    th:text="${duty.dutyCode + ' - ' + duty.dutyName}">
+                            </option>
+                        </select>
+                        <div class="uc-error" th:errors="*{dutyCode}"></div>
+                    </div>
 
-                <div class="form-group">
-                    <label>부서</label>
-                    <select th:field="*{deptCode}">
-                        <option value="">선택하세요</option>
-                        <option th:each="dept : ${deptOptions}"
-                                th:value="${dept.deptCode}"
-                                th:text="${dept.deptCode} + ' - ' + ${dept.deptName}">
-                        </option>
-                    </select>
-                    <div class="error-text" th:errors="*{deptCode}"></div>
-                </div>
+                    <div class="uc-field">
+                        <label class="uc-label uc-required">권한</label>
+                        <select th:field="*{roleCode}" class="uc-select">
+                            <option value="">선택하세요</option>
+                            <option th:each="role : ${roleOptions}"
+                                    th:value="${role.roleCode}"
+                                    th:text="${role.roleCode + ' - ' + role.roleName}">
+                            </option>
+                        </select>
+                        <div class="uc-error" th:errors="*{roleCode}"></div>
+                    </div>
 
-                <div class="form-group">
-                    <label>직위</label>
-                    <select th:field="*{positionCode}">
-                        <option value="">선택하세요</option>
-                        <option th:each="position : ${positionOptions}"
-                                th:value="${position.positionCode}"
-                                th:text="${position.positionCode} + ' - ' + ${position.positionName}">
-                        </option>
-                    </select>
-                    <div class="error-text" th:errors="*{positionCode}"></div>
                 </div>
+            </div>
 
-                <div class="form-group">
-                    <label>직책</label>
-                    <select th:field="*{dutyCode}">
-                        <option value="">선택하세요</option>
-                        <option th:each="duty : ${dutyOptions}"
-                                th:value="${duty.dutyCode}"
-                                th:text="${duty.dutyCode} + ' - ' + ${duty.dutyName}">
-                        </option>
-                    </select>
-                    <div class="error-text" th:errors="*{dutyCode}"></div>
-                </div>
+        </div><!-- /uc-card -->
 
-                <div class="form-group">
-                    <label class="required">권한</label>
-                    <select th:field="*{roleCode}">
-                        <option value="">선택하세요</option>
-                        <option th:each="role : ${roleOptions}"
-                                th:value="${role.roleCode}"
-                                th:text="${role.roleCode} + ' - ' + ${role.roleName}">
-                        </option>
-                    </select>
-                    <div class="error-text" th:errors="*{roleCode}"></div>
-                </div>
-
-                <button type="submit" class="btn-submit">등록하기</button>
-            </form>
+        <!-- 폼 액션 -->
+        <div class="uc-actions">
+            <a th:href="@{/users}" class="btn-uc-cancel">취소</a>
+            <button type="submit" class="btn-uc-submit">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="8.5" cy="7" r="4"/>
+                    <line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>
+                </svg>
+                등록하기
+            </button>
         </div>
-    </div>
-</div>
+
+    </form>
+
+</div><!-- /uc-page -->
+
+<div id="toast"></div>
+
+<script>
+    const toastData = document.querySelector('.toast-data');
+    if (toastData) {
+        const msg  = toastData.getAttribute('data-message');
+        const type = toastData.getAttribute('data-type') || 'error';
+        if (msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = type;
+            t.style.display = 'block';
+            setTimeout(() => { t.style.display = 'none'; }, 4000);
+        }
+    }
+</script>
+</div><!-- /layout:fragment="content" -->
 </body>
 </html>

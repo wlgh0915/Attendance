@@ -1,0 +1,259 @@
+/* ===== 부서 등록 페이지 ===== */
+.dc-page {
+    max-width: 1100px;
+    padding: 0 4px 40px;
+    margin: 0 auto;
+    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* ── 헤더 ── */
+.dc-top { display: flex; flex-direction: column; gap: 4px; }
+
+.dc-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #2563eb;
+    text-decoration: none;
+    margin-bottom: 4px;
+    transition: opacity 0.15s;
+}
+.dc-back:hover { opacity: 0.7; text-decoration: none; }
+
+.dc-title {
+    font-size: 22px;
+    font-weight: 900;
+    color: #0f172a;
+    margin: 0;
+    letter-spacing: -0.5px;
+    border: none;
+    padding: 0;
+}
+
+.dc-subtitle {
+    font-size: 13px;
+    color: #94a3b8;
+    margin: 0;
+    font-weight: 400;
+}
+
+/* ── 본문 레이아웃 ── */
+.dc-body {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+/* ── 좌측 (폼 섹션들) ── */
+.dc-left {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* ── 섹션 카드 ── */
+.dc-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+    padding: 28px 32px;
+}
+
+.dc-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+.dc-section-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.dc-icon-blue    { background: #eff6ff; }
+.dc-icon-indigo  { background: #eef2ff; }
+.dc-icon-amber   { background: #fffbeb; }
+
+.dc-section-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: #1e293b;
+    margin: 0;
+}
+
+/* ── 그리드 ── */
+.dc-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px 24px;
+}
+
+/* ── 필드 ── */
+.dc-field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.dc-field.dc-full { grid-column: 1 / -1; }
+
+.dc-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #475569;
+    letter-spacing: 0.2px;
+}
+.dc-label.dc-required::after { content: ' *'; color: #e11d48; }
+
+/* ── 인풋 공통 ── */
+.dc-input,
+.dc-select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 11px 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 13px;
+    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    color: #1e293b;
+    font-weight: 500;
+    background: #ffffff;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.dc-input:focus,
+.dc-select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.08);
+}
+.dc-input::placeholder { color: #cbd5e1; font-weight: 400; }
+
+.dc-readonly {
+    background: #f8fafc;
+    color: #94a3b8;
+    cursor: not-allowed;
+}
+.dc-readonly:focus { border-color: #e2e8f0; box-shadow: none; }
+
+/* ── 에러 ── */
+.dc-error {
+    font-size: 11.5px;
+    color: #e11d48;
+    font-weight: 500;
+}
+.dc-error:empty { display: none; }
+
+/* ── 액션 버튼 영역 ── */
+.dc-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.btn-dc-cancel {
+    display: inline-flex;
+    align-items: center;
+    padding: 11px 24px;
+    background: #ffffff;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    text-decoration: none;
+    transition: all 0.15s;
+}
+.btn-dc-cancel:hover { background: #f1f5f9; color: #1e293b; text-decoration: none; }
+
+.btn-dc-submit {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 11px 28px;
+    background: #2563eb;
+    color: #ffffff;
+    border: none;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 800;
+    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+    transition: background 0.15s;
+}
+.btn-dc-submit:hover { background: #1d4ed8; }
+
+/* ── 우측 사이드바 ── */
+.dc-right {
+    width: 280px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: sticky;
+    top: 20px;
+}
+
+/* ── 도움말 카드 ── */
+.dc-help-card {
+    background: rgba(239, 246, 255, 0.5);
+    border: 1px solid #bfdbfe;
+    border-radius: 20px;
+    padding: 24px;
+}
+
+.dc-help-header {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 10px;
+    color: #2563eb;
+}
+
+.dc-help-header span {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+}
+
+.dc-help-text {
+    font-size: 12px;
+    color: #1e40af;
+    font-weight: 500;
+    line-height: 1.7;
+    margin: 0;
+}
+
+/* ── 토스트 ── */
+#toast {
+    position: fixed;
+    bottom: 32px;
+    right: 32px;
+    padding: 12px 20px;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    display: none;
+    z-index: 9999;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+}
+#toast.success { background: #16a34a; }
+#toast.error   { background: #e11d48; }

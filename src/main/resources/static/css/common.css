@@ -1,5 +1,5 @@
 * { box-sizing: border-box; }
-body { margin: 0; padding: 0; }
+body { margin: 0; padding: 0; background: #f8f9ff; }
 
 /* ===== 레이아웃 ===== */
 .page-main {

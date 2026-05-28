@@ -74,7 +74,9 @@ public class AttendanceDeptMonthController {
         model.addAttribute("currentYm",    yearMonth.toString());
         model.addAttribute("prevYm",       yearMonth.minusMonths(1).toString());
         model.addAttribute("nextYm",       yearMonth.plusMonths(1).toString());
-        model.addAttribute("ymDisplay",    yearMonth.getYear() + "년 " + yearMonth.getMonthValue() + "월");
+        model.addAttribute("ymDisplay",      yearMonth.getYear() + "년 " + yearMonth.getMonthValue() + "월");
+        model.addAttribute("currentYmStart", yearMonth.atDay(1).toString());
+        model.addAttribute("currentYmEnd",   yearMonth.atEndOfMonth().toString());
 
         return "attendance/dept-month";
     }

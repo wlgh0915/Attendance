@@ -1,75 +1,501 @@
-.rec-page { max-width: 1100px; padding: 20px 24px; margin: 0 auto; }
-.month-total { text-align: right; margin-top: 8px; font-size: 13px; font-weight: 700; color: #2c3e50; }
-
-.rec-top  { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-bottom: 16px; }
-.rec-nav  { display: flex; align-items: center; gap: 8px; }
-.rec-nav a {
-    padding: 5px 14px; border: 1px solid #2c3e50; border-radius: 4px;
-    color: #2c3e50; text-decoration: none; font-size: 13px; font-weight: 600;
-}
-.rec-nav a:hover { background: #2c3e50; color: #fff; }
-.ym-label { font-size: 16px; font-weight: 700; color: #2c3e50; min-width: 120px; text-align: center; }
-.filter-group { display: flex; flex-direction: column; gap: 3px; }
-.filter-group label { font-size: 11px; color: #666; font-weight: 600; }
-.filter-group select {
-    padding: 5px 10px; border: 1px solid #ced4da; border-radius: 4px;
-    font-size: 13px; font-family: 'Malgun Gothic', sans-serif; min-width: 160px;
-}
-.emp-badge {
-    margin-left: auto; align-self: center; font-size: 13px; color: #2c3e50;
-    font-weight: 600; background: #f0f4f8; padding: 6px 14px; border-radius: 20px;
+/* ===== 페이지 레이아웃 ===== */
+.rec-page {
+    max-width: 1200px;
+    padding: 0 4px 32px;
+    margin: 0 auto;
+    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
 }
 
-.rec-table { width: 100%; border-collapse: collapse;
-             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-             border-radius: 6px; overflow: hidden; font-size: 13px; }
-.rec-table th { background: #2c3e50; color: #fff; padding: 10px 12px;
-                text-align: center; font-size: 13px; font-weight: 600; }
-.rec-table td { padding: 8px 12px; border-bottom: 1px solid #e8eaed;
-                text-align: center; vertical-align: middle; }
-.rec-table tr:hover td { background: #f8fafc; }
-.rec-table tr.weekend td { background: #fdf8f8; }
-.rec-table tr.weekend:hover td { background: #f8f0f0; }
-.dt-col   { text-align: left !important; font-weight: 600; color: #2c3e50; }
-.col-sun  { color: #e74c3c; }
-.col-sat  { color: #2980b9; }
-.has-data { color: #27ae60; font-weight: 600; }
-.no-data  { color: #aaa; }
+/* ===== 상단 헤더 ===== */
+.rec-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 14px;
+}
 
-.btn-sm { padding: 4px 12px; border: none; border-radius: 4px; cursor: pointer;
-          font-size: 12px; font-family: 'Malgun Gothic', sans-serif; font-weight: 600; }
-.btn-edit   { background: #3498db; color: #fff; }
-.btn-edit:hover   { background: #2980b9; }
-.btn-delete { background: #e74c3c; color: #fff; margin-left: 4px; }
-.btn-delete:hover { background: #c0392b; }
+.rec-top-left { display: flex; flex-direction: column; gap: 4px; }
 
-.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45);
-            z-index: 1000; align-items: center; justify-content: center; }
+.rec-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+    letter-spacing: -0.4px;
+}
+
+.rec-subtitle {
+    font-size: 13px;
+    color: #94a3b8;
+    margin: 0;
+    font-weight: 400;
+}
+
+/* ===== 필터 카드 ===== */
+.rec-filter-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.filter-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+/* 월 네비게이션 */
+.rec-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: #f1f5f9;
+    color: #475569;
+    text-decoration: none;
+    transition: all 0.15s;
+    border: 1px solid #e2e8f0;
+}
+.nav-btn:hover { background: #e2e8f0; color: #1e293b; text-decoration: none; }
+
+.ym-display-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 7px 18px;
+    border-radius: 9px;
+    display: inline-flex;
+    align-items: center;
+    min-width: 120px;
+    justify-content: center;
+}
+
+.ym-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.filter-divider {
+    width: 1px;
+    height: 28px;
+    background: #e2e8f0;
+    flex-shrink: 0;
+}
+
+/* 부서/사원 필터 */
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.filter-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #94a3b8;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.filter-select {
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 9px;
+    font-size: 13px;
+    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    color: #1e293b;
+    background: #f8fafc;
+    outline: none;
+    transition: border-color 0.15s;
+    font-weight: 600;
+    min-width: 160px;
+}
+.filter-select:focus { border-color: #93c5fd; background: #fff; }
+
+/* 사원 정보 배지 */
+.emp-info-badge {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    border-radius: 12px;
+    padding: 10px 16px;
+}
+
+.emp-info-icon {
+    width: 34px;
+    height: 34px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.emp-info-meta {
+    font-size: 10.5px;
+    color: rgba(255,255,255,0.55);
+    margin: 0 0 2px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+}
+
+.emp-info-name {
+    font-size: 13px;
+    color: #ffffff;
+    margin: 0;
+    font-weight: 700;
+}
+
+/* ===== 테이블 카드 ===== */
+.rec-table-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    overflow: hidden;
+    margin-bottom: 18px;
+}
+
+.rec-table-wrap { overflow-x: auto; }
+
+.rec-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 13px;
+}
+
+/* 테이블 헤더 */
+.rec-table thead th {
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 700;
+    padding: 11px 14px;
+    border-bottom: 1px solid #e2e8f0;
+    border-right: 1px solid #f1f5f9;
+    text-align: center;
+    white-space: nowrap;
+    font-size: 12.5px;
+}
+.rec-table thead th:last-child { border-right: none; }
+
+/* 테이블 본문 */
+.rec-table tbody tr { transition: background 0.12s; }
+.rec-table tbody tr:hover td { background: #f8fafc !important; }
+
+.rec-table tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    border-right: 1px solid #f1f5f9;
+    text-align: center;
+    vertical-align: middle;
+    color: #334155;
+}
+.rec-table tbody td:last-child { border-right: none; }
+
+/* 주말 행 */
+.rec-table tbody tr.weekend td { background: #fafafa; }
+
+/* 날짜 컬럼 */
+.dt-col {
+    text-align: left !important;
+    font-weight: 700;
+    color: #1e293b;
+    white-space: nowrap;
+}
+
+/* 요일 색상 */
+.col-sun { color: #ef4444 !important; }
+.col-sat { color: #3b82f6 !important; }
+
+/* 데이터 유무 */
+.has-data { color: #16a34a; font-weight: 700; }
+.no-data  { color: #cbd5e1; }
+
+/* 익일 */
+.overnight-y {
+    color: #d97706;
+    font-weight: 700;
+}
+
+/* 계획근태 배지 */
+.shift-badge {
+    display: inline-block;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+/* 관리 버튼 셀 */
+.action-cell {
+    white-space: nowrap;
+}
+
+.btn-sm {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 10px;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 11.5px;
+    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    font-weight: 600;
+    transition: all 0.15s;
+}
+
+.btn-edit {
+    background: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+}
+.btn-edit:hover { background: #dbeafe; }
+
+.btn-register {
+    background: #f0fdf4;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+}
+.btn-register:hover { background: #dcfce7; }
+
+.btn-delete {
+    background: #fff1f2;
+    color: #e11d48;
+    border: 1px solid #fecdd3;
+    margin-left: 4px;
+}
+.btn-delete:hover { background: #ffe4e6; }
+
+/* ===== 하단 범례 + 월 총계 ===== */
+.rec-footer-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.rec-legend {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.dot-sat      { background: #3b82f6; }
+.dot-sun      { background: #ef4444; }
+.dot-overnight { background: #d97706; }
+
+.month-total-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 9px 18px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.total-hours {
+    color: #60a5fa;
+    font-weight: 800;
+    font-size: 15px;
+}
+
+/* ===== 모달 ===== */
+.modal-bg {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+}
 .modal-bg.open { display: flex; }
-.modal { background: #fff; border-radius: 8px; padding: 28px 32px;
-         width: 440px; max-width: 95vw; box-shadow: 0 8px 32px rgba(0,0,0,0.18); }
-.modal h3 { font-size: 16px; font-weight: 700; color: #2c3e50; margin: 0 0 20px; }
-.modal-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
-.modal-row label { font-size: 12px; color: #555; font-weight: 600; }
-.modal-row input, .modal-row select {
-    padding: 7px 10px; border: 1px solid #ced4da; border-radius: 4px;
-    font-size: 13px; font-family: 'Malgun Gothic', sans-serif;
-    width: 100%; box-sizing: border-box;
-}
-.modal-row .row-2 { display: flex; gap: 10px; }
-.modal-row .row-2 input { flex: 1; }
-.modal-note { font-size: 11px; color: #888; margin-top: -8px; margin-bottom: 8px; }
-.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
-.btn-save   { padding: 8px 22px; background: #27ae60; color: #fff; border: none;
-              border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600;
-              font-family: 'Malgun Gothic', sans-serif; }
-.btn-cancel { padding: 8px 22px; background: #95a5a6; color: #fff; border: none;
-              border-radius: 4px; cursor: pointer; font-size: 13px;
-              font-family: 'Malgun Gothic', sans-serif; }
-.btn-save:hover   { background: #1e8449; }
-.btn-cancel:hover { background: #7f8c8d; }
 
-#toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px;
-         border-radius: 6px; color: #fff; font-size: 13px; display: none; z-index: 9999; }
-#toast.success { background: #27ae60; }
-#toast.error   { background: #e74c3c; }
+.modal {
+    background: #ffffff;
+    border-radius: 16px;
+    width: 460px;
+    max-width: 95vw;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+    overflow: hidden;
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.modal-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+}
+
+.btn-modal-x {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    background: #f1f5f9;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #64748b;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+.btn-modal-x:hover { background: #e2e8f0; color: #1e293b; }
+
+.modal-body {
+    padding: 20px 24px 10px;
+}
+
+.modal-row {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 14px;
+}
+
+.modal-label {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #64748b;
+    letter-spacing: 0.3px;
+}
+
+.modal-input {
+    padding: 9px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 9px;
+    font-size: 13px;
+    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    color: #1e293b;
+    background: #f8fafc;
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+    box-sizing: border-box;
+}
+.modal-input:focus { border-color: #93c5fd; background: #fff; }
+.modal-input[readonly] { background: #f1f5f9; color: #64748b; cursor: default; }
+
+.row-2 {
+    display: flex;
+    gap: 10px;
+}
+.row-2 .modal-input { flex: 1; }
+
+.modal-note {
+    font-size: 11.5px;
+    color: #94a3b8;
+    margin: -6px 0 8px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    padding: 14px 24px 20px;
+    border-top: 1px solid #f1f5f9;
+}
+
+.btn-modal-cancel {
+    padding: 9px 20px;
+    background: #f1f5f9;
+    color: #475569;
+    border: none;
+    border-radius: 9px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    transition: background 0.15s;
+}
+.btn-modal-cancel:hover { background: #e2e8f0; }
+
+.btn-modal-save {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 20px;
+    background: #1e293b;
+    color: #ffffff;
+    border: none;
+    border-radius: 9px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    transition: background 0.15s;
+}
+.btn-modal-save:hover { background: #0f172a; }
+
+/* ===== 토스트 ===== */
+#toast {
+    position: fixed;
+    bottom: 32px;
+    right: 32px;
+    padding: 12px 20px;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    display: none;
+    z-index: 9999;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+#toast.success { background: #16a34a; }
+#toast.error   { background: #e11d48; }

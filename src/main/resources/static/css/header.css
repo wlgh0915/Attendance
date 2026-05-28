@@ -4,102 +4,107 @@
     left: 0;
     right: 0;
     z-index: 100;
-    background: #333;
-    color: #fff;
-    padding: 0 24px;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: #1e293b;
+    padding: 0 28px;
     height: 90px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-    font-family: 'Malgun Gothic', sans-serif;
+    border-bottom: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
 }
 
 .header-left {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
 }
 
 .menu-toggle-btn {
     background: none;
     border: none;
-    color: #fff;
-    font-size: 22px;
+    color: #64748b;
+    font-size: 20px;
     cursor: pointer;
-    padding: 6px 10px;
-    border-radius: 6px;
-    line-height: 1;
-    transition: background 0.2s;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    transition: all 0.15s ease;
     flex-shrink: 0;
 }
 
 .menu-toggle-btn:hover {
-    background: rgba(255, 255, 255, 0.15);
+    background: #f1f5f9;
+    color: #1e293b;
+}
+
+.header-logo-link {
+    text-decoration: none;
+    color: inherit;
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 8px;
+    transition: background 0.15s ease;
+}
+
+.header-logo-link:hover {
+    background: #f1f5f9;
+    text-decoration: none;
 }
 
 .header-title {
-    font-size: 30px;
-    font-weight: bold;
+    font-size: 18px;
+    font-weight: 900;
     margin: 0;
-    letter-spacing: 0.5px;
+    color: #1e293b;
+    letter-spacing: -0.3px;
 }
 
 .header-right {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
 }
 
 .user-info {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 14px;
-    color: #ecf0f1;
-    background: rgba(255, 255, 255, 0.08);
-    padding: 6px 14px;
-    border-radius: 20px;
-}
-
-.user-icon {
-    font-size: 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #475569;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 7px 16px;
+    border-radius: 99px;
 }
 
 .logout-btn {
-    background: #e74c3c;
-    color: white;
-    border: none;
-    padding: 7px 16px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: bold;
-    font-family: 'Malgun Gothic', sans-serif;
     display: flex;
     align-items: center;
     gap: 6px;
-    transition: background 0.2s;
+    background: transparent;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+    padding: 8px 16px;
+    border-radius: 99px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    transition: all 0.15s ease;
     white-space: nowrap;
 }
 
 .logout-btn:hover {
-    background: #c0392b;
-}
-
-/* 링크 스타일 초기화 및 애니메이션 설정 */
-.header-logo-link {
-    text-decoration: none;
-    color: inherit;
-    display: inline-block;
-    padding: 6px 14px;
-    border-radius: 8px;
-    background: transparent;
-    transition: transform 0.2s ease-in-out, background 0.2s ease-in-out;
-}
-
-/* 마우스 호버 시 확대 + 주변 배경 밝아지는 효과 */
-.header-logo-link:hover {
-    transform: scale(1.05);
-    background: rgba(255, 255, 255, 0.15);
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #fecaca;
 }

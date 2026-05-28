@@ -10,17 +10,24 @@
 <body>
 <div layout:fragment="content">
 <div class="req-page">
-    <div class="page-title">기타근태 신청</div>
 
-    <!-- 검색 조건 -->
+    <!-- 페이지 헤더 -->
+    <div class="req-top">
+        <div class="req-top-left">
+            <h2 class="req-title">기타근태 신청</h2>
+            <p class="req-subtitle">변경이 필요한 근무 계획 및 근태 내역을 조회하고 신청합니다.</p>
+        </div>
+    </div>
+
+    <!-- 검색 필터 카드 -->
     <div class="search-panel">
         <div class="search-group">
-            <label>근무일</label>
-            <input type="date" id="workDate" th:value="${today}">
+            <label class="search-label">근무일</label>
+            <input type="date" id="workDate" class="search-input" th:value="${today}">
         </div>
         <div class="search-group">
-            <label>부서</label>
-            <select id="deptCode" th:disabled="${!canViewAll}">
+            <label class="search-label">부서</label>
+            <select id="deptCode" class="search-select" th:disabled="${!canViewAll}">
                 <option th:each="dept : ${depts}"
                         th:value="${dept.deptCode}"
                         th:text="${dept.deptName}"
@@ -29,8 +36,8 @@
             </select>
         </div>
         <div class="search-group">
-            <label>근무계획</label>
-            <select id="workPlanFilter">
+            <label class="search-label">근무계획</label>
+            <select id="workPlanFilter" class="search-select">
                 <option value="">전체</option>
                 <option th:each="sc : ${shiftCodes}"
                         th:value="${sc.shiftCode}"
@@ -39,65 +46,126 @@
             </select>
         </div>
         <div class="search-group" th:if="${canViewAll}">
-            <label>사번</label>
-            <input type="text" id="empCodeFilter" placeholder="전체">
+            <label class="search-label">사번</label>
+            <input type="text" id="empCodeFilter" class="search-input" placeholder="전체">
         </div>
-        <button class="btn-search" onclick="doSearch()">조회</button>
+        <div class="search-actions">
+            <button class="btn-search" onclick="doSearch()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                조회
+            </button>
+        </div>
     </div>
 
-    <!-- 결과 테이블 -->
-    <div class="req-table-wrap">
-        <table class="req-table">
-            <thead>
-            <tr>
-                <th style="width:36px;" class="th-check" onclick="clickCheckAllCell()"><input type="checkbox" id="checkAll" onclick="event.stopPropagation();toggleAll(this)"></th>
-                <th style="width:80px;">사번</th>
-                <th style="width:75px;">성명</th>
-                <th style="width:100px;">부서</th>
-                <th style="width:100px;">근무계획</th>
-                <th style="width:80px;">예정근무</th>
-                <th style="width:90px;">실제근태</th>
-                <th style="width:80px;">예상근로시간</th>
-                <th style="width:80px;">실근무</th>
-                <th style="width:80px;">잔여연차</th>
-                <th style="width:130px;">종료 날짜</th>
-                <th style="width:150px;">변경 근무계획</th>
-                <th style="width:120px;">사유</th>
-                <th style="width:200px;">사유상세</th>
-                <th style="width:70px;">상태</th>
-                <th style="width:70px;">신청자</th>
-            </tr>
-            </thead>
-            <tbody id="reqTableBody">
-                <tr><td colspan="16" class="no-data">조회 버튼을 클릭하세요.</td></tr>
-            </tbody>
-        </table>
+    <!-- 결과 테이블 카드 -->
+    <div class="req-table-card">
+        <div class="table-card-header">
+            <div class="table-card-header-left">
+                <h3 class="table-card-title">대상자 목록</h3>
+                <span id="rowCountBadge" class="count-badge">총 0건</span>
+            </div>
+        </div>
+        <div class="req-table-wrap">
+            <table class="req-table">
+                <thead>
+                <tr>
+                    <th class="th-check" onclick="clickCheckAllCell()">
+                        <input type="checkbox" id="checkAll" onclick="event.stopPropagation();toggleAll(this)">
+                    </th>
+                    <th>사번</th>
+                    <th>성명</th>
+                    <th>부서</th>
+                    <th>근무계획</th>
+                    <th>예정근무</th>
+                    <th>실제근태</th>
+                    <th>예상근로시간</th>
+                    <th>실근무</th>
+                    <th>잔여연차</th>
+                    <th>종료 날짜</th>
+                    <th>변경 근무계획</th>
+                    <th>사유</th>
+                    <th>사유상세</th>
+                    <th>상태</th>
+                    <th>신청자</th>
+                </tr>
+                </thead>
+                <tbody id="reqTableBody">
+                    <tr><td colspan="16" class="no-data">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                        </svg>
+                        <p>조회 버튼을 클릭하세요.</p>
+                    </td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 
-    <!-- 변경 가능한 근무계획 옵션 (hidden → JS에서 사용) -->
-    <div style="display:none;" id="shiftOptionsData">
-        <span th:each="sc : ${shiftCodes}"
-              th:data-code="${sc.shiftCode}"
-              th:data-name="${sc.shiftName}"
-              th:data-on="${sc.workOnHhmm}"
-              th:data-off="${sc.workOffHhmm}"
-              th:data-break1-start="${sc.break1StartHhmm}"
-              th:data-break1-end="${sc.break1EndHhmm}"
-              th:data-break2-start="${sc.break2StartHhmm}"
-              th:data-break2-end="${sc.break2EndHhmm}"
-              th:data-work-min="${sc.workMinutes}">
-        </span>
-    </div>
+</div><!-- /req-page -->
 
-    <!-- 액션 버튼 -->
-    <div class="action-bar">
-        <button class="btn-act btn-save"          onclick="doSave()">저장</button>
-        <button class="btn-act btn-delete"         onclick="doDelete()">삭제</button>
-        <button class="btn-act btn-submit"         onclick="doSubmit()">상신</button>
-        <button class="btn-act btn-cancel-submit"  onclick="doCancelSubmit()">상신취소</button>
+<!-- 하단 액션 바 -->
+<div class="req-footer">
+    <div class="req-footer-left">
+        <span class="select-dot"></span>
+        <p class="select-info">선택됨: <strong id="selectedCount">0</strong>개</p>
+        <div class="footer-divider"></div>
+        <p class="footer-hint">저장 시 즉시 목록에 반영되며 결재를 위해 상신이 필요합니다.</p>
+    </div>
+    <div class="req-footer-right">
+        <button class="btn-act btn-delete" onclick="doDelete()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6"/><path d="M14 11v6"/>
+            </svg>
+            삭제
+        </button>
+        <button class="btn-act btn-save" onclick="doSave()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+            </svg>
+            저장
+        </button>
+        <button class="btn-act btn-cancel-submit" onclick="doCancelSubmit()">상신취소</button>
+        <button class="btn-act btn-submit" onclick="doSubmit()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"/>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+            결재상신
+        </button>
     </div>
 </div>
+
 <div id="toast"></div>
+
+<!-- 변경 가능한 근무계획 옵션 (JS에서 사용) -->
+<div style="display:none;" id="shiftOptionsData">
+    <span th:each="sc : ${shiftCodes}"
+          th:data-code="${sc.shiftCode}"
+          th:data-name="${sc.shiftName}"
+          th:data-on="${sc.workOnHhmm}"
+          th:data-off="${sc.workOffHhmm}"
+          th:data-break1-start="${sc.break1StartHhmm}"
+          th:data-break1-end="${sc.break1EndHhmm}"
+          th:data-break2-start="${sc.break2StartHhmm}"
+          th:data-break2-end="${sc.break2EndHhmm}"
+          th:data-work-min="${sc.workMinutes}">
+    </span>
+</div>
 
 <script th:src="@{/js/request-other.js}"></script>
 </div><!-- /layout:fragment="content" -->
