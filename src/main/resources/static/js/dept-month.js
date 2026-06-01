@@ -30,6 +30,20 @@ function fmtWorkMin(min) {
     return h + 'h' + (m > 0 ? m + 'm' : '');
 }
 
+function isApprovedBizTrip(day) {
+    return (day.requests || []).some(r =>
+        r.requestCategory === 'OTHER' &&
+        r.status === 'APPROVED' &&
+        r.changeShiftName &&
+        r.changeShiftName.includes('출장')
+    );
+}
+
+function actualWorkMin(day) {
+    if (day.record && day.record.workMin) return day.record.workMin;
+    return isApprovedBizTrip(day) ? plannedShiftMin(day) : 0;
+}
+
 /* ── 날짜 셀 하나 렌더링 ── */
 function renderDayCell(day, dateStr) {
     const dow = new Date(dateStr + 'T00:00:00').getDay(); // 0=일, 6=토
@@ -73,8 +87,9 @@ function renderDayCell(day, dateStr) {
     } else if (isBizTrip) {
         const shiftLbl = activeOtherReq.changeShiftName || '출장';
         inner = `<span class="dm-bizt">${shiftLbl}</span>`;
-        if (day.record && day.record.workMin) {
-            inner += `<span class="dm-workhour">${fmtWorkMin(day.record.workMin)}</span>`;
+        const workMin = actualWorkMin(day);
+        if (workMin) {
+            inner += `<span class="dm-workhour">${fmtWorkMin(workMin)}</span>`;
         }
     } else if (day.record && day.record.checkIn) {
         const shiftLbl = (activeOtherReq && activeOtherReq.changeShiftName)
@@ -115,7 +130,7 @@ function renderMonth() {
     let html = '';
     MONTH_DATA.forEach(emp => {
         const actualMin  = (emp.days || []).reduce((s, d) =>
-            s + ((d.record && d.record.workMin) || 0), 0);
+            s + actualWorkMin(d), 0);
         const plannedMin = (emp.days || []).reduce((s, d) => s + plannedShiftMin(d), 0);
 
         // 결근 / 지각 집계
@@ -213,9 +228,10 @@ function renderSummaryCards(data) {
             if (day.record && day.record.checkIn) {
                 attendedDays++;
                 if (day.record.lateYn === 'Y') lateCnt++;
-                if (day.record.workMin) totalWorkMin += day.record.workMin;
+                totalWorkMin += actualWorkMin(day);
             } else if (hasLv) {
                 attendedDays++;
+                if (isBt) totalWorkMin += actualWorkMin(day);
             }
         });
     });

@@ -27,6 +27,20 @@ function fmtMin(min) {
     return h + 'h' + (m > 0 ? ' ' + m + 'm' : '');
 }
 
+function isApprovedBizTrip(day) {
+    return (day.requests || []).some(r =>
+        r.requestCategory === 'OTHER' &&
+        r.status === 'APPROVED' &&
+        r.changeShiftName &&
+        r.changeShiftName.includes('출장')
+    );
+}
+
+function actualWorkMin(day) {
+    if (day.record && day.record.workMin) return day.record.workMin;
+    return isApprovedBizTrip(day) ? plannedShiftMin(day) : 0;
+}
+
 /* ── 계획 근무분 ── */
 function plannedShiftMin(day) {
     if (day.workDayType === 'OFF' || day.workDayType === 'HOLIDAY') return 0;
@@ -132,7 +146,7 @@ function renderWeekly() {
 
     let html = '';
     WEEKLY_DATA.forEach(emp => {
-        const actualMin  = (emp.days || []).reduce((sum, d) => sum + ((d.record && d.record.workMin) || 0), 0);
+        const actualMin  = (emp.days || []).reduce((sum, d) => sum + actualWorkMin(d), 0);
         const plannedMin = (emp.days || []).reduce((sum, d) => sum + plannedShiftMin(d), 0);
         const fmtHM = min => {
             if (!min || min <= 0) return '-';
@@ -164,7 +178,7 @@ function buildSummaryRow(data) {
     const empCount = data.length;
     if (!empCount) return '';
 
-    const totalActual  = data.reduce((s, e) => s + (e.days || []).reduce((a, d) => a + ((d.record && d.record.workMin) || 0), 0), 0);
+    const totalActual  = data.reduce((s, e) => s + (e.days || []).reduce((a, d) => a + actualWorkMin(d), 0), 0);
     const totalPlanned = data.reduce((s, e) => s + (e.days || []).reduce((a, d) => a + plannedShiftMin(d), 0), 0);
     const avgActual    = Math.round(totalActual  / empCount);
     const avgPlanned   = Math.round(totalPlanned / empCount);
@@ -189,7 +203,7 @@ function buildSummaryRow(data) {
                 daySummary[idx].absent++;
             if (!isLeaveDay && day.record && day.record.lateYn === 'Y')
                 daySummary[idx].late++;
-            daySummary[idx].workMin += (day.record && day.record.workMin) || 0;
+            daySummary[idx].workMin += actualWorkMin(day);
         });
     });
 
@@ -268,9 +282,10 @@ function renderSummaryCards(data) {
             if (day.record && day.record.checkIn) {
                 attendedDays++;
                 if (day.record.lateYn === 'Y') lateCnt++;
-                if (day.record.workMin) totalWorkMin += day.record.workMin;
+                totalWorkMin += actualWorkMin(day);
             } else if (hasApprovedLeave) {
                 attendedDays++;
+                if (isBizTripDay) totalWorkMin += actualWorkMin(day);
             }
         });
     });
