@@ -46,14 +46,17 @@ public class AttendanceRecordController {
 
         String  company = loginUser.getCompany();
         boolean isAdmin = "ADMIN".equals(loginUser.getRoleCode());
+        String deptLeader = requestMapper.findDeptLeader(company, loginUser.getDeptCode());
+        boolean isDeptLeader = loginUser.getEmpCode().equals(deptLeader);
+        boolean canViewAll = isAdmin || isDeptLeader;
 
         YearMonth yearMonth = (ym == null || ym.isBlank()) ? YearMonth.now() : YearMonth.parse(ym);
 
-        List<DepartmentDto> depts = isAdmin
+        List<DepartmentDto> depts = canViewAll
                 ? calendarService.getAccessibleDepts(company, loginUser.getDeptCode()) : List.of();
 
         String selectedDept;
-        if (isAdmin && deptCode != null && !deptCode.isBlank()) {
+        if (canViewAll && deptCode != null && !deptCode.isBlank()) {
             boolean allowed = depts.stream().anyMatch(d -> d.getDeptCode().equals(deptCode));
             selectedDept = allowed ? deptCode : loginUser.getDeptCode();
         } else {
@@ -61,17 +64,18 @@ public class AttendanceRecordController {
         }
 
         String myEmp = loginUser.getEmpCode();
-        List<EmpSimpleDto> emps = isAdmin
+        List<EmpSimpleDto> emps = canViewAll
                 ? calendarService.getEmpsByDept(company, selectedDept) : List.of();
-        if (isAdmin) {
+        if (canViewAll) {
             emps.sort(Comparator.comparing((EmpSimpleDto e) -> e.getEmpCode().equals(myEmp) ? 0 : 1)
                     .thenComparing(EmpSimpleDto::getEmpCode));
         }
 
         String targetEmp;
-        if (isAdmin && empCode != null && !empCode.isBlank()) {
+        if (canViewAll && empCode != null && !empCode.isBlank()
+                && emps.stream().anyMatch(e -> e.getEmpCode().equals(empCode))) {
             targetEmp = empCode;
-        } else if (isAdmin && !emps.isEmpty()) {
+        } else if (canViewAll && !emps.isEmpty()) {
             boolean selfInList = emps.stream().anyMatch(e -> e.getEmpCode().equals(myEmp));
             targetEmp = selfInList ? myEmp : emps.get(0).getEmpCode();
         } else {
@@ -117,6 +121,7 @@ public class AttendanceRecordController {
         model.addAttribute("targetEmp",    targetEmp);
         model.addAttribute("selectedDept", selectedDept);
         model.addAttribute("isAdmin",      isAdmin);
+        model.addAttribute("canViewAll",   canViewAll);
         model.addAttribute("ymDisplay",    yearMonth.getYear() + "년 " + yearMonth.getMonthValue() + "월");
         model.addAttribute("currentYm",    yearMonth.toString());
         model.addAttribute("prevYm",       yearMonth.minusMonths(1).toString());

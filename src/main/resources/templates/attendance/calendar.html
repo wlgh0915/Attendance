@@ -45,7 +45,7 @@
 
     <!-- 필터 -->
     <div class="cal-filters" th:if="${isAdmin or canViewAll}">
-        <div class="filter-item" th:if="${isAdmin}">
+        <div class="filter-item" th:if="${canViewAll}">
             <label class="filter-label">부서</label>
             <select id="deptSelect" class="filter-select" onchange="onDeptChange(this.value)">
                 <option th:each="d : ${depts}"

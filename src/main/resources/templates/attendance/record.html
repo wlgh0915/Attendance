@@ -40,7 +40,7 @@
             <div class="filter-divider"></div>
 
             <!-- 부서/사원 선택 (관리자) -->
-            <div class="filter-group" th:if="${isAdmin}">
+            <div class="filter-group" th:if="${canViewAll}">
                 <label class="filter-label">부서</label>
                 <select id="deptSelect" class="filter-select" onchange="onDeptChange(this.value)">
                     <option th:each="d : ${depts}"
@@ -50,7 +50,7 @@
                 </select>
             </div>
 
-            <div class="filter-group" th:if="${isAdmin}">
+            <div class="filter-group" th:if="${canViewAll}">
                 <label class="filter-label">사원</label>
                 <select id="empSelect" class="filter-select" onchange="onEmpChange(this.value)">
                     <option value="">-- 선택 --</option>

@@ -5,6 +5,7 @@ import com.company.attendancemanagement.dto.calendar.AttendanceDayDto;
 import com.company.attendancemanagement.dto.calendar.EmpSimpleDto;
 import com.company.attendancemanagement.dto.department.DepartmentDto;
 import com.company.attendancemanagement.dto.login.LoginUserDto;
+import com.company.attendancemanagement.mapper.AttendanceRequestMapper;
 import com.company.attendancemanagement.service.AttendanceCalendarService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ import java.util.Map;
 public class AttendanceCalendarController {
 
     private final AttendanceCalendarService calendarService;
+    private final AttendanceRequestMapper requestMapper;
     private static final DateTimeFormatter YMD = DateTimeFormatter.BASIC_ISO_DATE;
 
     @GetMapping
@@ -42,37 +44,41 @@ public class AttendanceCalendarController {
 
         String  company = loginUser.getCompany();
         boolean isAdmin = "ADMIN".equals(loginUser.getRoleCode());
+        String deptLeader = requestMapper.findDeptLeader(company, loginUser.getDeptCode());
+        boolean isDeptLeader = loginUser.getEmpCode().equals(deptLeader);
+        boolean canViewAll = isAdmin || isDeptLeader;
 
         YearMonth yearMonth = (ym == null || ym.isBlank()) ? YearMonth.now() : YearMonth.parse(ym);
 
-        // ADMIN: 본인 부서 + 하위 부서 전체 (재귀). USER: 빈 목록
-        List<DepartmentDto> depts = isAdmin
+        // 관리자/부서장: 본인 부서 + 하위 부서 전체 (재귀). 일반 사용자: 빈 목록
+        List<DepartmentDto> depts = canViewAll
                 ? calendarService.getAccessibleDepts(company, loginUser.getDeptCode())
                 : List.of();
 
-        // 부서 결정: ADMIN이고 요청한 deptCode가 접근 가능한 부서인 경우에만 허용
+        // 부서 결정: 요청한 deptCode가 접근 가능한 부서인 경우에만 허용
         String selectedDept;
-        if (isAdmin && deptCode != null && !deptCode.isBlank()) {
+        if (canViewAll && deptCode != null && !deptCode.isBlank()) {
             boolean allowed = depts.stream().anyMatch(d -> d.getDeptCode().equals(deptCode));
             selectedDept = allowed ? deptCode : loginUser.getDeptCode();
         } else {
             selectedDept = loginUser.getDeptCode();
         }
 
-        // 사원 목록: ADMIN만 조회, 본인 사번 맨 위 → 나머지 오름차순
+        // 사원 목록: 관리자/부서장만 조회, 본인 사번 맨 위 → 나머지 오름차순
         String myEmp = loginUser.getEmpCode();
-        List<EmpSimpleDto> emps = isAdmin
+        List<EmpSimpleDto> emps = canViewAll
                 ? calendarService.getEmpsByDept(company, selectedDept) : List.of();
-        if (isAdmin) {
+        if (canViewAll) {
             emps.sort(Comparator.comparing((EmpSimpleDto e) -> e.getEmpCode().equals(myEmp) ? 0 : 1)
                     .thenComparing(EmpSimpleDto::getEmpCode));
         }
 
         // 사원 결정: 파라미터 → 본인(해당 부서 소속 시) → 첫 번째 사원
         String targetEmp;
-        if (isAdmin && empCode != null && !empCode.isBlank()) {
+        if (canViewAll && empCode != null && !empCode.isBlank()
+                && emps.stream().anyMatch(e -> e.getEmpCode().equals(empCode))) {
             targetEmp = empCode;
-        } else if (isAdmin && !emps.isEmpty()) {
+        } else if (canViewAll && !emps.isEmpty()) {
             boolean selfInList = emps.stream().anyMatch(e -> e.getEmpCode().equals(myEmp));
             targetEmp = selfInList ? myEmp : emps.get(0).getEmpCode();
         } else {
@@ -91,23 +97,26 @@ public class AttendanceCalendarController {
         model.addAttribute("selectedDept", selectedDept);
         model.addAttribute("empInfo",      empInfo);
         model.addAttribute("isAdmin",      isAdmin);
-        model.addAttribute("canViewAll",   isAdmin);
+        model.addAttribute("canViewAll",   canViewAll);
         model.addAttribute("depts",        depts);
         model.addAttribute("emps",         emps);
 
         return "attendance/calendar";
     }
 
-    // 부서 변경 시 사원 목록 AJAX (ADMIN 전용)
+    // 부서 변경 시 사원 목록 AJAX (관리자/부서장)
     @GetMapping("/emps")
     @ResponseBody
     public ResponseEntity<?> getEmps(@RequestParam String deptCode, HttpSession session) {
         LoginUserDto loginUser = getLoginUser(session);
         if (loginUser == null) return ResponseEntity.status(401).build();
 
-        if (!"ADMIN".equals(loginUser.getRoleCode())) return ResponseEntity.status(403).build();
+        boolean isAdmin = "ADMIN".equals(loginUser.getRoleCode());
+        String deptLeader = requestMapper.findDeptLeader(loginUser.getCompany(), loginUser.getDeptCode());
+        boolean isDeptLeader = loginUser.getEmpCode().equals(deptLeader);
+        if (!isAdmin && !isDeptLeader) return ResponseEntity.status(403).build();
 
-        // 요청된 부서가 ADMIN의 접근 가능 범위인지 검증
+        // 요청된 부서가 접근 가능 범위인지 검증
         List<DepartmentDto> accessible = calendarService.getAccessibleDepts(
                 loginUser.getCompany(), loginUser.getDeptCode());
         boolean allowed = accessible.stream().anyMatch(d -> d.getDeptCode().equals(deptCode));
