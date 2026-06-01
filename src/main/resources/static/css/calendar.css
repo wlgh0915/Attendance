@@ -184,37 +184,34 @@
     pointer-events: none;
 }
 
-/* ===== 캘린더 + 사이드 레이아웃 ===== */
-.cal-main-area {
+/* ===== 하단 통계 패널 ===== */
+.cal-stat-row {
     display: flex;
     gap: 16px;
-    align-items: flex-start;
-}
-
-/* ===== 사이드 통계 패널 ===== */
-.cal-sidebar {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    width: 220px;
-    flex-shrink: 0;
 }
 
 .cal-stat-card {
+    flex: 1;
     background: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 14px;
-    padding: 20px 18px;
+    padding: 20px 24px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.04);
     display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.cal-stat-info {
+    display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
 }
 
 .cal-stat-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -250,8 +247,7 @@
 
 /* ===== 캘린더 컨테이너 ===== */
 .cal-container {
-    flex: 1;
-    min-width: 0;
+    width: 100%;
     background: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 20px;

@@ -5,6 +5,7 @@ import com.company.attendancemanagement.dto.user.UserCreateDto;
 import com.company.attendancemanagement.dto.user.DutyOptionDto;
 import com.company.attendancemanagement.dto.user.PositionOptionDto;
 import com.company.attendancemanagement.dto.user.RoleOptionDto;
+import com.company.attendancemanagement.dto.user.UserListDto;
 import com.company.attendancemanagement.dto.user.UserUpdateDto;
 import com.company.attendancemanagement.mapper.DepartmentMapper;
 import com.company.attendancemanagement.mapper.UserMapper;
@@ -89,6 +90,10 @@ public class UserService {
         if (!isBlank(dto.getDutyCode()) && isBlank(dto.getDutyDate())) {
             dto.setDutyDate(today);
         }
+    }
+
+    public List<UserListDto> findAllUsers(String company) {
+        return userMapper.findAllUsers(company);
     }
 
     public List<PositionOptionDto> findActivePositions(String company) {

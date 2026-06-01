@@ -1,0 +1,264 @@
+﻿<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/default_layout}">
+<head>
+    <meta charset="UTF-8">
+    <title>전체 사원 목록</title>
+    <link rel="stylesheet" th:href="@{/css/department-list.css}">
+    <style>
+        .user-search-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .user-search-input, .user-search-select {
+            padding: 7px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 9px;
+            font-size: 13px;
+            font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+            color: #1e293b;
+            outline: none;
+            transition: border-color 0.15s;
+            background: #fff;
+        }
+        .user-search-input { width: 200px; }
+        .user-search-select { min-width: 130px; cursor: pointer; }
+        .user-search-input:focus,
+        .user-search-select:focus { border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(147,197,253,0.15); }
+        .role-badge-admin  { display:inline-block; padding:2px 9px; border-radius:6px; font-size:11px; font-weight:700; background:#1e293b; color:#fff; }
+        .role-badge-leader { display:inline-block; padding:2px 9px; border-radius:6px; font-size:11px; font-weight:700; background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; }
+        .role-badge-user   { display:inline-block; padding:2px 9px; border-radius:6px; font-size:11px; font-weight:700; background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; }
+        .td-empcode { font-family:'Consolas',monospace; font-size:12px; color:#94a3b8; font-weight:600; }
+        .td-empname { font-weight:800; color:#1e293b; }
+    </style>
+</head>
+<body>
+<div layout:fragment="content">
+<div class="dept-page">
+
+    <div th:if="${successMessage}" class="toast-data" data-type="success"
+         th:data-message="${successMessage}" style="display:none"></div>
+
+    <!-- 헤더 -->
+    <div class="dept-top">
+        <div class="dept-top-left">
+            <h2 class="dept-title">전체 사원 목록</h2>
+            <p class="dept-subtitle">시스템에 등록된 전체 사원 정보를 조회하고 관리합니다.</p>
+        </div>
+    </div>
+
+    <!-- 요약 카드 -->
+    <div class="dept-summary-grid">
+        <div class="dept-summary-card">
+            <div class="dept-summary-top">
+                <div class="summary-icon icon-blue">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                         fill="none" stroke="#2563eb" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                </div>
+            </div>
+            <p class="summary-label">전체 사원</p>
+            <p class="summary-value"><span id="statTotal">-</span><span class="summary-unit">명</span></p>
+        </div>
+        <div class="dept-summary-card">
+            <div class="dept-summary-top">
+                <div class="summary-icon icon-green">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                         fill="none" stroke="#16a34a" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                </div>
+            </div>
+            <p class="summary-label">재직 중</p>
+            <p class="summary-value"><span id="statActive">-</span><span class="summary-unit">명</span></p>
+        </div>
+        <div class="dept-summary-card">
+            <div class="dept-summary-top">
+                <div class="summary-icon icon-slate">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                         fill="none" stroke="#64748b" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+                    </svg>
+                </div>
+            </div>
+            <p class="summary-label">퇴직</p>
+            <p class="summary-value"><span id="statInactive">-</span><span class="summary-unit">명</span></p>
+        </div>
+    </div>
+
+    <!-- 테이블 카드 -->
+    <div class="dept-table-card">
+        <div class="dept-card-header">
+            <div class="dept-filter-tabs">
+                <button class="dept-tab-btn active" onclick="filterUsers(this,'ALL')">전체</button>
+                <button class="dept-tab-btn" onclick="filterUsers(this,'ACTIVE')">재직 중</button>
+                <button class="dept-tab-btn" onclick="filterUsers(this,'INACTIVE')">퇴직</button>
+            </div>
+            <div class="user-search-wrap">
+                <!-- 검색 모드 토글 -->
+                <select id="searchMode" class="user-search-select" onchange="onModeChange()">
+                    <option value="text">사번 / 이름</option>
+                    <option value="dept">부서별</option>
+                </select>
+                <!-- 사번/이름 텍스트 검색 -->
+                <input type="text" id="searchInput" class="user-search-input"
+                       placeholder="사번 또는 이름 검색..." oninput="applyFilter()">
+                <!-- 부서 드롭다운 (기본 숨김) -->
+                <select id="deptFilter" class="user-search-select" style="display:none;" onchange="applyFilter()">
+                    <option value="">전체 부서</option>
+                    <option th:each="d : ${deptOptions}"
+                            th:value="${d.deptName}"
+                            th:text="${d.deptName}">
+                    </option>
+                </select>
+                <span class="dept-row-count" id="rowCountLabel"></span>
+            </div>
+        </div>
+
+        <div class="dept-table-wrap">
+            <table class="dept-table">
+                <thead>
+                <tr>
+                    <th>사번</th>
+                    <th>이름</th>
+                    <th>부서</th>
+                    <th>직위</th>
+                    <th>직책</th>
+                    <th>권한</th>
+                    <th>입사일</th>
+                    <th>재직상태</th>
+                    <th>관리</th>
+                </tr>
+                </thead>
+                <tbody id="userTableBody">
+                <tr class="user-row"
+                    th:each="u : ${users}"
+                    th:data-status="${u.retireDate != null ? 'INACTIVE' : 'ACTIVE'}"
+                    th:data-search="${u.empCode + ' ' + u.empName}"
+                    th:data-dept="${u.deptName != null ? u.deptName : ''}"
+                    th:classappend="${u.retireDate != null ? ' row-inactive' : ''}">
+
+                    <td class="td-empcode" th:text="${u.empCode}"></td>
+                    <td class="td-empname" th:text="${u.empName}"></td>
+                    <td th:text="${u.deptName != null ? u.deptName : '-'}"></td>
+                    <td th:text="${u.positionName != null ? u.positionName : '-'}"></td>
+                    <td th:text="${u.dutyName != null ? u.dutyName : '-'}"></td>
+                    <td>
+                        <span th:if="${u.roleCode == 'ADMIN'}"     class="role-badge-admin"  th:text="${u.roleName ?: u.roleCode}"></span>
+                        <span th:if="${u.roleCode != 'ADMIN' and u.roleCode != null and #strings.containsIgnoreCase(u.roleCode, 'LEADER')}"
+                              class="role-badge-leader" th:text="${u.roleName ?: u.roleCode}"></span>
+                        <span th:if="${u.roleCode != 'ADMIN' and (u.roleCode == null or not #strings.containsIgnoreCase(u.roleCode, 'LEADER'))}"
+                              class="role-badge-user"   th:text="${u.roleName ?: (u.roleCode ?: '-')}"></span>
+                    </td>
+                    <td th:text="${u.hireDate != null ? u.hireDate : '-'}"></td>
+                    <td>
+                        <span th:if="${u.retireDate == null}"  class="status-pill status-active">
+                            <span class="status-dot dot-active"></span>재직 중
+                        </span>
+                        <span th:unless="${u.retireDate == null}" class="status-pill status-inactive">
+                            <span class="status-dot dot-inactive"></span>퇴직
+                        </span>
+                    </td>
+                    <td class="td-actions">
+                        <a th:href="@{/users/{code}/edit(code=${u.empCode})}"
+                           class="btn-dept-action btn-dept-edit">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2.5">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                            수정
+                        </a>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="dept-table-footer">
+            <p class="dept-footer-count">총 <span id="visibleCount">-</span>명 표시 중</p>
+        </div>
+    </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+    const allRows  = Array.from(document.querySelectorAll('tr.user-row'));
+    let currentFilter = 'ALL';
+
+    function updateStats() {
+        const total    = allRows.length;
+        const active   = allRows.filter(r => r.dataset.status === 'ACTIVE').length;
+        const inactive = allRows.filter(r => r.dataset.status === 'INACTIVE').length;
+        document.getElementById('statTotal').textContent    = total;
+        document.getElementById('statActive').textContent   = active;
+        document.getElementById('statInactive').textContent = inactive;
+    }
+
+    function filterUsers(btn, status) {
+        document.querySelectorAll('.dept-tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = status;
+        applyFilter();
+    }
+
+    function onModeChange() {
+        const mode = document.getElementById('searchMode').value;
+        const isText = mode === 'text';
+        document.getElementById('searchInput').style.display = isText ? '' : 'none';
+        document.getElementById('deptFilter').style.display  = isText ? 'none' : '';
+        // 값 초기화
+        document.getElementById('searchInput').value = '';
+        document.getElementById('deptFilter').value  = '';
+        applyFilter();
+    }
+
+    function applyFilter() {
+        const mode    = document.getElementById('searchMode').value;
+        const keyword = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+        const dept    = (document.getElementById('deptFilter').value || '').toLowerCase().trim();
+        let visible = 0;
+        allRows.forEach(r => {
+            const statusOk = currentFilter === 'ALL' || r.dataset.status === currentFilter;
+            let searchOk = true;
+            if (mode === 'text' && keyword) {
+                searchOk = r.dataset.search.toLowerCase().includes(keyword);
+            } else if (mode === 'dept' && dept) {
+                searchOk = (r.dataset.dept || '').toLowerCase() === dept;
+            }
+            const show = statusOk && searchOk;
+            r.style.display = show ? '' : 'none';
+            if (show) visible++;
+        });
+        document.getElementById('visibleCount').textContent = visible;
+    }
+
+    // 토스트
+    const toastData = document.querySelector('.toast-data');
+    if (toastData) {
+        const msg  = toastData.getAttribute('data-message');
+        const type = toastData.getAttribute('data-type') || 'success';
+        if (msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg; t.className = type; t.style.display = 'block';
+            setTimeout(() => { t.style.display = 'none'; }, 3000);
+        }
+    }
+
+    updateStats();
+    applyFilter();
+</script>
+</div>
+</body>
+</html>
+
+

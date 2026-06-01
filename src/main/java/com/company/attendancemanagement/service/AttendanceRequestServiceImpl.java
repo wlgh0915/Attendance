@@ -30,6 +30,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
     private final AttendanceRequestMapper requestMapper;
     private final ApprovalMapper approvalMapper;
     private final AnnualLeaveService annualLeaveService;
+    private final AttendanceRecordService recordService;
 
     private static final DateTimeFormatter REQ_ID_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
     private static final int MAX_WEEK_MIN = 3120;
@@ -386,7 +387,24 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
                 requestMapper.insertGeneralDetail(dto);
             }
         }
+        // 연장/휴일근무 신청 저장 시 checkOut을 신청 종료시간으로 자동 갱신
+        if (!isOther && isOvertimeOrHolidayRequest(dto.getRequestWorkCode())
+                && !isBlank(dto.getEndTime())) {
+            String yyyymmdd = dto.getWorkDate().replace("-", "");
+            recordService.autoSetCheckoutIfLater(
+                    dto.getCompany(), dto.getEmpCode(), yyyymmdd,
+                    dto.getEndTime(), dto.getEndTimeType());
+        }
+
         return dto;
+    }
+
+    private boolean isOvertimeOrHolidayRequest(String workCode) {
+        return "연장".equals(workCode) || "휴일근무".equals(workCode);
+    }
+
+    private boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 
     private void normalizeOtherRequestDateRange(AttendanceRequestDto dto) {
@@ -826,6 +844,30 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             requestMapper.applyApprovedOtherRequestToAttendance(requestId);
             requestMapper.applyApprovedHolidayRequestToAttendance(requestId);
             annualLeaveService.refreshApprovedUsage(existing);
+
+            // 자동승인(부서장 본인 신청) 시 실적 재계산 — 승인 서비스와 동일 처리
+            if ("OTHER".equals(existing.getRequestCategory())
+                    && existing.getWorkDate() != null) {
+                LocalDate start = LocalDate.parse(existing.getWorkDate());
+                LocalDate end = (existing.getEndDate() == null || existing.getEndDate().isBlank())
+                        ? start : LocalDate.parse(existing.getEndDate());
+                for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
+                    recordService.recalculateIfRecordExists(
+                            existing.getCompany(), existing.getEmpCode(),
+                            d.toString().replace("-", ""));
+                }
+            }
+            if (existing.getRequestWorkCode() != null
+                    && ("연장".equals(existing.getRequestWorkCode())
+                        || "조출연장".equals(existing.getRequestWorkCode())
+                        || "휴일근무".equals(existing.getRequestWorkCode()))) {
+                String yyyymmdd = existing.getWorkDate().replace("-", "");
+                recordService.recalculateIfRecordExists(
+                        existing.getCompany(), existing.getEmpCode(), yyyymmdd);
+                recordService.autoSetCheckoutIfLater(
+                        existing.getCompany(), existing.getEmpCode(), yyyymmdd,
+                        existing.getEndTime(), existing.getEndTimeType());
+            }
         } else {
             requestMapper.updateStatus(requestId, "SUBMITTED");
         }

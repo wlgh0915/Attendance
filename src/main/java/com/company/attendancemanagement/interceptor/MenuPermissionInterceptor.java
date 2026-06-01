@@ -185,6 +185,10 @@ public class MenuPermissionInterceptor implements HandlerInterceptor {
             candidates.add("/pattern/edit/{workPatternCode}");
         }
 
+        if (uri.equals("/users") || uri.startsWith("/users/")) {
+            candidates.add("/users/new");
+        }
+
         if (uri.startsWith("/departments/employees/move")) {
             candidates.add("/departments/employees");
             candidates.add("/departments/employees/unassigned-manage");

@@ -32,6 +32,12 @@ public class AnnualLeaveService {
         return totalDay.subtract(reservedUseDay).setScale(SCALE, RoundingMode.HALF_UP);
     }
 
+    public BigDecimal usedDay(String company, String empCode, int yyyy) {
+        BigDecimal total = totalDay(company, empCode, yyyy);
+        BigDecimal available = availableDay(company, empCode, yyyy);
+        return total.subtract(available).max(BigDecimal.ZERO).setScale(SCALE, RoundingMode.HALF_UP);
+    }
+
     public void validateAvailableForSubmit(AttendanceRequestDto request) {
         Map<Integer, BigDecimal> requestUseByYear = usageByYear(request);
         if (requestUseByYear.isEmpty()) {

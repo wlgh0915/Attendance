@@ -2,6 +2,7 @@ package com.company.attendancemanagement.controller;
 
 import com.company.attendancemanagement.dto.login.LoginUserDto;
 import com.company.attendancemanagement.dto.user.UserCreateDto;
+import com.company.attendancemanagement.dto.user.UserListDto;
 import com.company.attendancemanagement.dto.user.UserUpdateDto;
 import com.company.attendancemanagement.service.DepartmentService;
 import com.company.attendancemanagement.service.UserService;
@@ -16,6 +17,8 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+
+import java.util.List;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import static com.company.attendancemanagement.common.SessionConst.LOGIN_USER;
@@ -26,6 +29,17 @@ public class UserController {
 
     private final UserService userService;
     private final DepartmentService departmentService;
+
+    @GetMapping("/users")
+    public String listUsers(HttpSession session, Model model) {
+        LoginUserDto loginUser = (LoginUserDto) session.getAttribute(LOGIN_USER);
+        if (loginUser == null) return "redirect:/login";
+
+        String company = loginUser.getCompany();
+        model.addAttribute("users", userService.findAllUsers(company));
+        model.addAttribute("deptOptions", departmentService.findAllForDropdown(company));
+        return "user/list";
+    }
 
     @GetMapping("/users/new")
     public String createForm(HttpSession session, Model model) {

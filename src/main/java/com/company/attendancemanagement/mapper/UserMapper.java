@@ -4,6 +4,7 @@ import com.company.attendancemanagement.dto.user.UserCreateDto;
 import com.company.attendancemanagement.dto.user.DutyOptionDto;
 import com.company.attendancemanagement.dto.user.PositionOptionDto;
 import com.company.attendancemanagement.dto.user.RoleOptionDto;
+import com.company.attendancemanagement.dto.user.UserListDto;
 import com.company.attendancemanagement.dto.user.UserUpdateDto;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -31,6 +32,8 @@ public interface UserMapper {
     int updateRoleCode(@Param("company") String company,
                        @Param("empCode") String empCode,
                        @Param("roleCode") String roleCode);
+
+    List<UserListDto> findAllUsers(@Param("company") String company);
 
     List<PositionOptionDto> findActivePositions(@Param("company") String company);
 

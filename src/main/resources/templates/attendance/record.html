@@ -107,15 +107,17 @@
                         th:text="${row.dayLabel}"></td>
 
                     <td>
-                        <span class="shift-badge" th:if="${row.shiftCode != null}" th:text="${row.shiftCode}"></span>
-                        <span class="no-data" th:unless="${row.shiftCode != null}">-</span>
+                        <span th:if="${row.plannedShiftName != null}"
+                              th:text="${row.plannedShiftName}"
+                              th:class="${'plan-badge ' + ('OFF' == row.plannedWorkDayType ? 'badge-off' : ('HOLIDAY' == row.plannedWorkDayType ? 'badge-holiday' : 'badge-work'))}">
+                        </span>
                     </td>
 
                     <td th:classappend="${row.checkIn != null ? ' has-data' : ' no-data'}"
                         th:text="${row.checkIn != null ? row.checkIn : '--:--'}"></td>
 
-                    <td th:classappend="${row.checkOut != null ? ' has-data' : ' no-data'}"
-                        th:text="${row.checkOut != null ? row.checkOut : '--:--'}"></td>
+                    <td th:classappend="${row.checkOut != null ? ' has-data' : (row.plannedCheckOut != null ? ' planned-data' : ' no-data')}"
+                        th:text="${row.checkOut != null ? row.checkOut : (row.plannedCheckOut != null ? row.plannedCheckOut : '--:--')}"></td>
 
                     <td class="no-data" th:text="${row.workMin != null ? row.workMin : '-'}"></td>
 
@@ -216,8 +218,9 @@
                 <input type="text" id="mDate" class="modal-input" readonly>
             </div>
             <div class="modal-row">
-                <label class="modal-label">계획근태코드</label>
-                <input type="text" id="mShiftCode" class="modal-input" readonly>
+                <label class="modal-label">계획근태명</label>
+                <input type="text" id="mShiftName" class="modal-input" readonly>
+                <input type="hidden" id="mShiftCode">
             </div>
             <div class="modal-row">
                 <label class="modal-label">출근 / 퇴근</label>

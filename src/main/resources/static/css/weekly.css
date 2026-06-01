@@ -147,7 +147,8 @@
 .status-legend {
     display: flex;
     align-items: center;
-    gap: 12px;
+    flex-wrap: wrap;
+    gap: 6px;
     border-left: 1px solid #e2e8f0;
     padding-left: 16px;
 }
@@ -167,9 +168,28 @@
     border-radius: 50%;
     flex-shrink: 0;
 }
-.dot-normal { background: #3b82f6; }
-.dot-late   { background: #ef4444; }
-.dot-leave  { background: #8b5cf6; }
+.dot-normal { background: #22c55e; }
+.dot-late   { background: #dc2626; }
+.dot-leave  { background: #be185d; }
+
+.legend-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.badge-plan     { background: #dbeafe; color: #1d4ed8; }
+.badge-off      { background: #fce7f3; color: #be185d; }
+.badge-normal   { background: #d1fae5; color: #065f46; }
+.badge-late     { background: #fee2e2; color: #991b1b; }
+.badge-absent   { background: #dc2626; color: #fff; }
+.badge-leave    { background: #fce7f3; color: #be185d; }
+.badge-submit   { background: #dbeafe; color: #1d4ed8; }
+.badge-approved { background: #dcfce7; color: #15803d; }
+.badge-rejected { background: #fee2e2; color: #dc2626; }
 
 .refresh-btn {
     display: inline-flex;
@@ -341,7 +361,7 @@
     white-space: nowrap;
 }
 .b-work    { background: #dbeafe; color: #1d4ed8; }
-.b-off     { background: #f1f5f9; color: #64748b; }
+.b-off     { background: #fce7f3; color: #be185d; }
 .b-holiday { background: #fce7f3; color: #be185d; }
 .b-draft   { background: #f1f5f9; color: #64748b; }
 .b-submit  { background: #dbeafe; color: #1d4ed8; }
@@ -358,9 +378,8 @@
 .rec-badge {
     display: block;
     font-size: 11px;
-    color: #475569;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    color: #065f46;
+    background: #d1fae5;
     border-radius: 4px;
     padding: 1px 5px;
     margin-bottom: 2px;
@@ -370,7 +389,7 @@
     display: block;
     font-size: 10.5px;
     font-weight: 700;
-    color: #dc2626;
+    color: #991b1b;
     background: #fee2e2;
     border-radius: 4px;
     padding: 1px 5px;
@@ -381,8 +400,8 @@
     display: block;
     font-size: 10.5px;
     font-weight: 700;
-    color: #7c3aed;
-    background: #ede9fe;
+    color: #fff;
+    background: #dc2626;
     border-radius: 4px;
     padding: 1px 5px;
     margin-bottom: 2px;
@@ -432,13 +451,13 @@
     display: block;
     font-size: 11px;
     font-weight: 600;
-    color: #7c3aed;
+    color: #dc2626;
 }
 .sum-late {
     display: block;
     font-size: 11px;
     font-weight: 600;
-    color: #dc2626;
+    color: #991b1b;
 }
 
 .no-emp {

@@ -24,6 +24,9 @@ public interface AttendanceApprovalMapper {
                                      @Param("company") String company,
                                      @Param("stepNo") int stepNo);
 
+    int countMyPendingApprovals(@Param("company") String company,
+                                @Param("approverEmpCode") String approverEmpCode);
+
     int updateStepApproved(@Param("requestId") String requestId,
                            @Param("stepNo") int stepNo);
 

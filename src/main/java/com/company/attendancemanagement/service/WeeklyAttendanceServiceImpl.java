@@ -59,6 +59,7 @@ public class WeeklyAttendanceServiceImpl implements WeeklyAttendanceService {
             dto.setEmpCode(emp.getEmpCode());
             dto.setEmpName(emp.getEmpName());
             dto.setDeptName(emp.getDeptName());
+            dto.setPositionName(emp.getPositionName());
             dto.setDays(days);
             result.add(dto);
         }
@@ -101,6 +102,7 @@ public class WeeklyAttendanceServiceImpl implements WeeklyAttendanceService {
             dto.setEmpCode(emp.getEmpCode());
             dto.setEmpName(emp.getEmpName());
             dto.setDeptName(emp.getDeptName());
+            dto.setPositionName(emp.getPositionName());
             dto.setDays(days);
             result.add(dto);
         }

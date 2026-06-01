@@ -63,7 +63,7 @@ public class AttendanceDeptMonthController {
             LocalDate d = yearMonth.atDay(i + 1);
             dayDates[i]  = d.toString();
             int dow = d.getDayOfWeek().getValue() % 7; // 0=일,1=월,...,6=토
-            dayLabels[i] = (i + 1) + "(" + DAY_NAMES[dow] + ")";
+            dayLabels[i] = String.format("%02d(%s)", i + 1, DAY_NAMES[dow]);
         }
 
         model.addAttribute("monthData",    monthData);

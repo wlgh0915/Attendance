@@ -150,7 +150,7 @@ function renderCalendar() {
         if (day.inCurrentMonth) {
             if (day.record && day.record.workMin != null && day.record.checkIn) {
                 totalActualMin += day.record.workMin;
-            } else if (hasLeaveApproval || approvedBizTrip) {
+            } else if (hasLeaveApproval || approvedBizTrip || isLeaveDay) {
                 totalActualMin += plannedShiftMin(day);
             }
         }
@@ -183,7 +183,7 @@ function renderCalendar() {
         // 2. 실 출퇴근 시간
         if (!isLeaveDay && day.record && (day.record.checkIn || day.record.checkOut)) {
             const ci = day.record.checkIn  || '--:--';
-            const co = day.record.checkOut || '--:--';
+            const co = day.record.checkOut || dispOffHhmm || '--:--';
             inner += `<span class="rec-badge">출 ${ci} / 퇴 ${co}</span>`;
         }
 

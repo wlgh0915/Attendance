@@ -21,13 +21,6 @@
             <h2 class="dept-title">부서 목록</h2>
             <p class="dept-subtitle">조직의 구조를 관리하고 부서별 설정을 구성합니다.</p>
         </div>
-        <a th:href="@{/departments/new}" class="btn-dept-add">
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
-                 fill="none" stroke="currentColor" stroke-width="2.5">
-                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-            부서 등록
-        </a>
     </div>
 
     <!-- 요약 카드 -->
@@ -135,7 +128,7 @@
                     <td>
                         <span class="use-yn-badge"
                               th:classappend="${dept.useYn == 'Y' ? ' use-yn-y' : ' use-yn-n'}"
-                              th:text="${dept.useYn}"></span>
+                              th:text="${dept.useYn == 'Y' ? '사용' : '미사용'}"></span>
                     </td>
 
                     <td>
