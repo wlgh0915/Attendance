@@ -99,6 +99,39 @@ public class AttendanceRecordController {
             row.setWeekend(date.getDayOfWeek() == DayOfWeek.SATURDAY
                         || date.getDayOfWeek() == DayOfWeek.SUNDAY);
             row.setHasRecord(recordMap.containsKey(ymd));
+
+            // 계획 시프트 조회 (근태명 + checkOut 없을 때 퇴근시간 표시용)
+            Map<String, Object> planned = recordService.getPlannedShift(company, targetEmp, ymd);
+            Object shiftName = planned.get("shiftName");
+            if (shiftName != null && !shiftName.toString().isBlank()) {
+                row.setPlannedShiftName(shiftName.toString());
+            }
+            Object workDayType = planned.get("workDayType");
+            if (workDayType != null && !workDayType.toString().isBlank()) {
+                row.setPlannedWorkDayType(workDayType.toString());
+            }
+            boolean hasCheckIn  = row.getCheckIn()  != null && !row.getCheckIn().isBlank();
+            boolean hasCheckOut = row.getCheckOut() != null && !row.getCheckOut().isBlank();
+            if (hasCheckIn && !hasCheckOut) {
+                Object workOff = planned.get("workOffHhmm");
+                if (workOff != null && !workOff.toString().isBlank()) {
+                    row.setPlannedCheckOut(workOff.toString());
+                }
+            }
+
+            // WORK_MIN 없거나, 출장 등 OTHER 승인으로 0 세팅된 경우 → 표시용 재계산
+            boolean hasActualShift = row.getActualShiftCode() != null && !row.getActualShiftCode().isBlank();
+            boolean needsRecalc = (row.getWorkMin() == null && hasCheckIn)
+                    || (Integer.valueOf(0).equals(row.getWorkMin()) && !hasCheckIn && hasActualShift);
+            if (needsRecalc) {
+                row.setCompany(company);
+                row.setEmpCode(targetEmp);
+                try {
+                    int wm = recordService.calculateWorkMin(row);
+                    row.setWorkMin(wm);
+                } catch (Exception ignored) {}
+            }
+
             rows.add(row);
         }
 

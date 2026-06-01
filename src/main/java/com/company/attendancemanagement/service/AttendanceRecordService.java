@@ -12,4 +12,8 @@ public interface AttendanceRecordService {
     void upsert(AttendanceRecordDto dto);
     void delete(String company, String empCode, String yyyymmdd);
     void recalculateIfRecordExists(String company, String empCode, String yyyymmdd);
+
+    /** 연장/휴일근무 신청 승인 시 checkOut을 신청 종료시간으로 자동 갱신 (현재보다 늦을 때만) */
+    void autoSetCheckoutIfLater(String company, String empCode, String yyyymmdd,
+                                String endTime, String endTimeType);
 }

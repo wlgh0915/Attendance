@@ -45,17 +45,15 @@
 
             <!-- 범례 -->
             <div class="status-legend">
-                <span class="legend-item"><span class="dot dot-normal"></span>정상출근</span>
-                <span class="legend-item"><span class="dot dot-late"></span>지각/결근</span>
-                <span class="legend-item"><span class="dot dot-leave"></span>휴무/연차</span>
-                <button class="refresh-btn" onclick="location.reload()">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-                         fill="none" stroke="currentColor" stroke-width="2"
-                         stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="23 4 23 10 17 10"/>
-                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-                    </svg>
-                </button>
+                <span class="legend-badge badge-plan">계획근태</span>
+                <span class="legend-badge badge-off">휴무일</span>
+                <span class="legend-badge badge-off">휴일</span>
+                <span class="legend-badge badge-normal">정상출근</span>
+                <span class="legend-badge badge-late">지각</span>
+                <span class="legend-badge badge-absent">결근</span>
+                <span class="legend-badge badge-submit">승인중</span>
+                <span class="legend-badge badge-approved">승인</span>
+                <span class="legend-badge badge-rejected">반려</span>
             </div>
         </div>
 

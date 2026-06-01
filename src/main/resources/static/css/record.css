@@ -230,8 +230,22 @@
 .col-sat { color: #3b82f6 !important; }
 
 /* 데이터 유무 */
-.has-data { color: #16a34a; font-weight: 700; }
-.no-data  { color: #cbd5e1; }
+.has-data     { color: #16a34a; font-weight: 700; }
+.no-data      { color: #cbd5e1; }
+.planned-data { color: #94a3b8; }
+
+/* 계획근태 뱃지 */
+.plan-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+.badge-work    { background: #dbeafe; color: #1d4ed8; }
+.badge-off     { background: #fce7f3; color: #be185d; }
+.badge-holiday { background: #fee2e2; color: #dc2626; }
 
 /* 익일 */
 .overnight-y {

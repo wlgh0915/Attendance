@@ -137,7 +137,7 @@
                     <td>
                         <span class="use-yn-badge"
                               th:classappend="${dept.useYn == 'Y' ? ' use-yn-y' : ' use-yn-n'}"
-                              th:text="${dept.useYn}"></span>
+                              th:text="${dept.useYn == 'Y' ? '사용' : '미사용'}"></span>
                     </td>
 
                     <td>

@@ -71,6 +71,7 @@
     <select id="findPlannedShift" resultType="java.util.HashMap">
         <![CDATA[
         SELECT ISNULL(COALESCE(NULLIF(os.SHIFT_CODE, ''), s.SHIFT_CODE), '')                    AS shiftCode,
+               ISNULL(COALESCE(NULLIF(os.SHIFT_NAME, ''), s.SHIFT_NAME), '')                  AS shiftName,
                CONVERT(VARCHAR(5), COALESCE(os.WORK_ON_HHMM,  s.WORK_ON_HHMM),  108)           AS workOnHhmm,
                CONVERT(VARCHAR(5), COALESCE(os.WORK_OFF_HHMM, s.WORK_OFF_HHMM), 108)           AS workOffHhmm,
                CONVERT(VARCHAR(5), COALESCE(os.BREAK1_START_HHMM, s.BREAK1_START_HHMM), 108)   AS break1StartHhmm,
@@ -173,7 +174,9 @@
           AND (h.RETIRE_DATE IS NULL OR h.RETIRE_DATE &gt; CAST(#{today} AS DATE))
           AND tr.DEPT_CODE IN
           <foreach collection="deptCodes" item="code" open="(" separator="," close=")">#{code}</foreach>
-          AND (rec.YYYYMMDD IS NULL OR rec.CHECK_IN IS NULL)
+          AND (rec.YYYYMMDD IS NULL
+               OR (rec.CHECK_IN IS NULL
+                   AND (rec.ACTUAL_SHIFT_CODE IS NULL OR rec.ACTUAL_SHIFT_CODE = '')))
         ORDER BY d.DEPT_CODE, h.EMP_CODE
     </select>
 

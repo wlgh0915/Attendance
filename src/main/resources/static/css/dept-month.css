@@ -147,7 +147,8 @@
 .status-legend {
     display: flex;
     align-items: center;
-    gap: 12px;
+    flex-wrap: wrap;
+    gap: 6px;
     border-left: 1px solid #e2e8f0;
     padding-left: 16px;
 }
@@ -167,9 +168,44 @@
     border-radius: 50%;
     flex-shrink: 0;
 }
-.dot-normal { background: #3b82f6; }
-.dot-late   { background: #ef4444; }
-.dot-leave  { background: #8b5cf6; }
+.dot-normal { background: #22c55e; }
+.dot-late   { background: #dc2626; }
+.dot-leave  { background: #be185d; }
+
+.badge {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 4px;
+    font-size: 10.5px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.b-work    { background: #dbeafe; color: #1d4ed8; }
+.b-off     { background: #fce7f3; color: #be185d; }
+.b-holiday { background: #fce7f3; color: #be185d; }
+.b-draft   { background: #f1f5f9; color: #64748b; }
+.b-submit  { background: #dbeafe; color: #1d4ed8; }
+.b-approved{ background: #dcfce7; color: #15803d; }
+.b-rejected{ background: #fee2e2; color: #dc2626; }
+
+.legend-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.badge-plan     { background: #dbeafe; color: #1d4ed8; }
+.badge-off      { background: #fce7f3; color: #be185d; }
+.badge-normal   { background: #d1fae5; color: #065f46; }
+.badge-late     { background: #fee2e2; color: #991b1b; }
+.badge-absent   { background: #dc2626; color: #fff; }
+.badge-leave    { background: #fce7f3; color: #be185d; }
+.badge-submit   { background: #dbeafe; color: #1d4ed8; }
+.badge-approved { background: #dcfce7; color: #15803d; }
+.badge-rejected { background: #fee2e2; color: #dc2626; }
 
 .refresh-btn {
     display: inline-flex;
@@ -334,6 +370,7 @@
     color: #1e293b;
     margin-bottom: 2px;
 }
+.emp-meta { font-size: 11px; color: #64748b; margin-bottom: 1px; }
 .emp-code { font-size: 10.5px; color: #cbd5e1; }
 
 /* 월근무 요약 (JS 생성) */
@@ -389,8 +426,8 @@
     display: block;
     font-size: 10px;
     font-weight: 700;
-    color: #7c3aed;
-    background: #ede9fe;
+    color: #fff;
+    background: #dc2626;
     border-radius: 3px;
     padding: 1px 4px;
 }
@@ -398,8 +435,17 @@
     display: block;
     font-size: 10px;
     font-weight: 700;
-    color: #7c3aed;
-    background: #f3e8ff;
+    color: #be185d;
+    background: #fce7f3;
+    border-radius: 3px;
+    padding: 1px 3px;
+}
+.dm-approved {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    color: #15803d;
+    background: #dcfce7;
     border-radius: 3px;
     padding: 1px 3px;
 }
@@ -412,7 +458,7 @@
     border-radius: 3px;
     padding: 1px 3px;
 }
-.dm-off { color: #cbd5e1; font-size: 11px; }
+.dm-off { color: #be185d; background: #fce7f3; font-size: 11px; border-radius: 3px; padding: 1px 4px; }
 .dm-req-tag {
     display: inline-block;
     font-size: 9.5px;

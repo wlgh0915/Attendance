@@ -6,6 +6,25 @@ function toMinute(hhmm) {
     return h * 60 + m;
 }
 
+function effectiveWorkMin(day) {
+    if (day.record && day.record.workMin != null && day.record.checkIn) {
+        return day.record.workMin;
+    }
+    const activeOtherReq = (day.requests || []).find(
+        r => r.requestCategory === 'OTHER' && ['SUBMITTED', 'APPROVED'].includes(r.status)
+    );
+    const isLeaveDay   = activeOtherReq != null && !activeOtherReq.changeShiftOnHhmm;
+    const isBizTripDay = activeOtherReq != null &&
+        activeOtherReq.changeShiftName && activeOtherReq.changeShiftName.includes('출장');
+    const hasLeaveApproval = (day.requests || []).some(
+        r => r.requestCategory === 'LEAVE' && r.status === 'APPROVED'
+    );
+    if (isLeaveDay || isBizTripDay || hasLeaveApproval) {
+        return plannedShiftMin(day);
+    }
+    return 0;
+}
+
 function plannedShiftMin(day) {
     if (day.workDayType === 'OFF' || day.workDayType === 'HOLIDAY') return 0;
     const approvedOther = (day.requests || []).find(
@@ -38,8 +57,11 @@ function renderDayCell(day, dateStr) {
     if (dow === 6) cls += ' col-sat';
     if (dateStr === today) cls += ' today';
 
-    const activeOtherReq = (day.requests || []).find(
-        r => r.requestCategory === 'OTHER' && ['SUBMITTED', 'APPROVED'].includes(r.status)
+    const activeOtherReq = (day.requests || []).find(r =>
+        r.requestCategory === 'OTHER' && (
+            r.status === 'APPROVED' ||
+            (r.status === 'SUBMITTED' && r.changeShiftOnHhmm)
+        )
     );
     const isLeaveDay = activeOtherReq != null && !activeOtherReq.changeShiftOnHhmm;
     const isBizTrip  = activeOtherReq != null && activeOtherReq.changeShiftName &&
@@ -57,7 +79,7 @@ function renderDayCell(day, dateStr) {
 
     if (isLeaveDay) {
         const lbl = activeOtherReq.changeShiftName || '기타';
-        inner = `<span class="dm-leave">${lbl}</span>`;
+        inner = `<span class="dm-approved">${lbl}</span>`;
     } else if (isAbsent) {
         inner = '<span class="dm-absent">결근</span>';
     } else if (isOff) {
@@ -68,7 +90,9 @@ function renderDayCell(day, dateStr) {
             inner  = `<span class="dm-shift">휴일근무</span>`;
             inner += `<span class="dm-workhour">${fmtWorkMin(day.record.workMin)}</span>`;
         } else {
-            inner = '<span class="dm-off">-</span>';
+            const dow = new Date(dateStr + 'T00:00:00').getDay(); // 0=일, 6=토
+            const offLabel = dow === 6 ? '휴무일' : (dow === 0 ? '휴일' : '공휴일');
+            inner = `<span class="dm-off">${offLabel}</span>`;
         }
     } else if (isBizTrip) {
         const shiftLbl = activeOtherReq.changeShiftName || '출장';
@@ -114,8 +138,7 @@ function renderMonth() {
 
     let html = '';
     MONTH_DATA.forEach(emp => {
-        const actualMin  = (emp.days || []).reduce((s, d) =>
-            s + ((d.record && d.record.workMin) || 0), 0);
+        const actualMin  = (emp.days || []).reduce((s, d) => s + effectiveWorkMin(d), 0);
         const plannedMin = (emp.days || []).reduce((s, d) => s + plannedShiftMin(d), 0);
 
         // 결근 / 지각 집계
@@ -140,6 +163,7 @@ function renderMonth() {
         html += '<tr>';
         html += `<td class="dm-emp-cell">
             <div class="emp-name">${emp.empName}</div>
+            <div class="emp-meta">${emp.deptName || ''}${emp.positionName ? ' · ' + emp.positionName : ''}</div>
             <div class="emp-code">${emp.empCode}</div>
         </td>`;
         html += `<td class="dm-work-cell">
@@ -213,9 +237,10 @@ function renderSummaryCards(data) {
             if (day.record && day.record.checkIn) {
                 attendedDays++;
                 if (day.record.lateYn === 'Y') lateCnt++;
-                if (day.record.workMin) totalWorkMin += day.record.workMin;
+                totalWorkMin += effectiveWorkMin(day);
             } else if (hasLv) {
                 attendedDays++;
+                totalWorkMin += effectiveWorkMin(day);
             }
         });
     });

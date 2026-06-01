@@ -27,6 +27,26 @@ function fmtMin(min) {
     return h + 'h' + (m > 0 ? ' ' + m + 'm' : '');
 }
 
+/* ── 실질 근무분 (연차/출장 등 휴가일 포함) ── */
+function effectiveWorkMin(day) {
+    if (day.record && day.record.workMin != null && day.record.checkIn) {
+        return day.record.workMin;
+    }
+    const activeOtherReq = (day.requests || []).find(
+        r => r.requestCategory === 'OTHER' && ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(r.status)
+    );
+    const isLeaveDay   = activeOtherReq != null && !activeOtherReq.changeShiftOnHhmm;
+    const isBizTripDay = activeOtherReq != null &&
+        activeOtherReq.changeShiftName && activeOtherReq.changeShiftName.includes('출장');
+    const hasLeaveApproval = (day.requests || []).some(
+        r => r.requestCategory === 'LEAVE' && r.status === 'APPROVED'
+    );
+    if (isLeaveDay || isBizTripDay || hasLeaveApproval) {
+        return plannedShiftMin(day);
+    }
+    return 0;
+}
+
 /* ── 계획 근무분 ── */
 function plannedShiftMin(day) {
     if (day.workDayType === 'OFF' || day.workDayType === 'HOLIDAY') return 0;
@@ -57,8 +77,12 @@ function renderDayCell(day, colIdx) {
     const colCls = colIdx === 0 ? 'col-sun' : colIdx === 6 ? 'col-sat' : '';
     const todCls = day.workDate === today ? 'today' : '';
 
-    const activeOtherReq = (day.requests || []).find(
-        r => r.requestCategory === 'OTHER' && ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(r.status)
+    // 연차 등 휴가성 OTHER는 승인된 것만, 출장·근무변경 등 근무시간 있는 OTHER는 승인중도 표시
+    const activeOtherReq = (day.requests || []).find(r =>
+        r.requestCategory === 'OTHER' && (
+            r.status === 'APPROVED' ||
+            (r.status === 'SUBMITTED' && r.changeShiftOnHhmm)
+        )
     );
     const isLeaveDay   = activeOtherReq != null && !activeOtherReq.changeShiftOnHhmm;
     const isBizTripDay = activeOtherReq != null && activeOtherReq.changeShiftName && activeOtherReq.changeShiftName.includes('출장');
@@ -82,16 +106,23 @@ function renderDayCell(day, colIdx) {
     );
     const isOffOrHoliday = dispWorkDayType === 'OFF' || dispWorkDayType === 'HOLIDAY';
 
-    if (dispShiftName && !isAbsent && !(hasActiveHolidayReq && isOffOrHoliday)) {
-        const timePart = (dispWorkDayType === 'WORK' && dispOnHhmm && dispOffHhmm)
+    // shiftName 미설정 시 workDayType 또는 dayOfWeekNum으로 레이블 보정
+    const effectiveWDT = dispWorkDayType || (day.dayOfWeekNum === 1 ? 'HOLIDAY' : '');
+    const shiftBadgeLabel = dispShiftName
+        || (effectiveWDT === 'HOLIDAY' ? '휴일'
+          : (effectiveWDT === 'OFF'     ? '휴무' : ''));
+
+    if (shiftBadgeLabel && !isAbsent && !(hasActiveHolidayReq && (effectiveWDT === 'OFF' || effectiveWDT === 'HOLIDAY'))) {
+        const timePart = (effectiveWDT === 'WORK' && dispOnHhmm && dispOffHhmm)
             ? `<span class="shift-time"> ${dispOnHhmm}~${dispOffHhmm}</span>` : '';
-        inner += `<span class="shift-badge"><span class="${shiftCls(dispWorkDayType)}">${dispShiftName}</span>${timePart}</span>`;
+        const badgeCls = isLeaveDay ? 'badge b-approved' : shiftCls(effectiveWDT);
+        inner += `<span class="shift-badge"><span class="${badgeCls}">${shiftBadgeLabel}</span>${timePart}</span>`;
     }
 
     // 2. 실 출퇴근
     if (!isLeaveDay && day.record && (day.record.checkIn || day.record.checkOut)) {
         const ci = day.record.checkIn  || '--:--';
-        const co = day.record.checkOut || '--:--';
+        const co = day.record.checkOut || dispOffHhmm || '--:--';
         inner += `<span class="rec-badge">출 ${ci} / 퇴 ${co}</span>`;
     }
 
@@ -105,8 +136,9 @@ function renderDayCell(day, colIdx) {
         inner += `<span class="absent-badge">결근</span>`;
     }
 
-    // 5. 근태신청 배지
-    (day.requests || []).filter(r => r.status !== 'DRAFT' && r.status !== 'CANCELED' && r.status !== 'REJECTED').forEach(r => {
+    // 5. 근태신청 배지 (OTHER는 시프트 배지에서 이미 표시되므로 제외)
+    (day.requests || []).filter(r => r.status !== 'DRAFT' && r.status !== 'CANCELED' && r.status !== 'REJECTED'
+                                  && r.requestCategory !== 'OTHER').forEach(r => {
         const typeLabel = (r.requestCategory === 'OTHER' && r.changeShiftName)
             ? r.changeShiftName : (r.requestWorkCode || catLabel(r.requestCategory));
         let timeStr = '';
@@ -132,7 +164,7 @@ function renderWeekly() {
 
     let html = '';
     WEEKLY_DATA.forEach(emp => {
-        const actualMin  = (emp.days || []).reduce((sum, d) => sum + ((d.record && d.record.workMin) || 0), 0);
+        const actualMin  = (emp.days || []).reduce((sum, d) => sum + effectiveWorkMin(d), 0);
         const plannedMin = (emp.days || []).reduce((sum, d) => sum + plannedShiftMin(d), 0);
         const fmtHM = min => {
             if (!min || min <= 0) return '-';
@@ -147,7 +179,7 @@ function renderWeekly() {
         const pendingBadge = pendingCount > 0
             ? `<span class="pending-badge">미승인 ${pendingCount}건</span>` : '';
         html += `<tr${pendingCount > 0 ? ' class="has-pending"' : ''}>`;
-        html += `<td class="emp-cell"><div class="emp-name">${emp.empName}${pendingBadge}</div><div class="emp-dept">${emp.deptName || ''}</div><div class="emp-code">${emp.empCode}</div></td>`;
+        html += `<td class="emp-cell"><div class="emp-name">${emp.empName}${pendingBadge}</div><div class="emp-dept">${emp.deptName || ''}${emp.positionName ? ' · ' + emp.positionName : ''}</div><div class="emp-code">${emp.empCode}</div></td>`;
         html += `<td class="work-cell">${workCellHtml}</td>`;
         (emp.days || []).forEach((day, idx) => {
             html += renderDayCell(day, idx);
@@ -164,7 +196,7 @@ function buildSummaryRow(data) {
     const empCount = data.length;
     if (!empCount) return '';
 
-    const totalActual  = data.reduce((s, e) => s + (e.days || []).reduce((a, d) => a + ((d.record && d.record.workMin) || 0), 0), 0);
+    const totalActual  = data.reduce((s, e) => s + (e.days || []).reduce((a, d) => a + effectiveWorkMin(d), 0), 0);
     const totalPlanned = data.reduce((s, e) => s + (e.days || []).reduce((a, d) => a + plannedShiftMin(d), 0), 0);
     const avgActual    = Math.round(totalActual  / empCount);
     const avgPlanned   = Math.round(totalPlanned / empCount);
@@ -189,7 +221,7 @@ function buildSummaryRow(data) {
                 daySummary[idx].absent++;
             if (!isLeaveDay && day.record && day.record.lateYn === 'Y')
                 daySummary[idx].late++;
-            daySummary[idx].workMin += (day.record && day.record.workMin) || 0;
+            daySummary[idx].workMin += effectiveWorkMin(day);
         });
     });
 
@@ -252,6 +284,9 @@ function renderSummaryCards(data) {
                 if (r.status === 'SUBMITTED') pendingCnt++;
             });
 
+            // 실근무시간: workDayType 무관하게 effectiveWorkMin 사용 (출장 등 포함)
+            totalWorkMin += effectiveWorkMin(day);
+
             if (day.workDayType !== 'WORK') return;
 
             const activeOtherReq = (day.requests || []).find(
@@ -268,7 +303,6 @@ function renderSummaryCards(data) {
             if (day.record && day.record.checkIn) {
                 attendedDays++;
                 if (day.record.lateYn === 'Y') lateCnt++;
-                if (day.record.workMin) totalWorkMin += day.record.workMin;
             } else if (hasApprovedLeave) {
                 attendedDays++;
             }

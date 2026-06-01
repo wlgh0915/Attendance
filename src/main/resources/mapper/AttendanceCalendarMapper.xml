@@ -136,11 +136,13 @@
     <!-- 부서원 목록 -->
     <select id="findEmpsByDept"
             resultType="com.company.attendancemanagement.dto.calendar.EmpSimpleDto">
-        SELECT h.EMP_CODE  AS empCode,
-               h.EMP_NAME  AS empName,
-               d.DEPT_NAME AS deptName
+        SELECT h.EMP_CODE      AS empCode,
+               h.EMP_NAME      AS empName,
+               d.DEPT_NAME     AS deptName,
+               p.POSITION_NAME AS positionName
         FROM HRIMASTER01 h
-        LEFT JOIN ORGDEPTMASTER01 d ON h.COMPANY = d.COMPANY AND h.DEPT_CODE = d.DEPT_CODE
+        LEFT JOIN ORGDEPTMASTER01 d ON d.COMPANY = h.COMPANY AND d.DEPT_CODE = h.DEPT_CODE
+        LEFT JOIN HRTGRADEINFO01  p ON p.COMPANY = h.COMPANY AND p.POSITION_CODE = h.POSITION_CODE
         WHERE h.COMPANY   = #{company}
           AND h.DEPT_CODE = #{deptCode}
           AND h.RETIRE_DATE IS NULL

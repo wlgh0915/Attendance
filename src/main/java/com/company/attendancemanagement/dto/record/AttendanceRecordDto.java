@@ -25,4 +25,7 @@ public class AttendanceRecordDto {
     private String  dayLabel;       // "월","화",...,"일"
     private boolean weekend;        // 토·일 여부
     private boolean hasRecord;      // DB 레코드 존재 여부
+    private String  plannedCheckOut;   // 계획 퇴근시간 (checkOut 없을 때 표시용)
+    private String  plannedShiftName;  // 계획 근태명 (주간, 휴일 등)
+    private String  plannedWorkDayType; // WORK / OFF / HOLIDAY
 }

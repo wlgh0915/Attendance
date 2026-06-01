@@ -62,18 +62,33 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
         String checkIn = dto.getCheckIn();
         String checkOut = dto.getCheckOut();
 
-        if (isBlank(checkIn) || isBlank(checkOut)) {
+        if (isBlank(checkIn)) {
+            // actualShiftCode 있으면 → 출장 등 OTHER 승인 레코드 → 계획 근무분 반환
+            if (!isBlank(dto.getActualShiftCode())) {
+                Map<String, Object> planned = recordMapper.findPlannedShift(
+                        dto.getCompany(), dto.getEmpCode(), dto.getYyyymmdd());
+                int shiftMin = calcShiftMinFromPlanned(planned);
+                if (shiftMin > 0) return shiftMin;
+            }
             return dto.getWorkMin() != null ? dto.getWorkMin() : 0;
         }
 
         int actualInMin = toMinutes(checkIn);
-        int actualOutMin = toActualOutMinute(dto, actualInMin);
 
         List<Map<String, Object>> overtimes = recordMapper.findApprovedOvertimeRequests(
                 dto.getCompany(), dto.getEmpCode(), dto.getYyyymmdd());
 
         Map<String, Object> planned = recordMapper.findPlannedShift(
                 dto.getCompany(), dto.getEmpCode(), dto.getYyyymmdd());
+
+        int actualOutMin;
+        if (isBlank(checkOut)) {
+            // checkOut 없으면 계획 퇴근시간(+ 승인된 연장/휴일근무 종료시간)을 가상 퇴근으로 사용
+            actualOutMin = resolveVirtualCheckout(planned, overtimes, actualInMin);
+            if (actualOutMin <= actualInMin) return 0;
+        } else {
+            actualOutMin = toActualOutMinute(dto, actualInMin);
+        }
 
         if (planned == null
                 || planned.get("workOnHhmm") == null
@@ -144,6 +159,38 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
         return Math.max(0, minutes);
     }
 
+    /**
+     * checkOut이 없을 때 계획 퇴근시간(승인된 연장/휴일근무 있으면 해당 종료시간)을 가상 퇴근으로 반환.
+     * 반환값이 actualInMin 이하면 계산 불가 → 호출측에서 0 반환.
+     */
+    private int resolveVirtualCheckout(Map<String, Object> planned,
+                                       List<Map<String, Object>> overtimes,
+                                       int actualInMin) {
+        if (planned == null || planned.get("workOffHhmm") == null) {
+            // OFF/HOLIDAY: 승인된 휴일근무 종료시간 사용
+            return overtimes.stream()
+                    .filter(r -> "휴일근무".equals(r.get("reqType")) && r.get("endTime") != null)
+                    .findFirst()
+                    .map(r -> toMinutes(r.get("endTime").toString()))
+                    .orElse(actualInMin);
+        }
+        int plannedOnMin   = toMinutes(planned.get("workOnHhmm").toString());
+        int rawPlannedOff  = toMinutes(planned.get("workOffHhmm").toString());
+        final int plannedOffMin = rawPlannedOff <= plannedOnMin ? rawPlannedOff + 1440 : rawPlannedOff;
+
+        // 승인된 연장근무가 있으면 해당 종료시간까지 확장
+        return overtimes.stream()
+                .filter(r -> "연장".equals(r.get("reqType")) && r.get("endTime") != null)
+                .findFirst()
+                .map(r -> {
+                    int approvedEnd = toMinutes(r.get("endTime").toString());
+                    String ett = String.valueOf(r.getOrDefault("endTimeType", "N0"));
+                    if ("N1".equals(ett) || approvedEnd == 0) approvedEnd += 1440;
+                    return Math.max(plannedOffMin, approvedEnd);
+                })
+                .orElse(plannedOffMin);
+    }
+
     private int breakOverlapMin(Map<String, Object> planned, int startMin, int endMin) {
         return overlapBreak(planned.get("break1StartHhmm"), planned.get("break1EndHhmm"), startMin, endMin)
                 + overlapBreak(planned.get("break2StartHhmm"), planned.get("break2EndHhmm"), startMin, endMin);
@@ -191,6 +238,31 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
     }
 
     @Override
+    public void autoSetCheckoutIfLater(String company, String empCode, String yyyymmdd,
+                                       String endTime, String endTimeType) {
+        if (isBlank(endTime)) return;
+        AttendanceRecordDto existing = recordMapper.findByDay(company, empCode, yyyymmdd);
+        if (existing == null || isBlank(existing.getCheckIn())) return;
+
+        int newCheckoutAbs = toMinutes(endTime);
+        boolean newOvernight = "N1".equals(endTimeType);
+        if (newOvernight) newCheckoutAbs += 1440;
+
+        if (!isBlank(existing.getCheckOut())) {
+            int curAbs = toMinutes(existing.getCheckOut());
+            if ("Y".equals(existing.getOvernightYn())) curAbs += 1440;
+            if (newCheckoutAbs <= curAbs) return;
+        }
+
+        existing.setCheckOut(endTime);
+        existing.setOvernightYn(newOvernight ? "Y" : "N");
+        int workMin = calculateWorkMin(existing);
+        existing.setWorkMin(workMin);
+        calculateLate(existing);
+        recordMapper.upsert(existing);
+    }
+
+    @Override
     public void delete(String company, String empCode, String yyyymmdd) {
         recordMapper.delete(company, empCode, yyyymmdd);
     }
@@ -198,7 +270,7 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
     @Override
     public void recalculateIfRecordExists(String company, String empCode, String yyyymmdd) {
         AttendanceRecordDto existing = recordMapper.findByDay(company, empCode, yyyymmdd);
-        if (existing == null || isBlank(existing.getCheckIn()) || isBlank(existing.getCheckOut())) {
+        if (existing == null || isBlank(existing.getCheckIn())) {
             return;
         }
         int workMin = calculateWorkMin(existing);
@@ -246,5 +318,31 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
     private int toMinutes(String hhmm) {
         String[] parts = hhmm.split(":");
         return Integer.parseInt(parts[0]) * 60 + Integer.parseInt(parts[1]);
+    }
+
+    private int calcShiftMinFromPlanned(Map<String, Object> planned) {
+        if (planned == null) return 0;
+        Object on  = planned.get("workOnHhmm");
+        Object off = planned.get("workOffHhmm");
+        if (on == null || off == null || on.toString().isBlank() || off.toString().isBlank()) return 0;
+        try {
+            int onMin  = toMinutes(on.toString());
+            int offMin = toMinutes(off.toString());
+            if (offMin <= onMin) offMin += 1440;
+            int total = offMin - onMin;
+            for (String p : new String[]{"break1", "break2"}) {
+                Object bs = planned.get(p + "StartHhmm");
+                Object be = planned.get(p + "EndHhmm");
+                if (bs != null && be != null && !bs.toString().isBlank() && !be.toString().isBlank()) {
+                    int bsMin = toMinutes(bs.toString());
+                    int beMin = toMinutes(be.toString());
+                    if (beMin <= bsMin) beMin += 1440;
+                    total -= Math.max(0, beMin - bsMin);
+                }
+            }
+            return Math.max(0, total);
+        } catch (Exception e) {
+            return 0;
+        }
     }
 }

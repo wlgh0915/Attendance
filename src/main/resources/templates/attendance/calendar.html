@@ -80,55 +80,54 @@
         </div>
     </div>
 
-    <!-- 캘린더 + 사이드 패널 -->
-    <div class="cal-main-area">
-
-        <!-- 캘린더 카드 -->
-        <div class="cal-container">
-            <!-- 요일 헤더 -->
-            <div class="cal-header-row">
-                <div class="cal-header-cell cal-header-sun">일</div>
-                <div class="cal-header-cell">월</div>
-                <div class="cal-header-cell">화</div>
-                <div class="cal-header-cell">수</div>
-                <div class="cal-header-cell">목</div>
-                <div class="cal-header-cell">금</div>
-                <div class="cal-header-cell cal-header-sat">토</div>
-            </div>
-            <!-- 캘린더 셀 (JS가 채움) -->
-            <div id="calGrid" class="cal-grid"></div>
+    <!-- 캘린더 -->
+    <div class="cal-container">
+        <!-- 요일 헤더 -->
+        <div class="cal-header-row">
+            <div class="cal-header-cell cal-header-sun">일</div>
+            <div class="cal-header-cell">월</div>
+            <div class="cal-header-cell">화</div>
+            <div class="cal-header-cell">수</div>
+            <div class="cal-header-cell">목</div>
+            <div class="cal-header-cell">금</div>
+            <div class="cal-header-cell cal-header-sat">토</div>
         </div>
+        <!-- 캘린더 셀 (JS가 채움) -->
+        <div id="calGrid" class="cal-grid"></div>
+    </div>
 
-        <!-- 사이드 통계 패널 -->
-        <div class="cal-sidebar">
-            <div class="cal-stat-card">
-                <div class="cal-stat-icon icon-blue">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                         fill="none" stroke="#2563eb" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <polyline points="12 6 12 12 16 14"/>
-                    </svg>
-                </div>
+    <!-- 하단 통계 패널 -->
+    <div class="cal-stat-row">
+        <div class="cal-stat-card">
+            <div class="cal-stat-icon icon-blue">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                     fill="none" stroke="#2563eb" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                </svg>
+            </div>
+            <div class="cal-stat-info">
                 <p class="cal-stat-label">월 신청 기준</p>
                 <p class="cal-stat-value" id="totalMinDisplay">-</p>
                 <p class="cal-stat-desc">근태 신청 기준 예상 근무시간</p>
             </div>
-            <div class="cal-stat-card">
-                <div class="cal-stat-icon icon-green">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                         fill="none" stroke="#16a34a" stroke-width="2">
-                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                        <line x1="8" y1="21" x2="16" y2="21"/>
-                        <line x1="12" y1="17" x2="12" y2="21"/>
-                    </svg>
-                </div>
+        </div>
+        <div class="cal-stat-card">
+            <div class="cal-stat-icon icon-green">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                     fill="none" stroke="#16a34a" stroke-width="2">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21"/>
+                    <line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
+            </div>
+            <div class="cal-stat-info">
                 <p class="cal-stat-label">월 급여 산정 기준</p>
                 <p class="cal-stat-value" id="totalActualMinDisplay">-</p>
                 <p class="cal-stat-desc">실 출근 기준 급여 산정 시간</p>
             </div>
         </div>
-
-    </div><!-- /cal-main-area -->
+    </div>
 
 </div><!-- /cal-page -->
 
