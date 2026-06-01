@@ -18,6 +18,9 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
 
     private static final int MAX_WEEK_MIN = 3120;
     private static final DateTimeFormatter YMD = DateTimeFormatter.BASIC_ISO_DATE;
+    private static final String REQ_OVERTIME = "\uC5F0\uC7A5";
+    private static final String REQ_HOLIDAY_WORK = "\uD734\uC77C\uADFC\uBB34";
+    private static final String REQ_EARLY_LEAVE = "\uC870\uD1F4";
 
     private final AttendanceRecordMapper recordMapper;
 
@@ -39,6 +42,7 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
         String empCode = dto.getEmpCode();
         String yyyymmdd = dto.getYyyymmdd();
 
+        applyAutoCheckOut(dto);
         int workMin = calculateWorkMin(dto);
         dto.setWorkMin(workMin);
 
@@ -80,13 +84,13 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
                 || planned.get("workOffHhmm") == null) {
             // OFF/HOLIDAY 날: 휴일근무 승인 범위 내로 cap
             Map<String, Object> holidayWork = overtimes.stream()
-                    .filter(r -> "휴일근무".equals(r.get("reqType")))
+                    .filter(r -> REQ_HOLIDAY_WORK.equals(r.get("reqType")))
                     .findFirst().orElse(null);
             if (holidayWork != null
                     && holidayWork.get("startTime") != null
                     && holidayWork.get("endTime") != null) {
-                int approvedStart = toMinutes(holidayWork.get("startTime").toString());
-                int approvedEnd   = toMinutes(holidayWork.get("endTime").toString());
+                int approvedStart = requestMinuteByTypeOrNull(holidayWork, "startTime", "startTimeType");
+                int approvedEnd   = requestMinuteOrNull(holidayWork, "endTime", "endTimeType", approvedStart);
                 int effIn  = Math.max(actualInMin, approvedStart);
                 int effOut = Math.min(actualOutMin, approvedEnd);
                 return Math.max(0, effOut - effIn);
@@ -96,7 +100,7 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
 
         // 출근 유효 시작 시간: 조출연장 승인 시 승인 시작 시간, 미승인 시 계획 출근시간으로 cap
         Map<String, Object> earlyApproval = overtimes.stream()
-                .filter(r -> "조출연장".equals(r.get("reqType")))
+                .filter(r -> "\uC870\uCD9C\uC5F0\uC7A5".equals(r.get("reqType")))
                 .findFirst().orElse(null);
 
         int effectiveInMin = actualInMin;
@@ -111,15 +115,12 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
 
         // 연장 승인 시 승인 종료시간까지만, 미승인·endTime없는 경우 계획 퇴근시간까지만 인정
         Map<String, Object> overtimeApproval = overtimes.stream()
-                .filter(r -> "연장".equals(r.get("reqType")))
+                .filter(r -> REQ_OVERTIME.equals(r.get("reqType")))
                 .findFirst().orElse(null);
         int effectiveOutMin = actualOutMin;
         if (overtimeApproval != null && overtimeApproval.get("endTime") != null) {
-            int approvedEndMin = toMinutes(overtimeApproval.get("endTime").toString());
-            String endTimeType = String.valueOf(overtimeApproval.getOrDefault("endTimeType", "N0"));
-            if ("N1".equals(endTimeType) || approvedEndMin == 0) {
-                approvedEndMin += 1440;
-            }
+            int plannedOnMin = toMinutes(planned.get("workOnHhmm").toString());
+            int approvedEndMin = requestMinuteOrNull(overtimeApproval, "endTime", "endTimeType", plannedOnMin);
             effectiveOutMin = Math.min(actualOutMin, approvedEndMin);
         } else {
             // 연장 미승인 또는 endTime 없는 경우 → 계획 퇴근시간으로 cap
@@ -132,10 +133,11 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
 
         // 조퇴 승인 시 조퇴 시작시간까지만 인정
         Map<String, Object> earlyLeave = overtimes.stream()
-                .filter(r -> "조퇴".equals(r.get("reqType")))
+                .filter(r -> REQ_EARLY_LEAVE.equals(r.get("reqType")))
                 .findFirst().orElse(null);
         if (earlyLeave != null && earlyLeave.get("startTime") != null) {
-            int leaveStartMin = toMinutes(earlyLeave.get("startTime").toString());
+            int plannedOnMin = toMinutes(planned.get("workOnHhmm").toString());
+            int leaveStartMin = requestMinuteOrNull(earlyLeave, "startTime", "startTimeType", plannedOnMin);
             effectiveOutMin = Math.min(effectiveOutMin, leaveStartMin);
         }
 
@@ -165,6 +167,100 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
 
     private int toNextDayMinute(int minute, int baseMinute) {
         return minute < baseMinute ? minute + 1440 : minute;
+    }
+
+    private void applyAutoCheckOut(AttendanceRecordDto dto) {
+        if (isBlank(dto.getCheckIn())) {
+            return;
+        }
+        Integer checkOutMin = findAutoCheckOutMinute(dto);
+        if (checkOutMin == null) {
+            return;
+        }
+        dto.setCheckOut(toHhmm(checkOutMin));
+        dto.setOvernightYn(checkOutMin >= 1440 ? "Y" : "N");
+    }
+
+    private Integer findAutoCheckOutMinute(AttendanceRecordDto dto) {
+        List<Map<String, Object>> requests = recordMapper.findApprovedOvertimeRequests(
+                dto.getCompany(), dto.getEmpCode(), dto.getYyyymmdd());
+        Map<String, Object> planned = recordMapper.findPlannedShift(
+                dto.getCompany(), dto.getEmpCode(), dto.getYyyymmdd());
+        Map<String, Object> holidayWork = findRequest(requests, REQ_HOLIDAY_WORK);
+
+        if (planned == null
+                || planned.get("workOnHhmm") == null
+                || planned.get("workOffHhmm") == null) {
+            return approvedEndMinute(holidayWork, toMinutes(dto.getCheckIn()));
+        }
+
+        String workDayType = planned.get("workDayType") != null ? planned.get("workDayType").toString() : "";
+        if (holidayWork != null && ("OFF".equals(workDayType) || "HOLIDAY".equals(workDayType))) {
+            return approvedEndMinute(holidayWork, toMinutes(dto.getCheckIn()));
+        }
+
+        int plannedOnMin = toMinutes(planned.get("workOnHhmm").toString());
+        int plannedOffMin = toNextDayMinute(toMinutes(planned.get("workOffHhmm").toString()), plannedOnMin);
+        int autoOutMin = plannedOffMin;
+
+        Map<String, Object> overtime = findRequest(requests, REQ_OVERTIME);
+        Integer overtimeEnd = requestMinuteOrNull(overtime, "endTime", "endTimeType", plannedOnMin);
+        if (overtimeEnd != null) {
+            autoOutMin = overtimeEnd;
+        }
+
+        Map<String, Object> earlyLeave = findRequest(requests, REQ_EARLY_LEAVE);
+        Integer earlyLeaveStart = requestMinuteOrNull(earlyLeave, "startTime", "startTimeType", plannedOnMin);
+        if (earlyLeaveStart != null) {
+            autoOutMin = Math.min(autoOutMin, earlyLeaveStart);
+        }
+
+        return autoOutMin;
+    }
+
+    private Integer approvedEndMinute(Map<String, Object> request, int fallbackBaseMinute) {
+        if (request == null) {
+            return null;
+        }
+        Integer startMinute = requestMinuteByTypeOrNull(request, "startTime", "startTimeType");
+        int baseMinute = startMinute != null ? startMinute : fallbackBaseMinute;
+        return requestMinuteOrNull(request, "endTime", "endTimeType", baseMinute);
+    }
+
+    private Map<String, Object> findRequest(List<Map<String, Object>> requests, String reqType) {
+        return requests.stream()
+                .filter(r -> reqType.equals(r.get("reqType")))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private Integer requestMinuteOrNull(Map<String, Object> request, String timeKey, String typeKey, int baseMinute) {
+        if (request == null || request.get(timeKey) == null) {
+            return null;
+        }
+        int minute = toMinutes(request.get(timeKey).toString());
+        Object typeValue = request.get(typeKey);
+        if ("N1".equals(typeValue != null ? typeValue.toString() : null) || minute < baseMinute) {
+            minute += 1440;
+        }
+        return minute;
+    }
+
+    private Integer requestMinuteByTypeOrNull(Map<String, Object> request, String timeKey, String typeKey) {
+        if (request == null || request.get(timeKey) == null) {
+            return null;
+        }
+        int minute = toMinutes(request.get(timeKey).toString());
+        Object typeValue = request.get(typeKey);
+        if ("N1".equals(typeValue != null ? typeValue.toString() : null)) {
+            minute += 1440;
+        }
+        return minute;
+    }
+
+    private String toHhmm(int minute) {
+        int normalized = ((minute % 1440) + 1440) % 1440;
+        return String.format("%02d:%02d", normalized / 60, normalized % 60);
     }
 
     private int toActualOutMinute(AttendanceRecordDto dto, int actualInMin) {
@@ -198,9 +294,10 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
     @Override
     public void recalculateIfRecordExists(String company, String empCode, String yyyymmdd) {
         AttendanceRecordDto existing = recordMapper.findByDay(company, empCode, yyyymmdd);
-        if (existing == null || isBlank(existing.getCheckIn()) || isBlank(existing.getCheckOut())) {
+        if (existing == null || isBlank(existing.getCheckIn())) {
             return;
         }
+        applyAutoCheckOut(existing);
         int workMin = calculateWorkMin(existing);
         existing.setWorkMin(workMin);
         calculateLate(existing);

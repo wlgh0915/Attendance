@@ -30,6 +30,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
     private final AttendanceRequestMapper requestMapper;
     private final ApprovalMapper approvalMapper;
     private final AnnualLeaveService annualLeaveService;
+    private final AttendanceRecordService recordService;
 
     private static final DateTimeFormatter REQ_ID_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
     private static final int MAX_WEEK_MIN = 3120;
@@ -826,6 +827,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             requestMapper.applyApprovedOtherRequestToAttendance(requestId);
             requestMapper.applyApprovedHolidayRequestToAttendance(requestId);
             annualLeaveService.refreshApprovedUsage(existing);
+            recalculateAttendanceRecord(existing);
         } else {
             requestMapper.updateStatus(requestId, "SUBMITTED");
         }
@@ -918,9 +920,34 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             if ("APPROVED".equals(existing.getStatus()) && annualLeaveService.isAnnualLeaveRequest(existing)) {
                 annualLeaveService.refreshApprovedUsage(existing);
             }
+            if ("APPROVED".equals(existing.getStatus())) {
+                recalculateAttendanceRecord(existing);
+            }
             return;
         }
         throw new IllegalArgumentException("승인중 또는 승인완료 상태의 신청만 취소할 수 있습니다.");
+    }
+
+    private void recalculateAttendanceRecord(AttendanceRequestDto request) {
+        if (request == null || request.getWorkDate() == null) {
+            return;
+        }
+        if ("OTHER".equals(request.getRequestCategory())) {
+            if (request.getEndDate() == null) {
+                return;
+            }
+            LocalDate start = LocalDate.parse(request.getWorkDate());
+            LocalDate end = LocalDate.parse(request.getEndDate());
+            for (LocalDate date = start; !date.isAfter(end); date = date.plusDays(1)) {
+                recordService.recalculateIfRecordExists(
+                        request.getCompany(), request.getEmpCode(),
+                        date.toString().replace("-", ""));
+            }
+            return;
+        }
+        recordService.recalculateIfRecordExists(
+                request.getCompany(), request.getEmpCode(),
+                request.getWorkDate().replace("-", ""));
     }
 
     private void validateOtherCancelAvailable(AttendanceRequestDto request) {
