@@ -213,7 +213,7 @@ function renderTable(rows) {
     const tbody = document.getElementById('reqTableBody');
     const workDate = document.getElementById('workDate').value;
     if (!rows || rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="16" class="no-data">조회된 인원이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="15" class="no-data">조회된 인원이 없습니다.</td></tr>';
         tableData = [];
         return;
     }
@@ -228,7 +228,6 @@ function renderTable(rows) {
         const dis = (locked || blockedByOtherRequest || planBlocked) ? 'disabled' : '';
         const checkDis = (blockedByOtherRequest || planBlocked) ? 'disabled' : '';
         const reasonVal = (existing.reason||'').replace(/"/g,'&quot;');
-        const reasonDetailVal = (existing.reasonDetail||'').replace(/"/g,'&quot;');
         const endDateVal = existing.endDate || r.endDate || workDate;
         const statusHtml = planBlocked
             ? '<span class="badge badge-rejected">근무계획 미설정</span>'
@@ -249,7 +248,6 @@ function renderTable(rows) {
             + '<td><input type="date" data-field="endDate" min="'+workDate+'" value="'+endDateVal+'" '+dis+'></td>'
             + '<td><select data-field="requestWorkCode" '+dis+' onchange="onWorkCodeChange(this,'+idx+')">'+buildShiftOptions(selectedWorkCode)+'</select></td>'
             + '<td><input type="text" data-field="reason" value="'+reasonVal+'" placeholder="사유" '+dis+'></td>'
-            + '<td><input type="text" data-field="reasonDetail" value="'+reasonDetailVal+'" placeholder="사유 상세 입력" '+dis+'></td>'
             + '<td data-field="status">'+statusHtml+'</td>'
             + '<td data-field="requesterName">'+(existing.requesterName||'')+'</td>'
             + '</tr>';
@@ -263,13 +261,10 @@ function onWorkCodeChange(select, idx) {
     const locked = (state.status === 'SUBMITTED' || state.status === 'APPROVED');
     const tr = select.closest('tr');
     const reasonEl = tr.querySelector('[data-field="reason"]');
-    const detailEl = tr.querySelector('[data-field="reasonDetail"]');
     const endDateEl = tr.querySelector('[data-field="endDate"]');
     reasonEl.value = state.reason || '';
-    detailEl.value = state.reasonDetail || '';
     endDateEl.value = state.endDate || document.getElementById('workDate').value;
     reasonEl.disabled = locked;
-    detailEl.disabled = locked;
     endDateEl.disabled = locked;
     tr.querySelector('[data-field="shiftWorkMin"]').textContent = formatWorkMin(cumulativeEstimatedWorkMin(r));
     tr.querySelector('[data-field="status"]').innerHTML = statusBadge(state.status);
@@ -329,7 +324,7 @@ function rowToDto(tr) {
         requestCategory: 'OTHER',
         requestWorkCode: requestWorkCode,
         reason:          tr.querySelector('[data-field="reason"]').value,
-        reasonDetail:    tr.querySelector('[data-field="reasonDetail"]').value,
+        reasonDetail:    '',
         startTime:       null,
         endTime:         null
     };

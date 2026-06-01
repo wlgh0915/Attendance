@@ -129,8 +129,6 @@
                     <td style="text-align:center;" th:text="${row.requestWorkMin != null ? row.requestWorkMin : '-'}"></td>
                     <td>
                         <span th:text="${row.reason ?: '-'}"></span>
-                        <span class="sub-text" th:if="${row.reasonDetail != null and row.reasonDetail != ''}"
-                              th:text="${row.reasonDetail}"></span>
                     </td>
                     <td style="text-align:center;">
                         <span th:class="${'status-badge st-' + row.status}"

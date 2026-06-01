@@ -271,7 +271,6 @@ async function openDetail(requestId) {
         + timeInfo
         + attendanceInfo
         + '<div class="lbl">사유</div><div class="val">'+escapeHtml(d.reason || '-')+'</div>'
-        + '<div class="lbl">사유상세</div><div class="val">'+escapeHtml(d.reasonDetail || '-')+'</div>'
         + '<div class="lbl">신청상태</div><div class="val">'+escapeHtml(statusLabel[d.requestStatus] || d.requestStatus || '-')+'</div>';
 
     const chain = d.approvalChain || [];
