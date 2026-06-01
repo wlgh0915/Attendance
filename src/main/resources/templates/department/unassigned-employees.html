@@ -17,7 +17,7 @@
 
     <!-- 페이지 헤더 -->
     <div class="ua-top">
-        <a th:href="@{/departments/employees(company=${company}, deptCode=${deptCode})}" class="ua-back">
+        <a th:href="@{/departments/employees(deptCode=${deptCode})}" class="ua-back">
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
                  fill="none" stroke="currentColor" stroke-width="2.5">
                 <polyline points="15 18 9 12 15 6"/>
@@ -29,7 +29,6 @@
     </div>
 
     <form th:action="@{/departments/employees/add}" method="post">
-        <input type="hidden" name="company" th:value="${company}">
         <input type="hidden" name="deptCode" th:value="${deptCode}">
 
         <!-- 부서 배정 툴바 -->
@@ -70,7 +69,6 @@
                     <th class="ua-th-check" title="전체 선택">
                         <input type="checkbox" id="selectAll" class="ua-checkbox">
                     </th>
-                    <th>소속 회사</th>
                     <th class="ua-th-code">사원 번호</th>
                     <th>사원명</th>
                     <th class="ua-th-role">권한 등급</th>
@@ -81,7 +79,6 @@
                     <td class="ua-td-check">
                         <input type="checkbox" name="empCodes" th:value="${emp.empCode}" class="ua-checkbox">
                     </td>
-                    <td th:text="${emp.companyName}"></td>
                     <td class="ua-td-code" th:text="${emp.empCode}"></td>
                     <td><span class="ua-emp-name" th:text="${emp.empName}"></span></td>
                     <td class="ua-td-role">
@@ -91,7 +88,7 @@
                     </td>
                 </tr>
                 <tr class="ua-empty-row" th:if="${#lists.isEmpty(employees)}">
-                    <td colspan="5">부서가 지정되지 않은 사원이 없습니다.</td>
+                    <td colspan="4">부서가 지정되지 않은 사원이 없습니다.</td>
                 </tr>
                 </tbody>
             </table>

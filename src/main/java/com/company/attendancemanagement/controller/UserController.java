@@ -91,7 +91,7 @@ public class UserController {
         UserUpdateDto dto = userService.findUserForEdit(loginUser.getCompany(), empCode);
         if (dto == null) {
             redirectAttributes.addFlashAttribute("errorMessage", "존재하지 않는 사원입니다.");
-            return redirectToEmployeeList(loginUser.getCompany(), returnDeptCode);
+            return redirectToEmployeeList(returnDeptCode);
         }
 
         dto.setReturnDeptCode(returnDeptCode);
@@ -136,7 +136,7 @@ public class UserController {
         }
 
         redirectAttributes.addFlashAttribute("successMessage", "사원 수정에 성공했습니다.");
-        return redirectToEmployeeList(loginUser.getCompany(), dto.getReturnDeptCode());
+        return redirectToEmployeeList(dto.getReturnDeptCode());
     }
 
     private void addUserFormOptions(Model model, String company) {
@@ -146,10 +146,10 @@ public class UserController {
         model.addAttribute("roleOptions", userService.findActiveRoles(company));
     }
 
-    private String redirectToEmployeeList(String company, String deptCode) {
+    private String redirectToEmployeeList(String deptCode) {
         if (deptCode == null || deptCode.isBlank()) {
-            return "redirect:/departments/employees/unassigned-manage?company=" + company;
+            return "redirect:/departments/employees/unassigned-manage";
         }
-        return "redirect:/departments/employees?company=" + company + "&deptCode=" + deptCode;
+        return "redirect:/departments/employees?deptCode=" + deptCode;
     }
 }

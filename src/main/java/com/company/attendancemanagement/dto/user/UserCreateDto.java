@@ -8,7 +8,6 @@ import lombok.Setter;
 @Setter
 public class UserCreateDto {
 
-    @NotBlank(message = "회사코드는 필수입니다.")
     private String company;
 
     private String empCode;

@@ -93,7 +93,6 @@
             <table class="dept-table">
                 <thead>
                 <tr>
-                    <th>회사명</th>
                     <th>부서코드</th>
                     <th>부서명</th>
                     <th>상위 부서</th>
@@ -113,7 +112,6 @@
                     th:data-cat="${dept.deptCategory}"
                     th:classappend="${dept.dateStatus == 'INACTIVE' ? ' row-inactive' : ''}">
 
-                    <td class="td-company" th:text="${dept.companyName}"></td>
                     <td class="td-code" th:text="${dept.deptCode}"></td>
                     <td class="td-name" th:text="${dept.deptName}"></td>
                     <td class="td-parent" th:text="${dept.parentDeptName != null ? dept.parentDeptName : '-'}"></td>
@@ -152,7 +150,7 @@
                     </td>
 
                     <td class="td-actions">
-                        <a th:href="@{/departments/employees(company=${dept.company}, deptCode=${dept.deptCode})}"
+                        <a th:href="@{/departments/employees(deptCode=${dept.deptCode})}"
                            class="btn-dept-action btn-dept-view">
                             <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24"
                                  fill="none" stroke="currentColor" stroke-width="2.5">
@@ -162,7 +160,7 @@
                             </svg>
                             사원 보기
                         </a>
-                        <a th:href="@{/departments/edit(company=${dept.company}, deptCode=${dept.deptCode})}"
+                        <a th:href="@{/departments/edit(deptCode=${dept.deptCode})}"
                            class="btn-dept-action btn-dept-edit">
                             <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24"
                                  fill="none" stroke="currentColor" stroke-width="2.5">
@@ -176,7 +174,6 @@
 
                 <!-- 부서 미지정 행 -->
                 <tr class="dept-row unassigned-dept-row" data-status="SPECIAL" data-cat="SPECIAL">
-                    <td class="td-company">-</td>
                     <td class="td-code">-</td>
                     <td class="td-name"><strong>부서 미지정</strong></td>
                     <td class="td-parent">-</td>
@@ -185,7 +182,7 @@
                     <td>-</td>
                     <td>-</td>
                     <td class="td-actions">
-                        <a th:href="@{/departments/employees/unassigned-manage(company=${company})}"
+                        <a th:href="@{/departments/employees/unassigned-manage}"
                            class="btn-dept-action btn-dept-view">
                             <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24"
                                  fill="none" stroke="currentColor" stroke-width="2.5">

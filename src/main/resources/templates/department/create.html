@@ -49,11 +49,6 @@
 
                     <div class="dc-grid-2">
                         <div class="dc-field">
-                            <label class="dc-label dc-required">회사코드</label>
-                            <input type="text" th:field="*{company}" class="dc-input dc-readonly" readonly>
-                            <span class="dc-error" th:errors="*{company}"></span>
-                        </div>
-                        <div class="dc-field">
                             <label class="dc-label dc-required">사용여부</label>
                             <select th:field="*{useYn}" class="dc-select">
                                 <option value="">선택하세요</option>
@@ -191,7 +186,6 @@
                         <span>도움말</span>
                     </div>
                     <p class="dc-help-text">
-                        <strong>회사코드</strong>는 자동으로 설정됩니다.<br><br>
                         <strong>부서코드</strong>는 영문+숫자 조합으로 고유하게 입력하세요.<br><br>
                         <strong>상위부서</strong>를 지정하면 조직도에서 계층 구조로 표시됩니다.<br><br>
                         <strong>근태패턴</strong>은 이 부서의 기본 출퇴근 패턴을 결정합니다.

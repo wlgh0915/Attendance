@@ -38,7 +38,6 @@
     </div>
 
     <form th:action="@{/departments/employees/move}" method="post">
-        <input type="hidden" name="company" th:value="${company}">
         <input type="hidden" name="currentDeptCode" th:value="${deptCode}">
 
         <!-- 상단 2열 그리드 -->
@@ -49,10 +48,6 @@
                 <div class="emp-dept-tag">부서 정보</div>
                 <h3 class="emp-dept-name" th:text="${deptName}"></h3>
                 <div class="emp-dept-rows">
-                    <div class="emp-dept-row">
-                        <span class="emp-dept-lbl">회사명</span>
-                        <span class="emp-dept-val" th:text="${companyName}"></span>
-                    </div>
                     <div class="emp-dept-row">
                         <span class="emp-dept-lbl">부서코드</span>
                         <span class="emp-dept-val mono" th:text="${deptCode}"></span>
@@ -81,7 +76,7 @@
                         <h3 class="emp-transfer-title">부서 일괄 발령</h3>
                     </div>
                     <a th:if="${!#strings.isEmpty(deptCode)}"
-                       th:href="@{/departments/employees/unassigned(company=${company}, deptCode=${deptCode})}"
+                       th:href="@{/departments/employees/unassigned(deptCode=${deptCode})}"
                        class="btn-emp-add">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
                              fill="none" stroke="currentColor" stroke-width="2.5">
@@ -143,7 +138,6 @@
                         <th class="th-checkbox emp-th-check" title="전체 선택">
                             <input type="checkbox" id="selectAll" class="emp-checkbox">
                         </th>
-                        <th>회사명</th>
                         <th>사번</th>
                         <th>사원명</th>
                         <th>부서명</th>
@@ -157,7 +151,6 @@
                             <input type="checkbox" name="empCodes"
                                    th:value="${emp.empCode}" class="emp-checkbox">
                         </td>
-                        <td class="td-company" th:text="${emp.companyName}"></td>
                         <td class="td-code" th:text="${emp.empCode}"></td>
                         <td class="td-name" th:text="${emp.empName}"></td>
                         <td th:text="${emp.deptName}"></td>
@@ -177,7 +170,7 @@
                         </td>
                     </tr>
                     <tr class="emp-empty-row" th:if="${#lists.isEmpty(employees)}">
-                        <td colspan="7">해당 부서에 등록된 사원이 없습니다.</td>
+                        <td colspan="6">해당 부서에 등록된 사원이 없습니다.</td>
                     </tr>
                     </tbody>
                 </table>
