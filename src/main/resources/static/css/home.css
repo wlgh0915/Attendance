@@ -1,7 +1,9 @@
 /* ===== Dashboard Container ===== */
 .dashboard {
     max-width: 1400px;
-    padding: 8px 0 48px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 8px 4px 48px;
     display: flex;
     flex-direction: column;
     gap: 24px;
