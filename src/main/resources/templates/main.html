@@ -54,7 +54,9 @@
                     <h3 class="card-title">출퇴근 기록</h3>
                 </div>
                 <div class="checkin-btns">
-                    <a th:href="@{/attendance/record}" class="btn-checkin btn-checkin--active">
+                    <!-- 출근하기: 이미 출근했으면 disabled -->
+                    <button type="button" onclick="doCheckIn()"
+                            th:class="'btn-checkin ' + (${todayRecord != null and todayRecord.checkIn != null} ? 'btn-checkin--disabled' : 'btn-checkin--active')">
                         <div class="checkin-icon">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
                                  fill="none" stroke="currentColor" stroke-width="2"
@@ -65,15 +67,19 @@
                             </svg>
                         </div>
                         <div class="checkin-label">
-                            <span class="checkin-label-main">출근하기</span>
-                            <span class="checkin-label-sub">출퇴근 실적 관리로 이동</span>
+                            <span class="checkin-label-main"
+                                  th:text="${todayRecord != null and todayRecord.checkIn != null ? '출근 완료' : '출근하기'}">출근하기</span>
+                            <span class="checkin-label-sub"
+                                  th:text="${todayRecord != null and todayRecord.checkIn != null ? todayRecord.checkIn + ' 출근' : '클릭하여 출근 처리'}">클릭하여 출근 처리</span>
                         </div>
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
                              fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="9 18 15 12 9 6"/>
                         </svg>
-                    </a>
-                    <a th:href="@{/attendance/record}" class="btn-checkin btn-checkin--secondary">
+                    </button>
+                    <!-- 퇴근하기: 출근 전이거나 이미 퇴근했으면 disabled -->
+                    <button type="button" onclick="doCheckOut()"
+                            th:class="'btn-checkin ' + (${todayRecord == null or todayRecord.checkIn == null or todayRecord.checkOut != null} ? 'btn-checkin--disabled' : 'btn-checkin--secondary')">
                         <div class="checkin-icon">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
                                  fill="none" stroke="currentColor" stroke-width="2"
@@ -84,14 +90,16 @@
                             </svg>
                         </div>
                         <div class="checkin-label">
-                            <span class="checkin-label-main">퇴근하기</span>
-                            <span class="checkin-label-sub">출퇴근 실적 관리로 이동</span>
+                            <span class="checkin-label-main"
+                                  th:text="${todayRecord != null and todayRecord.checkOut != null ? '퇴근 완료' : '퇴근하기'}">퇴근하기</span>
+                            <span class="checkin-label-sub"
+                                  th:text="${todayRecord != null and todayRecord.checkOut != null ? todayRecord.checkOut + ' 퇴근' : (todayRecord != null and todayRecord.checkIn != null ? '클릭하여 퇴근 처리' : '출근 후 이용 가능')}">출근 후 이용 가능</span>
                         </div>
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
                              fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="9 18 15 12 9 6"/>
                         </svg>
-                    </a>
+                    </button>
                 </div>
                 <div class="work-hours-bar" style="margin-top:auto;">
                     <span>정규 근무 시간</span>
@@ -339,6 +347,8 @@
             </div>
         </div>
 
+        <div id="homeToast"></div>
+
         <footer class="dashboard-footer">
             <p>© 2026 근태 관리 시스템. All rights reserved.</p>
         </footer>
@@ -373,6 +383,43 @@
         }
         updateCheckoutStatus();
         setInterval(updateCheckoutStatus, 30000);
+
+        /* ── 출근 / 퇴근 처리 ── */
+        async function doCheckIn() {
+            try {
+                const res  = await fetch('/attendance/record/checkin', { method: 'POST' });
+                const json = await res.json();
+                if (json.success) {
+                    showHomeToast('출근 처리되었습니다. (' + json.checkIn + ')', 'success');
+                    setTimeout(() => location.reload(), 1200);
+                } else {
+                    showHomeToast(json.message || '처리 실패', 'error');
+                }
+            } catch (e) {
+                showHomeToast('서버 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        async function doCheckOut() {
+            try {
+                const res  = await fetch('/attendance/record/checkout', { method: 'POST' });
+                const json = await res.json();
+                if (json.success) {
+                    showHomeToast('퇴근 처리되었습니다. (' + json.checkOut + ')', 'success');
+                    setTimeout(() => location.reload(), 1200);
+                } else {
+                    showHomeToast(json.message || '처리 실패', 'error');
+                }
+            } catch (e) {
+                showHomeToast('서버 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        function showHomeToast(msg, type) {
+            const t = document.getElementById('homeToast');
+            t.textContent = msg; t.className = type; t.style.display = 'block';
+            setTimeout(() => { t.style.display = 'none'; }, 3000);
+        }
     </script>
 
 </div>

@@ -28,6 +28,11 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
     }
 
     @Override
+    public AttendanceRecordDto findByDay(String company, String empCode, String yyyymmdd) {
+        return recordMapper.findByDay(company, empCode, yyyymmdd);
+    }
+
+    @Override
     public Map<String, Object> getPlannedShift(String company, String empCode, String yyyymmdd) {
         Map<String, Object> planned = recordMapper.findPlannedShift(company, empCode, yyyymmdd);
         return planned != null ? planned : Map.of();

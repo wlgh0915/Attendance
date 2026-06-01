@@ -339,10 +339,33 @@
     flex-shrink: 0;
 }
 
+.btn-checkin--disabled {
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    color: #94a3b8;
+    cursor: default;
+    pointer-events: none;
+}
 .btn-checkin--disabled .checkin-icon {
     background: #e2e8f0;
     color: #94a3b8;
 }
+
+#homeToast {
+    position: fixed;
+    bottom: 32px;
+    right: 32px;
+    padding: 12px 20px;
+    border-radius: 10px;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    display: none;
+    z-index: 9999;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+#homeToast.success { background: #16a34a; }
+#homeToast.error   { background: #e11d48; }
 
 .checkin-label {
     flex: 1;

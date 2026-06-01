@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -156,6 +157,75 @@ public class AttendanceRecordController {
         model.addAttribute("nextYm",       yearMonth.plusMonths(1).toString());
 
         return "attendance/record";
+    }
+
+    /* ───────── 자가 출근 처리 ───────── */
+    @PostMapping("/checkin")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> selfCheckIn(HttpSession session) {
+        LoginUserDto loginUser = getLoginUser(session);
+        if (loginUser == null) return ResponseEntity.status(401).body(fail("로그인이 필요합니다."));
+
+        String company  = loginUser.getCompany();
+        String empCode  = loginUser.getEmpCode();
+        String yyyymmdd = LocalDate.now().format(YMD_FMT);
+        String now      = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"));
+
+        AttendanceRecordDto existing = recordService.findByDay(company, empCode, yyyymmdd);
+        if (existing != null && existing.getCheckIn() != null && !existing.getCheckIn().isBlank()) {
+            return ResponseEntity.ok(fail("이미 출근 처리되었습니다. (" + existing.getCheckIn() + ")"));
+        }
+
+        AttendanceRecordDto dto = existing != null ? existing : new AttendanceRecordDto();
+        dto.setCompany(company);
+        dto.setEmpCode(empCode);
+        dto.setYyyymmdd(yyyymmdd);
+        dto.setDeptCode(loginUser.getDeptCode());
+        dto.setCheckIn(now);
+        if (dto.getOvernightYn() == null) dto.setOvernightYn("N");
+        try {
+            recordService.upsert(dto);
+            return ResponseEntity.ok(Map.of("success", true, "checkIn", now));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.ok(fail(e.getMessage()));
+        }
+    }
+
+    /* ───────── 자가 퇴근 처리 ───────── */
+    @PostMapping("/checkout")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> selfCheckOut(HttpSession session) {
+        LoginUserDto loginUser = getLoginUser(session);
+        if (loginUser == null) return ResponseEntity.status(401).body(fail("로그인이 필요합니다."));
+
+        String company  = loginUser.getCompany();
+        String empCode  = loginUser.getEmpCode();
+        String yyyymmdd = LocalDate.now().format(YMD_FMT);
+        String now      = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"));
+
+        AttendanceRecordDto existing = recordService.findByDay(company, empCode, yyyymmdd);
+        if (existing == null || existing.getCheckIn() == null || existing.getCheckIn().isBlank()) {
+            return ResponseEntity.ok(fail("출근 기록이 없습니다."));
+        }
+        if (existing.getCheckOut() != null && !existing.getCheckOut().isBlank()) {
+            return ResponseEntity.ok(fail("이미 퇴근 처리되었습니다. (" + existing.getCheckOut() + ")"));
+        }
+
+        existing.setCheckOut(now);
+        // 퇴근 시간이 출근 시간보다 이르면 익일 퇴근
+        int ciMin = toMin(existing.getCheckIn()), coMin = toMin(now);
+        existing.setOvernightYn(coMin < ciMin ? "Y" : "N");
+        try {
+            recordService.upsert(existing);
+            return ResponseEntity.ok(Map.of("success", true, "checkOut", now));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.ok(fail(e.getMessage()));
+        }
+    }
+
+    private int toMin(String hhmm) {
+        String[] p = hhmm.split(":");
+        return Integer.parseInt(p[0]) * 60 + Integer.parseInt(p[1]);
     }
 
     /* ───────── 근태코드 목록 (모달 드롭다운용) ───────── */
