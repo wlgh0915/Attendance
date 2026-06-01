@@ -64,15 +64,19 @@ async function openModal(btn) {
     // 계획 근태코드: ACTUAL_SHIFT_CODE(기타근태변경 우선) → SHIFT_CODE → 부서 근무패턴 순 우선
     if (d.actualShift && d.actualShift !== 'null') {
         document.getElementById('mShiftCode').value = d.actualShift;
+        document.getElementById('mShiftName').value = (d.actualShiftName && d.actualShiftName !== 'null') ? d.actualShiftName : d.actualShift;
     } else if (d.shift && d.shift !== 'null') {
         document.getElementById('mShiftCode').value = d.shift;
+        document.getElementById('mShiftName').value = (d.shiftName && d.shiftName !== 'null') ? d.shiftName : d.shift;
     } else {
         try {
             const res     = await fetch(`/attendance/record/planned-shift?empCode=${TARGET_EMP}&yyyymmdd=${d.ymd}`);
             const planned = await res.json();
             document.getElementById('mShiftCode').value = planned.shiftCode || '';
+            document.getElementById('mShiftName').value = planned.shiftName || planned.shiftCode || '';
         } catch (e) {
             document.getElementById('mShiftCode').value = '';
+            document.getElementById('mShiftName').value = '';
         }
     }
 

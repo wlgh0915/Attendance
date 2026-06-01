@@ -12,7 +12,9 @@ public class AttendanceRecordDto {
     private String  yyyymmdd;
     private String  deptCode;
     private String  shiftCode;
+    private String  shiftName;
     private String  actualShiftCode;
+    private String  actualShiftName;
     private String  checkIn;        // HH:mm
     private String  checkOut;       // HH:mm
     private Integer workMin;

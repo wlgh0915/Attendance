@@ -107,7 +107,8 @@
                         th:text="${row.dayLabel}"></td>
 
                     <td>
-                        <span class="shift-badge" th:if="${row.shiftCode != null}" th:text="${row.shiftCode}"></span>
+                        <span class="shift-badge" th:if="${row.shiftCode != null}"
+                              th:text="${row.actualShiftName ?: (row.shiftName ?: (row.actualShiftCode ?: row.shiftCode))}"></span>
                         <span class="no-data" th:unless="${row.shiftCode != null}">-</span>
                     </td>
 
@@ -128,7 +129,9 @@
                                 th:attr="data-ymd=${row.yyyymmdd},
                                          data-has=${row.hasRecord},
                                          data-shift=${row.shiftCode},
+                                         data-shift-name=${row.shiftName},
                                          data-actual-shift=${row.actualShiftCode},
+                                         data-actual-shift-name=${row.actualShiftName},
                                          data-ci=${row.checkIn},
                                          data-co=${row.checkOut},
                                          data-wm=${row.workMin},
@@ -146,7 +149,9 @@
                                 th:attr="data-ymd=${row.yyyymmdd},
                                          data-has=${row.hasRecord},
                                          data-shift=${row.shiftCode},
+                                         data-shift-name=${row.shiftName},
                                          data-actual-shift=${row.actualShiftCode},
+                                         data-actual-shift-name=${row.actualShiftName},
                                          data-ci=${row.checkIn},
                                          data-co=${row.checkOut},
                                          data-wm=${row.workMin},
@@ -216,8 +221,9 @@
                 <input type="text" id="mDate" class="modal-input" readonly>
             </div>
             <div class="modal-row">
-                <label class="modal-label">계획근태코드</label>
-                <input type="text" id="mShiftCode" class="modal-input" readonly>
+                <label class="modal-label">계획근태</label>
+                <input type="hidden" id="mShiftCode">
+                <input type="text" id="mShiftName" class="modal-input" readonly>
             </div>
             <div class="modal-row">
                 <label class="modal-label">출근 / 퇴근</label>

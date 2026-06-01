@@ -7,19 +7,29 @@
     <!-- 월별 출퇴근 실적 조회 -->
     <select id="findByMonth"
             resultType="com.company.attendancemanagement.dto.record.AttendanceRecordDto">
-        SELECT COMPANY, EMP_CODE, YYYYMMDD, DEPT_CODE, SHIFT_CODE,
-               ACTUAL_SHIFT_CODE AS actualShiftCode,
+        SELECT r.COMPANY AS company,
+               r.EMP_CODE AS empCode,
+               r.YYYYMMDD AS yyyymmdd,
+               r.DEPT_CODE AS deptCode,
+               r.SHIFT_CODE AS shiftCode,
+               s.SHIFT_NAME AS shiftName,
+               r.ACTUAL_SHIFT_CODE AS actualShiftCode,
+               actualS.SHIFT_NAME AS actualShiftName,
                LEFT(CONVERT(VARCHAR(8), CHECK_IN,  108), 5) AS checkIn,
                LEFT(CONVERT(VARCHAR(8), CHECK_OUT, 108), 5) AS checkOut,
-               WORK_MIN     AS workMin,
-               OVERNIGHT_YN AS overnightYn,
-               LATE_YN      AS lateYn,
-               LATE_MIN     AS lateMin
-        FROM HRTDAILYATTENDANCE01
-        WHERE COMPANY  = #{company}
-          AND EMP_CODE = #{empCode}
-          AND YYYYMMDD BETWEEN #{startYmd} AND #{endYmd}
-        ORDER BY YYYYMMDD
+               r.WORK_MIN     AS workMin,
+               r.OVERNIGHT_YN AS overnightYn,
+               r.LATE_YN      AS lateYn,
+               r.LATE_MIN     AS lateMin
+        FROM HRTDAILYATTENDANCE01 r
+        LEFT JOIN HRTSHIFTMASTER01 s
+               ON r.COMPANY = s.COMPANY AND r.SHIFT_CODE = s.SHIFT_CODE
+        LEFT JOIN HRTSHIFTMASTER01 actualS
+               ON r.COMPANY = actualS.COMPANY AND r.ACTUAL_SHIFT_CODE = actualS.SHIFT_CODE
+        WHERE r.COMPANY  = #{company}
+          AND r.EMP_CODE = #{empCode}
+          AND r.YYYYMMDD BETWEEN #{startYmd} AND #{endYmd}
+        ORDER BY r.YYYYMMDD
     </select>
 
     <!-- 출퇴근 실적 저장 (UPSERT) -->
@@ -53,24 +63,35 @@
     <!-- 단일 날짜 출퇴근 실적 조회 -->
     <select id="findByDay"
             resultType="com.company.attendancemanagement.dto.record.AttendanceRecordDto">
-        SELECT COMPANY, EMP_CODE, YYYYMMDD, DEPT_CODE, SHIFT_CODE,
-               ACTUAL_SHIFT_CODE AS actualShiftCode,
+        SELECT r.COMPANY AS company,
+               r.EMP_CODE AS empCode,
+               r.YYYYMMDD AS yyyymmdd,
+               r.DEPT_CODE AS deptCode,
+               r.SHIFT_CODE AS shiftCode,
+               s.SHIFT_NAME AS shiftName,
+               r.ACTUAL_SHIFT_CODE AS actualShiftCode,
+               actualS.SHIFT_NAME AS actualShiftName,
                LEFT(CONVERT(VARCHAR(8), CHECK_IN,  108), 5) AS checkIn,
                LEFT(CONVERT(VARCHAR(8), CHECK_OUT, 108), 5) AS checkOut,
-               WORK_MIN     AS workMin,
-               OVERNIGHT_YN AS overnightYn,
-               LATE_YN      AS lateYn,
-               LATE_MIN     AS lateMin
-        FROM HRTDAILYATTENDANCE01
-        WHERE COMPANY  = #{company}
-          AND EMP_CODE = #{empCode}
-          AND YYYYMMDD = #{yyyymmdd}
+               r.WORK_MIN     AS workMin,
+               r.OVERNIGHT_YN AS overnightYn,
+               r.LATE_YN      AS lateYn,
+               r.LATE_MIN     AS lateMin
+        FROM HRTDAILYATTENDANCE01 r
+        LEFT JOIN HRTSHIFTMASTER01 s
+               ON r.COMPANY = s.COMPANY AND r.SHIFT_CODE = s.SHIFT_CODE
+        LEFT JOIN HRTSHIFTMASTER01 actualS
+               ON r.COMPANY = actualS.COMPANY AND r.ACTUAL_SHIFT_CODE = actualS.SHIFT_CODE
+        WHERE r.COMPANY  = #{company}
+          AND r.EMP_CODE = #{empCode}
+          AND r.YYYYMMDD = #{yyyymmdd}
     </select>
 
     <!-- 날짜별 계획 시프트 조회 (HRIDEPTTRANSFER01 기반) -->
     <select id="findPlannedShift" resultType="java.util.HashMap">
         <![CDATA[
         SELECT ISNULL(COALESCE(NULLIF(os.SHIFT_CODE, ''), s.SHIFT_CODE), '')                    AS shiftCode,
+               COALESCE(os.SHIFT_NAME, s.SHIFT_NAME, '')                                       AS shiftName,
                CONVERT(VARCHAR(5), COALESCE(os.WORK_ON_HHMM,  s.WORK_ON_HHMM),  108)           AS workOnHhmm,
                CONVERT(VARCHAR(5), COALESCE(os.WORK_OFF_HHMM, s.WORK_OFF_HHMM), 108)           AS workOffHhmm,
                CONVERT(VARCHAR(5), COALESCE(os.BREAK1_START_HHMM, s.BREAK1_START_HHMM), 108)   AS break1StartHhmm,
