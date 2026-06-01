@@ -280,7 +280,8 @@ async function openDetail(requestId) {
             '<tr>'
             + '<td>'+escapeHtml(s.stepNo)+'</td>'
             + '<td>'+escapeHtml(stepTypeName(s.stepType))+'</td>'
-            + '<td>'+escapeHtml(s.approverName || s.approverEmpCode || '-')+'</td>'
+            + '<td>'+escapeHtml((s.approverName || s.approverEmpCode || '-')
+                + (s.approverDeptName ? ' / ' + s.approverDeptName : ''))+'</td>'
             + '<td>'+stepStatusBadge(s.status)+'</td>'
             + '<td>'+escapeHtml(s.decisionAt || '-')+'</td>'
             + '<td style="text-align:left;max-width:140px;">'+escapeHtml(s.rejectReason || '-')+'</td>'
