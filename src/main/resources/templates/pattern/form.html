@@ -4,178 +4,258 @@
       layout:decorate="~{layouts/default_layout}">
 <head>
     <meta charset="UTF-8">
-    <title>근태 패턴 등록</title>
-    <link rel="stylesheet" th:href="@{/css/form-common.css}">
+    <title th:text="${isEdit} ? '근태 패턴 수정' : '근태 패턴 등록'">근태 패턴 등록</title>
     <link rel="stylesheet" th:href="@{/css/pattern-form.css}">
 </head>
 <body>
 <div layout:fragment="content">
-    <div class="content-wrapper">
-        <div class="form-container">
+<div class="pf-page">
 
-            <div class="form-header">
-                <div>
-                    <h2 th:text="${isEdit} ? '근태 패턴 수정' : '근태 패턴 등록'">근태 패턴 등록</h2>
-                    <p class="form-subtitle">패턴 기본정보를 입력하고, 일차별 근태코드를 지정하세요.</p>
-                </div>
-                <div class="header-actions">
-                    <a th:href="@{/pattern/calendar}" class="btn-outline">캘린더로 이동</a>
-                </div>
-            </div>
+    <!-- 에러 토스트 데이터 -->
+    <div th:if="${errorMessage}" class="toast-data" data-type="error"
+         th:data-message="${errorMessage}" style="display:none"></div>
 
-            <div th:if="${errorMessage}" class="global-error" th:text="${errorMessage}"></div>
+    <!-- 페이지 헤더 -->
+    <div class="pf-top">
+        <a th:href="@{/pattern/calendar}" class="pf-back">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="15 18 9 12 15 6"/>
+            </svg>
+            캘린더로 이동
+        </a>
+        <h2 class="pf-title" th:text="${isEdit} ? '근태 패턴 수정' : '근태 패턴 등록'">근태 패턴 등록</h2>
+        <p class="pf-subtitle">패턴 기본정보를 입력하고, 일차별 근태코드를 지정하세요.</p>
+    </div>
 
-            <form th:action="@{/pattern/save}" method="post" th:object="${pattern}" class="pattern-form">
-                <div class="form-layout">
+    <!-- 폼 -->
+    <form th:action="@{/pattern/save}" method="post" th:object="${pattern}" class="pf-form">
 
-                    <section class="form-left panel" aria-labelledby="patternBasicTitle">
-                        <div class="section-title">
-                            <h3 id="patternBasicTitle">기본정보</h3>
-                            <span>필수 항목 *</span>
+        <div class="pf-body">
+
+            <!-- ── 좌측: 기본정보 + 도움말 ── -->
+            <div class="pf-left">
+
+                <!-- 기본정보 카드 -->
+                <div class="pf-card">
+                    <div class="pf-card-header">
+                        <div class="pf-section-icon pf-icon-blue">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                 fill="none" stroke="#2563eb" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="12" y1="8" x2="12" y2="12"/>
+                                <line x1="12" y1="16" x2="12.01" y2="16"/>
+                            </svg>
+                        </div>
+                        <h3 class="pf-section-title">기본정보</h3>
+                    </div>
+
+                    <div class="pf-field-list">
+
+                        <div class="pf-field">
+                            <label class="pf-label">패턴코드</label>
+                            <input type="text" th:field="*{master.workPatternCode}"
+                                   th:readonly="${isEdit}"
+                                   th:classappend="${isEdit} ? ' pf-readonly' : ''"
+                                   class="pf-input"
+                                   placeholder="예: WD, 3S2">
+                            <span class="pf-input-hint" th:if="${isEdit}">수정 화면에서는 패턴코드를 변경할 수 없습니다.</span>
                         </div>
 
-                        <div class="field-grid">
-                            <div class="form-group">
-                                <label class="required" for="master_workPatternCode">패턴코드</label>
-                                <input type="text" th:field="*{master.workPatternCode}"
-                                       th:readonly="${isEdit}"
-                                       placeholder="예: WD, 3S2">
-                                <span class="input-help">수정 화면에서는 패턴코드를 변경할 수 없습니다.</span>
+                        <div class="pf-field">
+                            <label class="pf-label pf-required">패턴명</label>
+                            <input type="text" th:field="*{master.workPatternName}"
+                                   class="pf-input"
+                                   placeholder="예: 주간근무, 3조 2교대">
+                        </div>
+
+                        <div class="pf-grid-2">
+                            <div class="pf-field">
+                                <label class="pf-label">패턴유형</label>
+                                <select th:field="*{master.patternType}" class="pf-select" data-field="patternType">
+                                    <option value="">선택하세요</option>
+                                    <option value="FIXED">고정형</option>
+                                    <option value="ROTATE">교대형</option>
+                                </select>
                             </div>
-
-                            <div class="form-group">
-                                <label class="required" for="master_workPatternName">패턴명</label>
-                                <input type="text" th:field="*{master.workPatternName}"
-                                       placeholder="예: 주간근무, 3조 2교대">
-                            </div>
-
-                            <div class="field-row">
-                                <div class="form-group">
-                                    <label for="master_patternType">패턴유형</label>
-                                    <select th:field="*{master.patternType}" data-field="patternType">
-                                        <option value="">선택하세요</option>
-                                        <option value="FIXED">고정형</option>
-                                        <option value="ROTATE">교대형</option>
-                                    </select>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="master_useYn">사용여부</label>
-                                    <select th:field="*{master.useYn}">
-                                        <option value="Y">사용</option>
-                                        <option value="N">미사용</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="field-row">
-                                <div class="form-group">
-                                    <label for="master_cycleUnit">주기단위</label>
-                                    <select th:field="*{master.cycleUnit}" data-field="cycleUnit">
-                                        <option value="">선택하세요</option>
-                                        <option value="W">주</option>
-                                        <option value="D">일</option>
-                                    </select>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="master_cycleCount">주기횟수</label>
-                                    <input type="number" th:field="*{master.cycleCount}" data-field="cycleCount"
-                                           min="1" max="31" placeholder="예: 1">
-                                </div>
-                            </div>
-
-                            <div class="field-row">
-                                <div class="form-group">
-                                    <label class="required" for="master_startDate">시작일</label>
-                                    <input type="date"
-                                           id="master_startDate"
-                                           name="master.startDate"
-                                           th:value="${pattern.master.startDate != null ? #temporals.format(pattern.master.startDate, 'yyyy-MM-dd') : ''}"
-                                           data-role="startDate">
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="master_endDate">종료일</label>
-                                    <input type="date"
-                                           id="master_endDate"
-                                           name="master.endDate"
-                                           th:value="${pattern.master.endDate != null ? #temporals.format(pattern.master.endDate, 'yyyy-MM-dd') : ''}">
-                                </div>
+                            <div class="pf-field">
+                                <label class="pf-label">사용여부</label>
+                                <select th:field="*{master.useYn}" class="pf-select">
+                                    <option value="Y">사용</option>
+                                    <option value="N">미사용</option>
+                                </select>
                             </div>
                         </div>
-                    </section>
 
-                    <section class="form-right panel" aria-labelledby="patternDetailTitle">
-                        <div class="detail-header">
+                        <div class="pf-grid-2">
+                            <div class="pf-field">
+                                <label class="pf-label">주기단위</label>
+                                <select th:field="*{master.cycleUnit}" class="pf-select" data-field="cycleUnit">
+                                    <option value="">선택하세요</option>
+                                    <option value="W">주</option>
+                                    <option value="D">일</option>
+                                </select>
+                            </div>
+                            <div class="pf-field">
+                                <label class="pf-label">주기횟수</label>
+                                <input type="number" th:field="*{master.cycleCount}" class="pf-input"
+                                       data-field="cycleCount" min="1" max="31" placeholder="예: 1">
+                            </div>
+                        </div>
+
+                        <div class="pf-grid-2">
+                            <div class="pf-field">
+                                <label class="pf-label pf-required">시작일</label>
+                                <input type="date"
+                                       id="master_startDate"
+                                       name="master.startDate"
+                                       class="pf-input"
+                                       th:value="${pattern.master.startDate != null ? #temporals.format(pattern.master.startDate, 'yyyy-MM-dd') : ''}"
+                                       data-role="startDate">
+                            </div>
+                            <div class="pf-field">
+                                <label class="pf-label">종료일</label>
+                                <input type="date"
+                                       id="master_endDate"
+                                       name="master.endDate"
+                                       class="pf-input"
+                                       th:value="${pattern.master.endDate != null ? #temporals.format(pattern.master.endDate, 'yyyy-MM-dd') : ''}">
+                            </div>
+                        </div>
+
+                    </div>
+                </div><!-- /pf-card -->
+
+                <!-- 도움말 카드 -->
+                <div class="pf-help-card">
+                    <div class="pf-help-header">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                             fill="none" stroke="#2563eb" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="16" x2="12" y2="12"/>
+                            <line x1="12" y1="8" x2="12.01" y2="8"/>
+                        </svg>
+                        <span>도움말</span>
+                    </div>
+                    <p class="pf-help-text">패턴 등록 시 주기단위와 횟수에 따라 오른쪽 일차별 상세 표가 자동으로 구성됩니다. 설정된 패턴은 사원별 근태 할당 메뉴에서 사용 가능합니다.</p>
+                </div>
+
+            </div><!-- /pf-left -->
+
+            <!-- ── 우측: 일차별 근태코드 ── -->
+            <div class="pf-right">
+                <div class="pf-detail-card">
+
+                    <!-- 디테일 헤더 -->
+                    <div class="detail-header">
+                        <div class="pf-detail-title-area">
+                            <div class="pf-section-icon pf-icon-dark">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="#ffffff" stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                    <line x1="16" y1="2" x2="16" y2="6"/>
+                                    <line x1="8" y1="2" x2="8" y2="6"/>
+                                    <line x1="3" y1="10" x2="21" y2="10"/>
+                                </svg>
+                            </div>
                             <div>
                                 <h3 id="patternDetailTitle">일차별 근태코드</h3>
                                 <p class="detail-hint">시작일 기준 요일이 자동 표시됩니다. 첫 주기를 입력한 뒤 복사하면 반복 패턴을 빠르게 채울 수 있습니다.</p>
                             </div>
-                            <div class="btn-filter-group">
-                                <button type="button" id="copyFirstCycleBtn" class="btn-filter-toggle primary">첫 주기 복사</button>
-                                <button type="button" id="filterToggleBtn" class="btn-filter-toggle">근무일만 표시</button>
-                            </div>
                         </div>
-
-                        <div class="summary-bar">
-                            <div class="summary-item">
-                                <span class="summary-label">표시 일수</span>
-                                <span id="summaryDays" class="summary-value">-</span>
-                            </div>
-                            <div class="summary-item">
-                                <span class="summary-label">반복 기준</span>
-                                <span id="summaryCycle" class="summary-value">-</span>
-                            </div>
-                            <div class="summary-item">
-                                <span class="summary-label">시작 요일</span>
-                                <span id="summaryStartDay" class="summary-value">-</span>
-                            </div>
+                        <div class="btn-filter-group">
+                            <button type="button" id="copyFirstCycleBtn" class="btn-filter-toggle primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                </svg>
+                                첫 주기 복사
+                            </button>
+                            <button type="button" id="filterToggleBtn" class="btn-filter-toggle">근무일만 표시</button>
                         </div>
+                    </div>
 
-                        <div class="detail-scroll-area">
-                            <table id="detailTable" class="detail-table">
-                                <thead>
-                                <tr>
-                                    <th style="width:70px;">일차</th>
-                                    <th style="width:70px;">요일</th>
-                                    <th>근태코드</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                <tr th:each="detail, stat : *{details}" class="day-row">
-                                    <td>
-                                        <span class="day-index" th:text="${detail.seq}"></span>
-                                        <input type="hidden" th:field="*{details[__${stat.index}__].seq}">
-                                    </td>
-                                    <td><span class="day-text">-</span></td>
-                                    <td>
-                                        <select th:field="*{details[__${stat.index}__].shiftCode}">
-                                            <option value="">-- 선택 --</option>
-                                            <option th:each="shift : ${shiftCodes}"
-                                                    th:value="${shift.shiftCode}"
-                                                    th:attr="data-wdt=${shift.workDayType}"
-                                                    th:text="${shift.shiftCode + ' - ' + shift.shiftName + (shift.workOnHhmm != null ? ' (' + shift.workOnHhmm + '~' + shift.workOffHhmm + ')' : '')}">
-                                            </option>
-                                        </select>
-                                    </td>
-                                </tr>
-                                </tbody>
-                            </table>
+                    <!-- 요약 바 -->
+                    <div class="summary-bar">
+                        <div class="summary-item">
+                            <span class="summary-label">표시 일수</span>
+                            <span id="summaryDays" class="summary-value">-</span>
                         </div>
-                    </section>
+                        <div class="summary-item">
+                            <span class="summary-label">반복 기준</span>
+                            <span id="summaryCycle" class="summary-value">-</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">시작 요일</span>
+                            <span id="summaryStartDay" class="summary-value">-</span>
+                        </div>
+                    </div>
 
-                </div>
+                    <!-- 스크롤 테이블 영역 -->
+                    <div class="detail-scroll-area">
+                        <table id="detailTable" class="detail-table">
+                            <thead>
+                            <tr>
+                                <th style="width:80px;">일차</th>
+                                <th style="width:90px;">요일</th>
+                                <th>근태코드</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="detail, stat : *{details}" class="day-row">
+                                <td>
+                                    <span class="day-index" th:text="${detail.seq}"></span>
+                                    <input type="hidden" th:field="*{details[__${stat.index}__].seq}">
+                                </td>
+                                <td><span class="day-text">-</span></td>
+                                <td>
+                                    <select th:field="*{details[__${stat.index}__].shiftCode}">
+                                        <option value="">-- 선택 --</option>
+                                        <option th:each="shift : ${shiftCodes}"
+                                                th:value="${shift.shiftCode}"
+                                                th:attr="data-wdt=${shift.workDayType}"
+                                                th:text="${shift.shiftCode + ' - ' + shift.shiftName + (shift.workOnHhmm != null ? ' (' + shift.workOnHhmm + '~' + shift.workOffHhmm + ')' : '')}">
+                                        </option>
+                                    </select>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
 
-                <div class="form-actions">
-                    <a th:href="@{/pattern/calendar}" class="btn-cancel">취소</a>
-                    <button type="submit" class="btn-submit" th:text="${isEdit} ? '수정 저장' : '등록'">등록</button>
-                </div>
-            </form>
-        </div>
-    </div>
+                    <!-- 하단 액션 -->
+                    <div class="pf-detail-footer">
+                        <a th:href="@{/pattern/calendar}" class="btn-pf-cancel">취소</a>
+                        <button type="submit" class="btn-pf-submit"
+                                th:text="${isEdit} ? '수정 저장' : '패턴 등록'">패턴 등록</button>
+                    </div>
 
-    <script th:src="@{/js/pattern-form.js}"></script>
-</div>
+                </div><!-- /pf-detail-card -->
+            </div><!-- /pf-right -->
+
+        </div><!-- /pf-body -->
+    </form>
+
+</div><!-- /pf-page -->
+
+<div id="toast"></div>
+
+<script>
+    const toastData = document.querySelector('.toast-data');
+    if (toastData) {
+        const msg  = toastData.getAttribute('data-message');
+        const type = toastData.getAttribute('data-type') || 'error';
+        if (msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = type;
+            t.style.display = 'block';
+            setTimeout(() => { t.style.display = 'none'; }, 4000);
+        }
+    }
+</script>
+<script th:src="@{/js/pattern-form.js}"></script>
+</div><!-- /layout:fragment="content" -->
 </body>
 </html>

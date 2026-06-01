@@ -1,6 +1,6 @@
-/* ===== 사원 등록 페이지 ===== */
-.uc-page {
-    max-width: 900px;
+/* ===== 부서 수정 페이지 ===== */
+.de-page {
+    max-width: 960px;
     padding: 0 4px 40px;
     margin: 0 auto;
     font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
@@ -10,7 +10,7 @@
 }
 
 /* ── 헤더 ── */
-.uc-top {
+.de-top {
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
@@ -18,86 +18,87 @@
     flex-wrap: wrap;
 }
 
-.uc-title {
-    font-size: 20px;
-    font-weight: 800;
-    color: #0f172a;
-    margin: 0;
-    letter-spacing: -0.4px;
+.de-top-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
-.uc-subtitle {
+.btn-de-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #2563eb;
+    text-decoration: none;
+    margin-bottom: 4px;
+    transition: opacity 0.15s;
+}
+.btn-de-back:hover { opacity: 0.7; text-decoration: none; }
+
+.de-title {
+    font-size: 22px;
+    font-weight: 900;
+    color: #0f172a;
+    margin: 0;
+    letter-spacing: -0.5px;
+}
+
+.de-subtitle {
     font-size: 13px;
     color: #94a3b8;
-    margin: 4px 0 0;
+    margin: 0;
     font-weight: 400;
 }
 
-.btn-uc-back {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 8px 16px;
-    background: #f1f5f9;
-    color: #475569;
-    border: 1px solid #e2e8f0;
-    border-radius: 9px;
-    font-size: 13px;
-    font-weight: 600;
-    text-decoration: none;
-    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
-    transition: all 0.15s;
-}
-.btn-uc-back:hover { background: #e2e8f0; color: #1e293b; text-decoration: none; }
-
-/* ── 폼 ── */
-.uc-form {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-}
-
-/* ── 카드 ── */
-.uc-card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 16px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-    overflow: hidden;
-    margin-bottom: 16px;
-}
-
-/* ── 섹션 ── */
-.uc-section {
-    padding: 28px 32px;
-}
-
-.uc-divider {
-    height: 1px;
-    background: #f1f5f9;
-    margin: 0 32px;
-}
-
-.uc-section-header {
+.de-top-actions {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 22px;
 }
 
-.uc-section-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
+/* ── 카드 ── */
+.de-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+}
+
+/* ── 섹션 ── */
+.de-section {
+    padding: 32px 36px;
+}
+
+.de-divider {
+    height: 1px;
+    background: #f1f5f9;
+    margin: 0 36px;
+}
+
+.de-section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+.de-section-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
 }
-.icon-blue  { background: #eff6ff; }
-.icon-slate { background: #f1f5f9; }
+.de-icon-blue    { background: #eff6ff; }
+.de-icon-indigo  { background: #eef2ff; }
+.de-icon-emerald { background: #ecfdf5; }
 
-.uc-section-title {
+.de-section-title {
     font-size: 15px;
     font-weight: 800;
     color: #1e293b;
@@ -105,122 +106,127 @@
 }
 
 /* ── 그리드 ── */
-.uc-grid {
+.de-grid-3 {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 18px 28px;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 18px 24px;
+}
+
+.de-grid-4 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 18px 24px;
 }
 
 /* ── 필드 ── */
-.uc-field {
+.de-field {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 7px;
 }
 
-.uc-label {
+.de-label {
     font-size: 12px;
     font-weight: 700;
     color: #475569;
     letter-spacing: 0.2px;
 }
 
-.uc-label.uc-required::after {
+.de-label.de-required::after {
     content: ' *';
     color: #e11d48;
 }
 
-.uc-auto {
-    font-size: 10.5px;
-    font-weight: 500;
-    color: #94a3b8;
-}
-
 /* ── 인풋 공통 ── */
-.uc-input,
-.uc-select {
+.de-input,
+.de-select {
     width: 100%;
     box-sizing: border-box;
     padding: 10px 14px;
     border: 1px solid #e2e8f0;
-    border-radius: 10px;
+    border-radius: 12px;
     font-size: 13px;
     font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
     color: #1e293b;
-    background: #f8fafc;
-    outline: none;
-    transition: border-color 0.15s, background 0.15s;
-}
-
-.uc-input:focus,
-.uc-select:focus {
-    border-color: #93c5fd;
+    font-weight: 500;
     background: #ffffff;
-    box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.2);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
 }
 
-.uc-input::placeholder { color: #cbd5e1; }
+.de-input:focus,
+.de-select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.08);
+}
+
+.de-input::placeholder { color: #cbd5e1; font-weight: 400; }
 
 /* 읽기 전용 */
-.uc-readonly {
-    background: #f1f5f9;
+.de-readonly {
+    background: #f8fafc;
     color: #94a3b8;
     cursor: not-allowed;
 }
-.uc-readonly:focus {
+.de-readonly:focus {
     border-color: #e2e8f0;
-    background: #f1f5f9;
+    background: #f8fafc;
     box-shadow: none;
 }
 
 /* ── 에러 ── */
-.uc-error {
+.de-error {
     font-size: 11.5px;
     color: #e11d48;
     font-weight: 500;
 }
-.uc-error:empty { display: none; }
+.de-error:empty { display: none; }
 
-/* ── 폼 액션 ── */
-.uc-actions {
+/* ── 카드 푸터 ── */
+.de-card-footer {
+    padding: 20px 36px;
+    background: #f8fafc;
+    border-top: 1px solid #f1f5f9;
     display: flex;
     align-items: center;
     justify-content: flex-end;
     gap: 10px;
 }
 
-.btn-uc-cancel {
+/* ── 버튼 ── */
+.btn-de-cancel {
     display: inline-flex;
     align-items: center;
     padding: 10px 22px;
     background: #ffffff;
     color: #475569;
     border: 1px solid #e2e8f0;
-    border-radius: 10px;
+    border-radius: 11px;
     font-size: 13px;
     font-weight: 600;
     font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
     text-decoration: none;
     transition: all 0.15s;
+    cursor: pointer;
 }
-.btn-uc-cancel:hover { background: #f1f5f9; color: #1e293b; text-decoration: none; }
+.btn-de-cancel:hover { background: #f1f5f9; color: #1e293b; text-decoration: none; }
 
-.btn-uc-submit {
+.btn-de-submit {
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    padding: 10px 24px;
+    padding: 10px 26px;
     background: #1e293b;
     color: #ffffff;
     border: none;
-    border-radius: 10px;
+    border-radius: 11px;
     font-size: 13px;
     font-weight: 700;
     font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
     cursor: pointer;
     transition: background 0.15s;
 }
-.btn-uc-submit:hover { background: #0f172a; }
+.btn-de-submit:hover { background: #0f172a; }
 
 /* ── 토스트 ── */
 #toast {
@@ -234,7 +240,7 @@
     font-weight: 600;
     display: none;
     z-index: 9999;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
     font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
 }
 #toast.success { background: #16a34a; }

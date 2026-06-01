@@ -11,43 +11,160 @@
 <div layout:fragment="content">
 <div class="dm-page">
 
-    <!-- 상단 컨트롤 -->
+    <!-- 페이지 헤더 -->
     <div class="dm-top">
-        <div class="dm-nav">
-            <a th:href="@{/attendance/department/month(ym=${prevYm}, deptCode=${selectedDept})}">&#9664;</a>
-            <span class="ym-label" th:text="${ymDisplay}"></span>
-            <a th:href="@{/attendance/department/month(ym=${nextYm}, deptCode=${selectedDept})}">&#9654;</a>
-        </div>
-        <div class="filter-group">
-            <label>부서</label>
-            <select onchange="onDeptChange(this.value)">
-                <option th:each="d : ${depts}"
-                        th:value="${d.deptCode}"
-                        th:text="${d.deptName}"
-                        th:selected="${d.deptCode == selectedDept}">
-                </option>
-            </select>
+        <div class="dm-top-left">
+            <h2 class="dm-title">부서별 월 근태조회</h2>
+            <p class="dm-subtitle">부서별 월간 근무 현황 및 근태 위반 사항을 한눈에 확인합니다.</p>
         </div>
     </div>
 
-    <!-- 테이블 -->
-    <div class="dm-table-wrap">
-        <table class="dm-table">
-            <thead>
-            <tr>
-                <th class="th-emp">사원</th>
-                <th class="th-work">월 근무</th>
-                <th th:each="label,i : ${dayLabels}"
-                    th:classappend="${#strings.contains(label,'(일)') ? 'th-sun' : (#strings.contains(label,'(토)') ? 'th-sat' : '')}"
-                    th:text="${label}">
-                </th>
-            </tr>
-            </thead>
-            <tbody id="monthBody"></tbody>
-        </table>
+    <!-- 필터 카드 -->
+    <div class="dm-filter-card">
+        <div class="filter-left">
+            <!-- 월 네비게이션 -->
+            <div class="dm-nav">
+                <a th:href="@{/attendance/department/month(ym=${prevYm}, deptCode=${selectedDept})}" class="nav-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                </a>
+                <div class="ym-display-box">
+                    <span class="ym-label" th:text="${ymDisplay}">2024년 5월</span>
+                </div>
+                <a th:href="@{/attendance/department/month(ym=${nextYm}, deptCode=${selectedDept})}" class="nav-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                </a>
+                <button class="today-btn" onclick="goThisMonth()">이번 달</button>
+            </div>
+
+            <!-- 범례 -->
+            <div class="status-legend">
+                <span class="legend-item"><span class="dot dot-normal"></span>정상</span>
+                <span class="legend-item"><span class="dot dot-late"></span>지각/결근</span>
+                <span class="legend-item"><span class="dot dot-leave"></span>휴가/외출</span>
+                <button class="refresh-btn" onclick="location.reload()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="23 4 23 10 17 10"/>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="filter-right">
+            <div class="filter-group">
+                <label class="filter-label">부서</label>
+                <select class="filter-select" onchange="onDeptChange(this.value)">
+                    <option th:each="d : ${depts}"
+                            th:value="${d.deptCode}"
+                            th:text="${d.deptName}"
+                            th:selected="${d.deptCode == selectedDept}">
+                    </option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">기간</label>
+                <div class="date-range-display">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                         fill="none" stroke="#94a3b8" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/>
+                        <line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                    <span th:text="${currentYmStart + ' ~ ' + currentYmEnd}">2024.05.01 ~ 2024.05.31</span>
+                </div>
+            </div>
+        </div>
     </div>
 
-</div><!-- /dm-page -->
+    <!-- 월간 테이블 카드 -->
+    <div class="dm-table-card">
+        <div class="dm-table-wrap">
+            <table class="dm-table">
+                <thead>
+                <tr>
+                    <th class="th-emp">사원 정보</th>
+                    <th class="th-work">월 근무 요약</th>
+                    <th th:each="label,i : ${dayLabels}"
+                        th:classappend="${#strings.contains(label,'(일)') ? ' th-sun' : (#strings.contains(label,'(토)') ? ' th-sat' : '')}">
+                        <div class="th-day-box">
+                            <span class="day-num" th:text="${#strings.substring(label, 0, 2)}">01</span>
+                            <span class="day-name" th:text="${#strings.substring(label, 3, 4)}">월</span>
+                        </div>
+                    </th>
+                </tr>
+                </thead>
+                <tbody id="monthBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 하단 통계 카드 -->
+    <div class="dm-summary-grid">
+        <div class="summary-card">
+            <div class="card-header">
+                <span class="card-title">전체 출근율</span>
+                <div class="card-icon-wrap icon-blue">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="#2563eb" stroke-width="2">
+                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                        <polyline points="17 6 23 6 23 12"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="card-value"><span id="dm-stat-attend-rate">-</span></div>
+            <p class="card-desc" id="dm-stat-attend-desc">조회 후 표시됩니다</p>
+        </div>
+        <div class="summary-card">
+            <div class="card-header">
+                <span class="card-title">총 지각 건수</span>
+                <div class="card-icon-wrap icon-red">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="#dc2626" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="card-value"><span id="dm-stat-late-count">-</span></div>
+            <p class="card-desc" id="dm-stat-late-desc">조회 후 표시됩니다</p>
+        </div>
+        <div class="summary-card">
+            <div class="card-header">
+                <span class="card-title">평균 근무 시간</span>
+                <div class="card-icon-wrap icon-slate">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="#475569" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="card-value"><span id="dm-stat-avg-work">-</span></div>
+            <p class="card-desc" id="dm-stat-avg-desc">조회 후 표시됩니다</p>
+        </div>
+        <div class="summary-card">
+            <div class="card-header">
+                <span class="card-title">근태 신청 대기</span>
+                <div class="card-icon-wrap icon-amber">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                         fill="none" stroke="#d97706" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="card-value"><span id="dm-stat-pending-count">-</span></div>
+            <p class="card-desc" id="dm-stat-pending-desc">조회 후 표시됩니다</p>
+        </div>
+    </div>
+
+</div>
 
 <script th:inline="javascript">
     const MONTH_DATA    = /*[[${monthData}]]*/ [];
@@ -56,6 +173,6 @@
     const CURRENT_YM    = /*[[${currentYm}]]*/ '';
 </script>
 <script th:src="@{/js/dept-month.js}"></script>
-</div>
+</div><!-- /layout:fragment="content" -->
 </body>
 </html>

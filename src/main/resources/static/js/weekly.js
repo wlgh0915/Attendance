@@ -223,4 +223,87 @@ function goThisWeek() {
     location.href = `/attendance/department/week?deptCode=${SELECTED_DEPT}`;
 }
 
+/* ── 하단 통계 카드 계산 ── */
+function renderSummaryCards(data) {
+    const rateEl    = document.getElementById('stat-attend-rate');
+    const rateDesc  = document.getElementById('stat-attend-desc');
+    const lateEl    = document.getElementById('stat-late-count');
+    const lateDesc  = document.getElementById('stat-late-desc');
+    const avgEl     = document.getElementById('stat-avg-work');
+    const avgDesc   = document.getElementById('stat-avg-desc');
+    const pendEl    = document.getElementById('stat-pending-count');
+    const pendDesc  = document.getElementById('stat-pending-desc');
+
+    if (!data || !data.length) {
+        [rateEl, lateEl, avgEl, pendEl].forEach(el => { if (el) el.textContent = '-'; });
+        if (rateDesc)  rateDesc.textContent  = '조회된 데이터 없음';
+        if (lateDesc)  lateDesc.textContent  = '조회된 데이터 없음';
+        if (avgDesc)   avgDesc.textContent   = '조회된 데이터 없음';
+        if (pendDesc)  pendDesc.textContent  = '조회된 데이터 없음';
+        return;
+    }
+
+    let totalWorkDays = 0, attendedDays = 0, lateCnt = 0, totalWorkMin = 0, pendingCnt = 0;
+
+    data.forEach(emp => {
+        (emp.days || []).forEach(day => {
+            // 근태 신청 대기 (SUBMITTED 상태)
+            (day.requests || []).forEach(r => {
+                if (r.status === 'SUBMITTED') pendingCnt++;
+            });
+
+            if (day.workDayType !== 'WORK') return;
+
+            const activeOtherReq = (day.requests || []).find(
+                r => r.requestCategory === 'OTHER' && ['DRAFT','SUBMITTED','APPROVED'].includes(r.status)
+            );
+            const isLeaveDay = activeOtherReq != null && !activeOtherReq.changeShiftOnHhmm;
+            const isBizTripDay = activeOtherReq != null &&
+                activeOtherReq.changeShiftName && activeOtherReq.changeShiftName.includes('출장');
+            const hasApprovedLeave = isLeaveDay || isBizTripDay ||
+                (day.requests || []).some(r => r.requestCategory === 'LEAVE' && r.status === 'APPROVED');
+
+            totalWorkDays++;
+
+            if (day.record && day.record.checkIn) {
+                attendedDays++;
+                if (day.record.lateYn === 'Y') lateCnt++;
+                if (day.record.workMin) totalWorkMin += day.record.workMin;
+            } else if (hasApprovedLeave) {
+                attendedDays++;
+            }
+        });
+    });
+
+    // 전체 출근율
+    if (totalWorkDays === 0) {
+        if (rateEl)   rateEl.textContent  = '없음';
+        if (rateDesc) rateDesc.textContent = '근무 예정일 없음';
+    } else {
+        const rate = Math.round((attendedDays / totalWorkDays) * 100);
+        if (rateEl)   rateEl.textContent  = rate + '%';
+        if (rateDesc) rateDesc.textContent = `${totalWorkDays}일 중 ${attendedDays}일 출근`;
+    }
+
+    // 주간 지각 건수
+    if (lateEl)   lateEl.textContent  = lateCnt + '건';
+    if (lateDesc) lateDesc.textContent = lateCnt === 0 ? '이번 주 지각 없음' : `${lateCnt}건 지각 발생`;
+
+    // 평균 근무 시간 (전 사원 합계 / 사원 수)
+    if (totalWorkMin === 0) {
+        if (avgEl)   avgEl.textContent  = '0시간';
+        if (avgDesc) avgDesc.textContent = '출근 실적 없음';
+    } else {
+        const avgMin = Math.round(totalWorkMin / data.length);
+        const h = Math.floor(avgMin / 60), m = avgMin % 60;
+        if (avgEl)   avgEl.textContent  = h + 'h' + (m > 0 ? ' ' + m + 'm' : '');
+        if (avgDesc) avgDesc.textContent = '1인 평균 주간 근무시간';
+    }
+
+    // 근태 신청 대기
+    if (pendEl)   pendEl.textContent  = pendingCnt + '건';
+    if (pendDesc) pendDesc.textContent = pendingCnt === 0 ? '대기 중인 신청 없음' : '승인 대기 중인 근태 신청';
+}
+
 renderWeekly();
+renderSummaryCards(WEEKLY_DATA);

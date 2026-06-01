@@ -9,66 +9,121 @@
 </head>
 <body>
 <div layout:fragment="content">
-    <div class="content-wrapper">
+<div class="ua-page">
 
-        <div th:if="${errorMessage}" class="toast-data" data-type="error"
-             th:data-message="${errorMessage}" style="display:none"></div>
+    <!-- 토스트 데이터 -->
+    <div th:if="${errorMessage}" class="toast-data" data-type="error"
+         th:data-message="${errorMessage}" style="display:none"></div>
 
-        <div class="page-header">
-            <h2>미배정 사원 목록</h2>
-            <a th:href="@{/departments/employees(company=${company}, deptCode=${deptCode})}" class="btn-back">← 부서 사원 목록으로</a>
-        </div>
+    <!-- 페이지 헤더 -->
+    <div class="ua-top">
+        <a th:href="@{/departments/employees(company=${company}, deptCode=${deptCode})}" class="ua-back">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="15 18 9 12 15 6"/>
+            </svg>
+            부서 사원 목록으로
+        </a>
+        <h2 class="ua-title">미배정 사원 목록</h2>
+        <p class="ua-subtitle">현재 어느 부서에도 소속되지 않은 사원을 조회하고 특정 부서로 일괄 배정할 수 있습니다.</p>
+    </div>
 
-        <form th:action="@{/departments/employees/add}" method="post">
-            <input type="hidden" name="company" th:value="${company}">
-            <input type="hidden" name="deptCode" th:value="${deptCode}">
+    <form th:action="@{/departments/employees/add}" method="post">
+        <input type="hidden" name="company" th:value="${company}">
+        <input type="hidden" name="deptCode" th:value="${deptCode}">
 
-            <div class="dept-toolbar-row">
-                <div class="dept-info-table">
-                    <div class="dept-info-row">
-                        <div class="dept-info-cell">
-                            <span class="dept-info-label">추가 대상 부서</span>
-                            <span class="dept-info-value" th:text="${deptName}"></span>
-                        </div>
-                        <div class="dept-info-cell">
-                            <span class="dept-info-label">부서코드</span>
-                            <span class="dept-info-value" th:text="${deptCode}"></span>
-                        </div>
+        <!-- 부서 배정 툴바 -->
+        <div class="ua-toolbar-card">
+            <div class="ua-dept-area">
+                <div class="ua-dept-item">
+                    <span class="ua-item-label">추가 대상 부서</span>
+                    <div class="ua-dept-chip">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                             fill="none" stroke="#2563eb" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                            <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                        </svg>
+                        <span class="ua-dept-chip-name" th:text="${deptName}"></span>
                     </div>
                 </div>
-
-                <div class="emp-toolbar">
-                    <button type="submit" class="btn-toolbar btn-change">선택 사원 추가</button>
+                <div class="ua-dept-item">
+                    <span class="ua-item-label">부서코드</span>
+                    <span class="ua-code-chip" th:text="${deptCode}"></span>
                 </div>
             </div>
+            <button type="submit" class="btn-ua-assign">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="8.5" cy="7" r="4"/>
+                    <line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>
+                </svg>
+                선택 사원 부서 배정
+            </button>
+        </div>
 
-            <table>
+        <!-- 테이블 카드 -->
+        <div class="ua-table-card">
+            <table class="ua-table">
                 <thead>
                 <tr>
-                    <th class="th-checkbox" title="전체 선택"><input type="checkbox" id="selectAll"></th>
-                    <th>회사명</th>
-                    <th>사번</th>
+                    <th class="ua-th-check" title="전체 선택">
+                        <input type="checkbox" id="selectAll" class="ua-checkbox">
+                    </th>
+                    <th>소속 회사</th>
+                    <th class="ua-th-code">사원 번호</th>
                     <th>사원명</th>
-                    <th>권한코드</th>
+                    <th class="ua-th-role">권한 등급</th>
                 </tr>
                 </thead>
                 <tbody>
                 <tr th:each="emp : ${employees}">
-                    <td><input type="checkbox" name="empCodes" th:value="${emp.empCode}"></td>
+                    <td class="ua-td-check">
+                        <input type="checkbox" name="empCodes" th:value="${emp.empCode}" class="ua-checkbox">
+                    </td>
                     <td th:text="${emp.companyName}"></td>
-                    <td th:text="${emp.empCode}"></td>
-                    <td th:text="${emp.empName}"></td>
-                    <td th:text="${emp.roleCode}"></td>
+                    <td class="ua-td-code" th:text="${emp.empCode}"></td>
+                    <td><span class="ua-emp-name" th:text="${emp.empName}"></span></td>
+                    <td class="ua-td-role">
+                        <span class="ua-role-badge"
+                              th:classappend="${emp.roleCode != null and emp.roleCode.contains('ADMIN')} ? ' ua-role-admin' : (${emp.roleCode != null and emp.roleCode.contains('USER')} ? ' ua-role-user' : ' ua-role-default')"
+                              th:text="${emp.roleCode}"></span>
+                    </td>
                 </tr>
-                <tr th:if="${#lists.isEmpty(employees)}">
+                <tr class="ua-empty-row" th:if="${#lists.isEmpty(employees)}">
                     <td colspan="5">부서가 지정되지 않은 사원이 없습니다.</td>
                 </tr>
                 </tbody>
             </table>
-        </form>
 
-    </div>
-    <script th:src="@{/js/department-employees.js}"></script>
-</div>
+            <div class="ua-table-footer">
+                <p class="ua-footer-count">
+                    총 <strong th:text="${#lists.size(employees)}">0</strong>명의 미배정 사원이 조회되었습니다.
+                </p>
+            </div>
+        </div>
+
+    </form>
+
+</div><!-- /ua-page -->
+
+<div id="toast"></div>
+
+<script>
+    const toastData = document.querySelector('.toast-data');
+    if (toastData) {
+        const msg  = toastData.getAttribute('data-message');
+        const type = toastData.getAttribute('data-type') || 'error';
+        if (msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = type;
+            t.style.display = 'block';
+            setTimeout(() => { t.style.display = 'none'; }, 3000);
+        }
+    }
+</script>
+<script th:src="@{/js/department-employees.js}"></script>
+</div><!-- /layout:fragment="content" -->
 </body>
 </html>

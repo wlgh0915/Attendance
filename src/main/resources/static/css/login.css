@@ -1,98 +1,300 @@
-/* 전체 배경 설정 */
-body {
+/* ===== 로그인 페이지 ===== */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
     margin: 0;
     padding: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    height: 100%;
+    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    overflow: hidden;
+}
+
+/* ── 배경 ── */
+.login-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+
+    /* ▼ 이미지 파일을 static/images/login-bg.jpg 로 넣으면 자동 적용 */
+    background-image: url('/images/login-bg.png');
+    background-size: cover;
+    background-position: center;
+    filter: brightness(0.65);
+}
+
+/* ── 전체 레이아웃 ── */
+.login-wrap {
+    position: relative;
+    z-index: 1;
     min-height: 100vh;
-    background-color: #2c3e50; /* 사이드바와 동일한 색상 */
-    font-family: 'Malgun Gothic', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
 }
 
-/* 로그인 카드 박스 */
-.login-container {
-    background-color: #ffffff;
-    padding: 40px;
-    border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+/* ── 유리 카드 ── */
+.login-card {
     width: 100%;
-    max-width: 400px;
+    max-width: 460px;
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 2.8rem;
+    padding: 52px 48px 44px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
-.login-header {
+/* ── 로고 블록 ── */
+.login-logo {
+    width: 64px;
+    height: 64px;
+    background: #1e293b;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.35);
+    margin-bottom: 28px;
+    flex-shrink: 0;
+}
+
+/* ── 타이틀 ── */
+.login-title-area {
     text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 36px;
 }
 
-.login-header h2 {
+.login-title {
+    font-size: 32px;
+    font-weight: 900;
+    color: #0f172a;
+    letter-spacing: -1px;
+    margin: 0 0 8px;
+    line-height: 1;
+}
+
+.login-sub {
+    font-size: 10px;
+    font-weight: 700;
+    color: #64748b;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
     margin: 0;
-    color: #2c3e50;
-    font-size: 24px;
 }
 
-/* 입력 폼 스타일 */
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    color: #34495e;
-    font-weight: bold;
-    font-size: 14px;
-}
-
-.form-group input,
-.form-group select {
+/* ── 폼 ── */
+.login-form {
     width: 100%;
-    padding: 12px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    box-sizing: border-box; /* 패딩 포함 너비 계산 */
-    transition: border-color 0.3s;
-    background-color: #fff;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
 }
 
-.form-group input:focus,
-.form-group select:focus {
-    outline: none;
-    border-color: #3498db;
-    box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
-}
-
-/* 에러 메시지 스타일 */
-.error-msg {
-    color: #e74c3c;
-    font-size: 12px;
-    margin-top: 5px;
-}
-
+/* ── 전역 에러 ── */
 .global-error {
-    background-color: #fdeaea;
-    color: #e74c3c;
-    padding: 10px;
-    border-radius: 4px;
-    margin-bottom: 20px;
-    font-size: 13px;
+    background: rgba(225, 29, 72, 0.08);
+    border: 1px solid rgba(225, 29, 72, 0.2);
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: #e11d48;
+    font-size: 12.5px;
+    font-weight: 600;
     text-align: center;
+    line-height: 1.5;
 }
 
-/* 로그인 버튼 */
+.global-error p { margin: 0; }
+
+/* ── 필드 그룹 ── */
+.lf-group {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.lf-label {
+    font-size: 10.5px;
+    font-weight: 800;
+    color: #64748b;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+}
+
+/* ── 인풋 래퍼 (아이콘 + 인풋) ── */
+.lf-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.6);
+    border: 1.5px solid rgba(203, 213, 225, 0.8);
+    border-radius: 16px;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.lf-input-wrap:focus-within {
+    border-color: #1e293b;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 0 0 4px rgba(30, 41, 59, 0.08);
+}
+
+.lf-icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+
+.lf-input,
+.lf-select {
+    width: 100%;
+    padding: 14px 16px 14px 46px;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 13.5px;
+    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.lf-select {
+    appearance: none;
+    cursor: pointer;
+    padding-right: 40px;
+}
+
+.lf-select-arrow {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+}
+
+.lf-input::placeholder { color: #cbd5e1; font-weight: 400; }
+
+/* ── 에러 ── */
+.lf-error {
+    font-size: 11.5px;
+    color: #e11d48;
+    font-weight: 600;
+    padding-left: 4px;
+}
+.lf-error:empty { display: none; }
+
+/* ── ID 저장 체크박스 ── */
+.lf-remember {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-left: 2px;
+}
+
+.lf-remember input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    border-radius: 5px;
+    border: 1.5px solid #cbd5e1;
+    cursor: pointer;
+    accent-color: #1e293b;
+}
+
+.lf-remember label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+    cursor: pointer;
+    user-select: none;
+}
+
+/* ── 로그인 버튼 ── */
 .btn-login {
     width: 100%;
-    padding: 14px;
-    background-color: #2c3e50;
-    color: white;
+    padding: 16px;
+    background: #1e293b;
+    color: #ffffff;
     border: none;
-    border-radius: 6px;
-    font-size: 16px;
-    font-weight: bold;
+    border-radius: 16px;
+    font-size: 14px;
+    font-weight: 800;
+    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
     cursor: pointer;
-    transition: background 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.3);
+    transition: background 0.15s, transform 0.1s;
+    margin-top: 4px;
+}
+.btn-login:hover { background: #0f172a; }
+.btn-login:active { transform: scale(0.99); }
+
+/* ── 보안 배지 ── */
+.login-badge {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 28px;
+    padding: 8px 18px;
+    background: rgba(255, 255, 255, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 99px;
 }
 
-.btn-login:hover {
-    background-color: #34495e;
+.login-badge span {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: #475569;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
 }
+
+/* ── 하단 푸터 ── */
+.login-footer {
+    position: fixed;
+    bottom: 28px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    z-index: 1;
+}
+
+.login-footer p {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.5);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin: 0 0 10px;
+}
+
+.login-footer-links {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+}
+
+.login-footer-links a {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.35);
+    text-decoration: none;
+    letter-spacing: 0.05em;
+    transition: color 0.15s;
+}
+.login-footer-links a:hover { color: rgba(255, 255, 255, 0.7); }

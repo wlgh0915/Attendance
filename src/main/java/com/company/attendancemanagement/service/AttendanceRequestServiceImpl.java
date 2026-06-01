@@ -43,9 +43,14 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         boolean isAdmin      = "ADMIN".equals(loginUser.getRoleCode());
         boolean canViewAll   = isAdmin || isDeptLeader;
 
-        List<DepartmentDto> depts = canViewAll
-                ? requestMapper.findAccessibleDepts(loginUser.getCompany(), loginUser.getDeptCode())
-                : requestMapper.findDeptListForDropdown(loginUser.getCompany());
+        List<DepartmentDto> depts;
+        if (isAdmin) {
+            depts = requestMapper.findDeptListForDropdown(loginUser.getCompany());
+        } else if (isDeptLeader) {
+            depts = requestMapper.findAccessibleDepts(loginUser.getCompany(), loginUser.getDeptCode());
+        } else {
+            depts = requestMapper.findDeptListForDropdown(loginUser.getCompany());
+        }
         List<ShiftCodeDto> shiftCodes = requestMapper.findShiftCodes(loginUser.getCompany());
 
         data.put("depts", depts);
@@ -118,23 +123,30 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         search.setCanViewAll(canViewAll);
         search.setLoginEmpCode(loginUser.getEmpCode());
 
-        if (canViewAll) {
-            List<DepartmentDto> accessible = requestMapper.findAccessibleDepts(
-                    loginUser.getCompany(), loginUser.getDeptCode());
-            List<String> accessibleDeptCodes = accessible.stream()
+        if (isAdmin) {
+            if (search.getDeptCode() != null && !search.getDeptCode().isBlank()) {
+                List<String> targetCodes = requestMapper.findAccessibleDepts(
+                        loginUser.getCompany(), search.getDeptCode()).stream()
+                        .map(DepartmentDto::getDeptCode)
+                        .toList();
+                search.setAccessibleDeptCodes(targetCodes);
+            }
+            // 전체 부서 선택 시 accessibleDeptCodes = null → SQL IN 조건 미적용 = 전체 조회
+        } else if (isDeptLeader) {
+            List<String> allAccessibleCodes = requestMapper.findAccessibleDepts(
+                    loginUser.getCompany(), loginUser.getDeptCode()).stream()
                     .map(DepartmentDto::getDeptCode)
                     .toList();
             if (search.getDeptCode() == null || search.getDeptCode().isBlank()) {
-                search.setDeptCode(loginUser.getDeptCode());
+                search.setAccessibleDeptCodes(allAccessibleCodes);
             } else {
-                boolean ok = accessibleDeptCodes.stream()
-                        .anyMatch(code -> code.equals(search.getDeptCode()));
-                if (!ok) search.setDeptCode(loginUser.getDeptCode());
+                boolean ok = allAccessibleCodes.contains(search.getDeptCode());
+                List<String> targetCodes = ok
+                        ? requestMapper.findAccessibleDepts(loginUser.getCompany(), search.getDeptCode())
+                                .stream().map(DepartmentDto::getDeptCode).toList()
+                        : allAccessibleCodes;
+                search.setAccessibleDeptCodes(targetCodes);
             }
-            search.setAccessibleDeptCodes(requestMapper.findAccessibleDepts(
-                            loginUser.getCompany(), search.getDeptCode()).stream()
-                    .map(DepartmentDto::getDeptCode)
-                    .toList());
         }
 
         if (!canViewAll) {

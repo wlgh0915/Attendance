@@ -867,7 +867,7 @@
               </foreach>
           </if>
           <if test="canViewAll and empCode != null and empCode != ''">
-              AND r.TARGET_EMP_CODE = #{empCode}
+              AND (r.TARGET_EMP_CODE = #{empCode} OR te.EMP_NAME LIKE '%' + #{empCode} + '%')
           </if>
           <if test="status != null and status != '' and !'ALL'.equals(status)">
               AND r.STATUS = #{status}
@@ -2092,6 +2092,15 @@
         FROM SubDepts
         ORDER BY DEPT_CODE
         OPTION (MAXRECURSION 20)
+    </select>
+
+    <!-- 대기 중인 신청 건수 (SUBMITTED 상태) -->
+    <select id="countSubmittedRequests" resultType="int">
+        SELECT COUNT(*)
+        FROM HRTATTENDANCEREQUEST01
+        WHERE COMPANY = #{company}
+          AND STATUS  = 'SUBMITTED'
+          AND (REQUESTER_EMP_CODE = #{empCode} OR TARGET_EMP_CODE = #{empCode})
     </select>
 
 </mapper>

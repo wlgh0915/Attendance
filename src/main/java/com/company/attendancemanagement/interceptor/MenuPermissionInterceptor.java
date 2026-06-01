@@ -60,6 +60,9 @@ public class MenuPermissionInterceptor implements HandlerInterceptor {
         if ("/".equals(uri)) {
             return true;
         }
+        if ("ADMIN".equals(loginUser.getRoleCode())) {
+            return true;
+        }
         if (isPermitted(uri, permittedUrls)) {
             return true;
         }
