@@ -28,6 +28,7 @@
             a.STEP_TYPE        AS stepType,
             a.APPROVER_EMP_CODE AS approverEmpCode,
             h.EMP_NAME         AS approverName,
+            d.DEPT_NAME        AS approverDeptName,
             a.IS_FINAL         AS isFinal,
             a.STATUS           AS status,
             CONVERT(VARCHAR(19), a.DECISION_AT, 120) AS decisionAt,
@@ -35,6 +36,8 @@
         FROM HRTATTENDANCE_APPROVAL01 a
         LEFT JOIN HRIMASTER01 h
                ON a.COMPANY = h.COMPANY AND a.APPROVER_EMP_CODE = h.EMP_CODE
+        LEFT JOIN ORGDEPTMASTER01 d
+               ON h.COMPANY = d.COMPANY AND h.DEPT_CODE = d.DEPT_CODE
         WHERE a.REQ_ID = #{requestId}
         ORDER BY a.STEP_NO
     </select>

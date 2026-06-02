@@ -10,92 +10,133 @@
 <body>
 <div layout:fragment="content">
 
-    <!-- 플래시 메시지 (저장/삭제 후 리다이렉트 시) -->
+    <!-- 플래시 메시지 -->
     <div th:if="${successMessage}" class="toast-data" data-type="success"
          th:data-message="${successMessage}" style="display:none"></div>
     <div th:if="${errorMessage}" class="toast-data" data-type="error"
          th:data-message="${errorMessage}" style="display:none"></div>
 
-<div class="cal-page">
+<div class="pc-page">
 
-    <!-- 제목 -->
-    <div class="cal-header">
-        <h2 class="cal-title">근태 패턴 달력</h2>
+    <!-- 페이지 헤더 -->
+    <div class="pc-top">
+        <div>
+            <h2 class="pc-title">근태 패턴 달력</h2>
+            <p class="pc-subtitle">부서별 및 직무별 근태 운영 패턴을 시각적으로 관리합니다.</p>
+        </div>
+        <div class="pc-top-actions">
+            <button id="btnAdd" class="btn-action-sel btn-add-sel">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                추가
+            </button>
+            <button id="btnEdit" class="btn-action-sel btn-edit-sel" disabled>
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                수정
+            </button>
+            <button id="btnDelete" class="btn-action-sel btn-delete-sel" disabled>
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                    <path d="M10 11v6"/><path d="M14 11v6"/>
+                </svg>
+                삭제
+            </button>
+            <span id="selCount" class="selected-count"></span>
+        </div>
     </div>
 
-    <!-- 네비게이션 + 액션 -->
-    <div class="cal-nav">
-        <a th:href="@{/pattern/calendar(year=${prevYear},month=${prevMonth})}" class="btn-nav">&#8249; 이전</a>
-        <span class="month-label" th:text="${calendar.year + '년 ' + calendar.month + '월'}"></span>
-        <a th:href="@{/pattern/calendar(year=${nextYear},month=${nextMonth})}" class="btn-nav">다음 &#8250;</a>
-
-        <input type="month" id="monthPicker" class="month-picker"
-               th:value="${yearMonthStr}" aria-label="월 선택">
-
-        <div class="cal-actions">
-            <button id="btnEdit"   class="btn-action-sel btn-edit-sel"   disabled>수정</button>
-            <button id="btnAdd"    class="btn-action-sel btn-add-sel">추가</button>
-            <span class="cal-divider"></span>
-            <button id="btnDelete" class="btn-action-sel btn-delete-sel" disabled>삭제</button>
-            <span   id="selCount"  class="selected-count"></span>
+    <!-- 컨트롤러 바 -->
+    <div class="pc-ctrl-bar">
+        <div class="pc-nav-group">
+            <div class="pc-nav-wrap">
+                <a th:href="@{/pattern/calendar(year=${prevYear},month=${prevMonth})}" class="btn-nav">&#8249;</a>
+                <span class="month-label" th:text="${calendar.year + '년 ' + calendar.month + '월'}"></span>
+                <a th:href="@{/pattern/calendar(year=${nextYear},month=${nextMonth})}" class="btn-nav">&#8250;</a>
+            </div>
+            <input type="month" id="monthPicker" class="month-picker"
+                   th:value="${yearMonthStr}" aria-label="월 선택">
         </div>
     </div>
 
     <!-- 본문 -->
-    <div class="cal-body">
+    <div class="pc-body">
 
-        <!-- 달력 테이블 -->
-        <div class="cal-table-wrap">
-            <table class="cal-table">
-                <thead>
-                <tr>
-                    <th class="col-check">
-                        <input type="checkbox" id="checkAll" aria-label="전체 선택">
-                    </th>
-                    <th class="col-code">패턴코드</th>
-                    <th class="col-name">패턴명</th>
-                    <th th:each="hdr, hdrStat : ${calendar.dayHeaders}"
-                        th:class="${calendar.dayCssClasses[hdrStat.index]}"
-                        th:text="${hdr}">
-                    </th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr th:if="${#lists.isEmpty(calendar.rows)}">
-                    <td th:colspan="${calendar.dates.size() + 3}" class="no-data">
-                        등록된 패턴이 없습니다.
-                    </td>
-                </tr>
-                <tr th:each="row : ${calendar.rows}"
-                    th:data-pattern-code="${row.workPatternCode}">
-                    <td class="col-check">
-                        <input type="checkbox" class="row-check" aria-label="행 선택">
-                    </td>
-                    <td class="col-code" th:text="${row.workPatternCode}"></td>
-                    <td class="col-name" th:text="${row.workPatternName}"></td>
-                    <td th:each="date, dateStat : ${calendar.dates}">
-                        <th:block th:with="sc=${row.shiftCodes[dateStat.index]}">
-                            <span th:if="${sc != null}"
-                                  class="shift-cell"
-                                  th:data-shift="${sc}"
-                                  th:text="${sc}"></span>
-                            <span th:if="${sc == null}"
-                                  class="shift-cell empty">-</span>
-                        </th:block>
-                    </td>
-                </tr>
-                </tbody>
-            </table>
+        <!-- 테이블 카드 -->
+        <div class="pc-table-card">
+            <div class="cal-table-wrap">
+                <table class="cal-table">
+                    <thead>
+                    <tr>
+                        <th class="col-check">
+                            <input type="checkbox" id="checkAll" aria-label="전체 선택">
+                        </th>
+                        <th class="col-code">패턴코드</th>
+                        <th class="col-name">패턴명</th>
+                        <th th:each="hdr, hdrStat : ${calendar.dayHeaders}"
+                            th:class="${calendar.dayCssClasses[hdrStat.index]}"
+                            th:text="${hdr}">
+                        </th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:if="${#lists.isEmpty(calendar.rows)}">
+                        <td th:colspan="${calendar.dates.size() + 3}" class="no-data">
+                            등록된 패턴이 없습니다.
+                        </td>
+                    </tr>
+                    <tr th:each="row : ${calendar.rows}"
+                        th:data-pattern-code="${row.workPatternCode}">
+                        <td class="col-check">
+                            <input type="checkbox" class="row-check" aria-label="행 선택">
+                        </td>
+                        <td class="col-code" th:text="${row.workPatternCode}"></td>
+                        <td class="col-name" th:text="${row.workPatternName}"></td>
+                        <td th:each="date, dateStat : ${calendar.dates}">
+                            <th:block th:with="sc=${row.shiftCodes[dateStat.index]}">
+                                <span th:if="${sc != null}"
+                                      class="shift-cell"
+                                      th:data-shift="${sc}"
+                                      th:text="${sc}"></span>
+                                <span th:if="${sc == null}"
+                                      class="shift-cell empty">-</span>
+                            </th:block>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pc-table-footer">
+                <span style="font-size:12px;color:#94a3b8;font-weight:500;">패턴코드를 선택하면 수정/삭제가 활성화됩니다.</span>
+            </div>
         </div>
 
-        <!-- 범례 -->
-        <div class="legend-panel">
-            <h4>근태코드 범례</h4>
+        <!-- 범례 카드 -->
+        <div class="pc-legend-card">
+            <div class="pc-legend-header">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                     fill="none" stroke="#2563eb" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <h4 class="pc-legend-title">근태코드 범례</h4>
+            </div>
             <div id="legendBody"></div>
         </div>
 
     </div>
-</div>
+</div><!-- /pc-page -->
+
+<div id="toast"></div>
 
 <script th:inline="javascript">
 /*<![CDATA[*/
@@ -107,9 +148,28 @@ const PALETTE = [
     '#82E0AA', '#FAD7A0', '#BB8FCE', '#5DADE2',
     '#F8C471', '#90EE90', '#FFB6D9', '#B0E0E6'
 ];
+
+/* flash 토스트 */
+function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    if (!t) return;
+    t.textContent = msg;
+    t.className = type || 'success';
+    t.style.display = 'block';
+    setTimeout(function() { t.style.display = 'none'; }, 3500);
+}
+
+(function() {
+    const toastData = document.querySelector('.toast-data');
+    if (toastData) {
+        const msg = toastData.getAttribute('data-message');
+        const type = toastData.getAttribute('data-type') || 'success';
+        if (msg) showToast(msg, type);
+    }
+})();
 /*]]>*/
 </script>
 <script th:src="@{/js/pattern-calendar.js}"></script>
-</div>
+</div><!-- /layout:fragment="content" -->
 </body>
 </html>

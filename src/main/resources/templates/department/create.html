@@ -5,113 +5,215 @@
 <head>
     <meta charset="UTF-8">
     <title>부서 등록 - 근태 관리 시스템</title>
-    <link rel="stylesheet" th:href="@{/css/form-common.css}">
+    <link rel="stylesheet" th:href="@{/css/dept-create.css}">
 </head>
 <body>
 <div layout:fragment="content">
-    <div class="content-wrapper">
-        <a th:href="@{/departments}" class="btn-back">← 부서 목록으로</a>
-        <div class="form-container">
+<div class="dc-page">
 
-            <div class="form-header">
-                <h2>부서 등록</h2>
-            </div>
-
-            <form th:action="@{/departments/new}" th:object="${departmentCreateDto}" method="post" class="dept-form">
-                <div th:if="${#fields.hasGlobalErrors()}" class="toast-data" data-type="error"
-                     th:data-message="${#strings.listJoin(#fields.globalErrors(), ' | ')}" style="display:none"></div>
-
-                <div class="form-group">
-                    <label class="required">회사코드</label>
-                    <input type="text" th:field="*{company}" readonly>
-                    <div class="error-text" th:errors="*{company}"></div>
-                </div>
-
-                <div class="form-group">
-                    <label class="required">부서코드</label>
-                    <input type="text" th:field="*{deptCode}" placeholder="부서 코드를 입력하세요">
-                    <div class="error-text" th:errors="*{deptCode}"></div>
-                </div>
-
-                <div class="form-group">
-                    <label class="required">부서명</label>
-                    <input type="text" th:field="*{deptName}" placeholder="부서명을 입력하세요">
-                    <div class="error-text" th:errors="*{deptName}"></div>
-                </div>
-
-                <div class="form-group">
-                    <label>상위부서</label>
-                    <select th:field="*{parentDept}">
-                        <option value="">선택하세요</option>
-                        <option th:each="dept : ${deptOptions}"
-                                th:value="${dept.deptCode}"
-                                th:text="${dept.deptCode} + ' - ' + ${dept.deptName}">
-                        </option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>부서장</label>
-                    <select th:field="*{deptLeader}">
-                        <option value="">선택하세요</option>
-                        <option th:each="emp : ${employeeOptions}"
-                                th:value="${emp.empCode}"
-                                th:text="${emp.empCode} + ' - ' + ${emp.empName}">
-                        </option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>부서분류</label>
-                    <select th:field="*{deptCategory}">
-                        <option value="">선택하세요</option>
-                        <option value="10">10 - CEO</option>
-                        <option value="20">20 - COO</option>
-                        <option value="21">21 - 위원회</option>
-                        <option value="30">30 - 본부</option>
-                        <option value="40">40 - 팀</option>
-                        <option value="41">41 - 부</option>
-                        <option value="50">50 - 과</option>
-                        <option value="60">60 - 그룹</option>
-                        <option value="70">70 - 파트</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>근태패턴</label>
-                    <select th:field="*{workPatternCode}">
-                        <option value="">선택하세요</option>
-                        <option th:each="wp : ${workPatternOptions}"
-                                th:value="${wp.workPatternCode}"
-                                th:text="${wp.workPatternCode} + ' - ' + ${wp.workPatternName}">
-                        </option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>시작 일자</label>
-                    <input type="date" th:field="*{startDate}" min="1000-01-01" max="9999-12-31">
-                </div>
-
-                <div class="form-group">
-                    <label>종료 일자</label>
-                    <input type="date" th:field="*{endDate}" min="1000-01-01" max="9999-12-31">
-                </div>
-
-                <div class="form-group">
-                    <label class="required">사용여부</label>
-                    <select th:field="*{useYn}">
-                        <option value="">선택하세요</option>
-                        <option value="Y">Y - 사용</option>
-                        <option value="N">N - 미사용</option>
-                    </select>
-                </div>
-
-                <button type="submit" class="btn-submit">등록하기</button>
-
-            </form>
-        </div>
+    <!-- 페이지 헤더 -->
+    <div class="dc-top">
+        <a th:href="@{/departments}" class="dc-back">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="15 18 9 12 15 6"/>
+            </svg>
+            부서 목록으로
+        </a>
+        <h2 class="dc-title">부서 등록</h2>
+        <p class="dc-subtitle">새 부서의 기본정보, 조직구조, 운영설정을 입력하세요.</p>
     </div>
-</div>
+
+    <!-- 폼 -->
+    <form th:action="@{/departments/new}" th:object="${departmentCreateDto}" method="post">
+        <div th:if="${#fields.hasGlobalErrors()}" class="toast-data" data-type="error"
+             th:data-message="${#strings.listJoin(#fields.globalErrors(), ' | ')}" style="display:none"></div>
+
+        <div class="dc-body">
+
+            <!-- ── 좌측: 섹션 카드들 ── -->
+            <div class="dc-left">
+
+                <!-- 기본정보 카드 -->
+                <div class="dc-card">
+                    <div class="dc-card-header">
+                        <div class="dc-section-icon dc-icon-blue">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                 fill="none" stroke="#2563eb" stroke-width="2">
+                                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                            </svg>
+                        </div>
+                        <h3 class="dc-section-title">기본정보</h3>
+                    </div>
+
+                    <div class="dc-grid-2">
+                        <div class="dc-field">
+                            <label class="dc-label dc-required">사용여부</label>
+                            <select th:field="*{useYn}" class="dc-select">
+                                <option value="">선택하세요</option>
+                                <option value="Y">사용</option>
+                                <option value="N">미사용</option>
+                            </select>
+                            <span class="dc-error" th:errors="*{useYn}"></span>
+                        </div>
+                        <div class="dc-field">
+                            <label class="dc-label dc-required">부서코드</label>
+                            <input type="text" th:field="*{deptCode}" class="dc-input" placeholder="예: D0001">
+                            <span class="dc-error" th:errors="*{deptCode}"></span>
+                        </div>
+                        <div class="dc-field">
+                            <label class="dc-label dc-required">부서명</label>
+                            <input type="text" th:field="*{deptName}" class="dc-input" placeholder="예: 개발팀">
+                            <span class="dc-error" th:errors="*{deptName}"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 조직구조 카드 -->
+                <div class="dc-card">
+                    <div class="dc-card-header">
+                        <div class="dc-section-icon dc-icon-indigo">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                 fill="none" stroke="#6366f1" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                        </div>
+                        <h3 class="dc-section-title">조직구조</h3>
+                    </div>
+
+                    <div class="dc-grid-2">
+                        <div class="dc-field">
+                            <label class="dc-label">상위부서</label>
+                            <select th:field="*{parentDept}" class="dc-select">
+                                <option value="">선택하세요</option>
+                                <option th:each="dept : ${deptOptions}"
+                                        th:value="${dept.deptCode}"
+                                        th:text="${dept.deptCode} + ' - ' + ${dept.deptName}">
+                                </option>
+                            </select>
+                        </div>
+                        <div class="dc-field">
+                            <label class="dc-label">부서장</label>
+                            <select th:field="*{deptLeader}" class="dc-select">
+                                <option value="">선택하세요</option>
+                                <option th:each="emp : ${employeeOptions}"
+                                        th:value="${emp.empCode}"
+                                        th:text="${emp.empCode} + ' - ' + ${emp.empName}">
+                                </option>
+                            </select>
+                        </div>
+                        <div class="dc-field dc-full">
+                            <label class="dc-label">부서분류</label>
+                            <select th:field="*{deptCategory}" class="dc-select">
+                                <option value="">선택하세요</option>
+                                <option value="10">10 - CEO</option>
+                                <option value="20">20 - COO</option>
+                                <option value="21">21 - 위원회</option>
+                                <option value="30">30 - 본부</option>
+                                <option value="40">40 - 팀</option>
+                                <option value="41">41 - 부</option>
+                                <option value="50">50 - 과</option>
+                                <option value="60">60 - 그룹</option>
+                                <option value="70">70 - 파트</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 운영설정 카드 -->
+                <div class="dc-card">
+                    <div class="dc-card-header">
+                        <div class="dc-section-icon dc-icon-amber">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                 fill="none" stroke="#d97706" stroke-width="2">
+                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                            </svg>
+                        </div>
+                        <h3 class="dc-section-title">운영설정</h3>
+                    </div>
+
+                    <div class="dc-grid-2">
+                        <div class="dc-field dc-full">
+                            <label class="dc-label">근태패턴</label>
+                            <select th:field="*{workPatternCode}" class="dc-select">
+                                <option value="">선택하세요</option>
+                                <option th:each="wp : ${workPatternOptions}"
+                                        th:value="${wp.workPatternCode}"
+                                        th:text="${wp.workPatternCode} + ' - ' + ${wp.workPatternName}">
+                                </option>
+                            </select>
+                        </div>
+                        <div class="dc-field">
+                            <label class="dc-label">시작 일자</label>
+                            <input type="date" th:field="*{startDate}" class="dc-input" min="1000-01-01" max="9999-12-31">
+                        </div>
+                        <div class="dc-field">
+                            <label class="dc-label">종료 일자</label>
+                            <input type="date" th:field="*{endDate}" class="dc-input" min="1000-01-01" max="9999-12-31">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 액션 버튼 -->
+                <div class="dc-actions">
+                    <a th:href="@{/departments}" class="btn-dc-cancel">취소</a>
+                    <button type="submit" class="btn-dc-submit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        부서 등록
+                    </button>
+                </div>
+
+            </div><!-- /dc-left -->
+
+            <!-- ── 우측: 도움말 사이드바 ── -->
+            <div class="dc-right">
+                <div class="dc-help-card">
+                    <div class="dc-help-header">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                             fill="none" stroke="#2563eb" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="12"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                        <span>도움말</span>
+                    </div>
+                    <p class="dc-help-text">
+                        <strong>부서코드</strong>는 영문+숫자 조합으로 고유하게 입력하세요.<br><br>
+                        <strong>상위부서</strong>를 지정하면 조직도에서 계층 구조로 표시됩니다.<br><br>
+                        <strong>근태패턴</strong>은 이 부서의 기본 출퇴근 패턴을 결정합니다.
+                    </p>
+                </div>
+            </div><!-- /dc-right -->
+
+        </div><!-- /dc-body -->
+    </form>
+
+</div><!-- /dc-page -->
+
+<div id="toast"></div>
+
+<script>
+    const toastData = document.querySelector('.toast-data');
+    if (toastData) {
+        const msg  = toastData.getAttribute('data-message');
+        const type = toastData.getAttribute('data-type') || 'error';
+        if (msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = type;
+            t.style.display = 'block';
+            setTimeout(() => { t.style.display = 'none'; }, 4000);
+        }
+    }
+</script>
+</div><!-- /layout:fragment="content" -->
 </body>
 </html>

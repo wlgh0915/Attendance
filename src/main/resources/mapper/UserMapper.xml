@@ -28,7 +28,9 @@
         PASSWORD_HASH,
         DEPT_CODE,
         POSITION_CODE,
+        POSITION_DATE,
         DUTY_CODE,
+        DUTY_DATE,
         ROLE_CODE,
         CREATED_AT,
         UPDATED_AT
@@ -40,7 +42,9 @@
         #{password},
         NULLIF(#{deptCode}, ''),
         NULLIF(#{positionCode}, ''),
+        NULLIF(#{positionDate}, ''),
         NULLIF(#{dutyCode}, ''),
+        NULLIF(#{dutyDate}, ''),
         #{roleCode},
         COALESCE(NULLIF(#{hireDate}, ''), GETDATE()),
         GETDATE()
@@ -81,6 +85,40 @@
         WHERE COMPANY = #{company}
           AND EMP_CODE = #{empCode}
     </update>
+
+    <select id="findRoleCode" resultType="String">
+        SELECT ROLE_CODE
+        FROM HRIMASTER01
+        WHERE COMPANY = #{company}
+          AND EMP_CODE = #{empCode}
+    </select>
+
+    <update id="updateRoleCode">
+        UPDATE HRIMASTER01
+        SET ROLE_CODE = #{roleCode},
+            UPDATED_AT = GETDATE()
+        WHERE COMPANY = #{company}
+          AND EMP_CODE = #{empCode}
+    </update>
+
+    <select id="findAllUsers" resultType="com.company.attendancemanagement.dto.user.UserListDto">
+        SELECT h.EMP_CODE                                    AS empCode,
+               h.EMP_NAME                                   AS empName,
+               d.DEPT_NAME                                  AS deptName,
+               p.POSITION_NAME                              AS positionName,
+               du.DUTY_NAME                                 AS dutyName,
+               h.ROLE_CODE                                  AS roleCode,
+               r.ROLE_NAME                                  AS roleName,
+               CONVERT(VARCHAR(10), h.CREATED_AT, 23)       AS hireDate,
+               CONVERT(VARCHAR(10), h.RETIRE_DATE, 23)      AS retireDate
+        FROM HRIMASTER01 h
+        LEFT JOIN ORGDEPTMASTER01 d  ON d.COMPANY  = h.COMPANY AND d.DEPT_CODE      = h.DEPT_CODE
+        LEFT JOIN HRTGRADEINFO01  p  ON p.COMPANY  = h.COMPANY AND p.POSITION_CODE  = h.POSITION_CODE
+        LEFT JOIN HRTDUTYINFO01   du ON du.COMPANY = h.COMPANY AND du.DUTY_CODE     = h.DUTY_CODE
+        LEFT JOIN SYS_ROLE01      r  ON r.COMPANY  = h.COMPANY AND r.ROLE_CODE      = h.ROLE_CODE
+        WHERE h.COMPANY = #{company}
+        ORDER BY h.EMP_CODE
+    </select>
 
     <select id="findActivePositions" resultType="com.company.attendancemanagement.dto.user.PositionOptionDto">
         SELECT

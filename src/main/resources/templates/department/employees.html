@@ -9,92 +9,201 @@
 </head>
 <body>
 <div layout:fragment="content">
-    <div class="content-wrapper">
+<div class="emp-page">
 
-        <div th:if="${successMessage}" class="toast-data" data-type="success"
-             th:data-message="${successMessage}" style="display:none"></div>
-        <div th:if="${errorMessage}" class="toast-data" data-type="error"
-             th:data-message="${errorMessage}" style="display:none"></div>
+    <!-- 토스트 데이터 -->
+    <div th:if="${successMessage}" class="toast-data" data-type="success"
+         th:data-message="${successMessage}" style="display:none"></div>
+    <div th:if="${errorMessage}" class="toast-data" data-type="error"
+         th:data-message="${errorMessage}" style="display:none"></div>
 
-        <div class="page-header">
-            <h2>부서 사원 목록</h2>
-            <a th:href="@{/departments}" class="btn-back">← 부서 목록으로</a>
+    <!-- 페이지 헤더 -->
+    <div class="emp-top">
+        <div class="emp-top-left">
+            <div class="emp-breadcrumb">
+                <a th:href="@{/departments}" class="emp-bc-link">부서 목록</a>
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                <span class="emp-bc-current" th:text="${deptName}"></span>
+            </div>
+            <h2 class="emp-title">부서 사원 목록</h2>
         </div>
+        <a th:href="@{/departments}" class="btn-emp-back">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="15 18 9 12 15 6"/>
+            </svg>
+            부서 목록으로
+        </a>
+    </div>
 
-        <form th:action="@{/departments/employees/move}" method="post">
-            <input type="hidden" name="company" th:value="${company}">
-            <input type="hidden" name="currentDeptCode" th:value="${deptCode}">
+    <form th:action="@{/departments/employees/move}" method="post">
+        <input type="hidden" name="currentDeptCode" th:value="${deptCode}">
 
-            <div class="dept-toolbar-row">
-                <div class="dept-info-table">
-                    <div class="dept-info-row">
-                        <div class="dept-info-cell">
-                            <span class="dept-info-label">회사명</span>
-                            <span class="dept-info-value" th:text="${companyName}"></span>
-                        </div>
-                        <div class="dept-info-cell">
-                            <span class="dept-info-label">부서명</span>
-                            <span class="dept-info-value" th:text="${deptName}"></span>
-                        </div>
-                        <div class="dept-info-cell">
-                            <span class="dept-info-label">부서코드</span>
-                            <span class="dept-info-value" th:text="${deptCode}"></span>
-                        </div>
+        <!-- 상단 2열 그리드 -->
+        <div class="emp-top-grid">
+
+            <!-- 부서 정보 카드 -->
+            <div class="emp-dept-card">
+                <div class="emp-dept-tag">부서 정보</div>
+                <h3 class="emp-dept-name" th:text="${deptName}"></h3>
+                <div class="emp-dept-rows">
+                    <div class="emp-dept-row">
+                        <span class="emp-dept-lbl">부서코드</span>
+                        <span class="emp-dept-val mono" th:text="${deptCode}"></span>
                     </div>
-                </div>
-
-                <div class="emp-toolbar">
-                    <select name="targetDeptCode" class="dept-select">
-                        <option value="">부서 지정 안함</option>
-                        <option th:each="dept : ${allDepartments}"
-                                th:if="${dept.deptCode != deptCode}"
-                                th:value="${dept.deptCode}"
-                                th:text="${dept.deptName + ' (' + dept.deptCode + ')'}"></option>
-                    </select>
-                    <input type="date" name="transferDate" class="transfer-date-input"
-                           th:value="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}"
-                           title="발령일">
-                    <button type="submit" class="btn-toolbar btn-change">부서 변경</button>
-                    <a th:if="${!#strings.isEmpty(deptCode)}"
-                       th:href="@{/departments/employees/unassigned(company=${company}, deptCode=${deptCode})}"
-                       class="btn-toolbar btn-add-emp">사원 추가</a>
+                    <div class="emp-dept-row">
+                        <span class="emp-dept-lbl">총 인원</span>
+                        <span class="emp-dept-val"
+                              th:text="${#lists.size(employees) + '명'}"></span>
+                    </div>
                 </div>
             </div>
 
-            <table>
-                <thead>
-                <tr>
-                    <th class="th-checkbox" title="전체 선택"><input type="checkbox" id="selectAll"></th>
-                    <th>회사명</th>
-                    <th>사번</th>
-                    <th>사원명</th>
-                    <th>부서명</th>
-                    <th>권한</th>
-                    <th class="action-header">관리</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr th:each="emp : ${employees}">
-                    <td><input type="checkbox" name="empCodes" th:value="${emp.empCode}"></td>
-                    <td th:text="${emp.companyName}"></td>
-                    <td th:text="${emp.empCode}"></td>
-                    <td th:text="${emp.empName}"></td>
-                    <td th:text="${emp.deptName}"></td>
-                    <td th:text="${emp.roleName}"></td>
-                    <td class="action-cell">
-                        <a th:href="@{/users/{empCode}/edit(empCode=${emp.empCode}, returnDeptCode=${deptCode})}"
-                           class="btn-action btn-edit">수정</a>
-                    </td>
-                </tr>
-                <tr th:if="${#lists.isEmpty(employees)}">
-                    <td colspan="7">해당 부서에 등록된 사원이 없습니다.</td>
-                </tr>
-                </tbody>
-            </table>
-        </form>
+            <!-- 발령 관리 카드 -->
+            <div class="emp-transfer-card">
+                <div class="emp-transfer-top">
+                    <div class="emp-transfer-title-wrap">
+                        <div class="emp-transfer-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                 fill="none" stroke="#2563eb" stroke-width="2">
+                                <polyline points="17 1 21 5 17 9"/>
+                                <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                                <polyline points="7 23 3 19 7 15"/>
+                                <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+                            </svg>
+                        </div>
+                        <h3 class="emp-transfer-title">부서 일괄 발령</h3>
+                    </div>
+                    <a th:if="${!#strings.isEmpty(deptCode)}"
+                       th:href="@{/departments/employees/unassigned(deptCode=${deptCode})}"
+                       class="btn-emp-add">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2.5">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="8.5" cy="7" r="4"/>
+                            <line x1="20" y1="8" x2="20" y2="14"/>
+                            <line x1="23" y1="11" x2="17" y2="11"/>
+                        </svg>
+                        신규 사원 추가
+                    </a>
+                </div>
 
-    </div>
-    <script th:src="@{/js/department-employees.js}"></script>
-</div>
+                <div class="emp-transfer-body">
+                    <div class="emp-transfer-grid">
+                        <div class="emp-transfer-field">
+                            <label class="emp-tf-label">이동 대상 부서</label>
+                            <select name="targetDeptCode" class="emp-tf-select">
+                                <option value="">부서를 선택하세요</option>
+                                <option th:each="dept : ${allDepartments}"
+                                        th:if="${dept.deptCode != deptCode}"
+                                        th:value="${dept.deptCode}"
+                                        th:text="${dept.deptName + ' (' + dept.deptCode + ')'}"></option>
+                            </select>
+                        </div>
+                        <div class="emp-transfer-field">
+                            <label class="emp-tf-label">발령 예정일</label>
+                            <input type="date" name="transferDate" class="emp-tf-input"
+                                   th:value="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}"
+                                   title="발령일">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-emp-move">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polyline points="5 12 19 12"/><polyline points="12 5 19 12 12 19"/>
+                        </svg>
+                        선택 사원 부서 변경
+                    </button>
+                    <p class="emp-transfer-note">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="12"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                        사원을 선택한 후 이동 부서와 발령일을 지정하고 변경 버튼을 누르세요.
+                    </p>
+                </div>
+            </div>
+
+        </div><!-- /emp-top-grid -->
+
+        <!-- 테이블 카드 -->
+        <div class="emp-table-card">
+            <div class="emp-table-wrap">
+                <table class="emp-table">
+                    <thead>
+                    <tr>
+                        <th class="th-checkbox emp-th-check" title="전체 선택">
+                            <input type="checkbox" id="selectAll" class="emp-checkbox">
+                        </th>
+                        <th>사번</th>
+                        <th>사원명</th>
+                        <th>부서명</th>
+                        <th>권한</th>
+                        <th>관리</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="emp : ${employees}">
+                        <td class="emp-td-check">
+                            <input type="checkbox" name="empCodes"
+                                   th:value="${emp.empCode}" class="emp-checkbox">
+                        </td>
+                        <td class="td-code" th:text="${emp.empCode}"></td>
+                        <td class="td-name" th:text="${emp.empName}"></td>
+                        <td th:text="${emp.deptName}"></td>
+                        <td>
+                            <span class="role-badge" th:text="${emp.roleName}"></span>
+                        </td>
+                        <td class="emp-td-action">
+                            <a th:href="@{/users/{empCode}/edit(empCode=${emp.empCode}, returnDeptCode=${deptCode})}"
+                               class="btn-emp-edit">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
+                                수정
+                            </a>
+                        </td>
+                    </tr>
+                    <tr class="emp-empty-row" th:if="${#lists.isEmpty(employees)}">
+                        <td colspan="6">해당 부서에 등록된 사원이 없습니다.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="emp-table-footer">
+                <p class="emp-footer-count">
+                    총 <strong th:text="${#lists.size(employees)}">0</strong>명의 사원이 조회되었습니다.
+                </p>
+            </div>
+        </div>
+
+    </form>
+
+</div><!-- /emp-page -->
+
+<div id="toast"></div>
+
+<script>
+    const toastData = document.querySelector('.toast-data');
+    if (toastData) {
+        const msg  = toastData.getAttribute('data-message');
+        const type = toastData.getAttribute('data-type') || 'success';
+        if (msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = type;
+            t.style.display = 'block';
+            setTimeout(() => { t.style.display = 'none'; }, 3000);
+        }
+    }
+</script>
+<script th:src="@{/js/department-employees.js}"></script>
+</div><!-- /layout:fragment="content" -->
 </body>
 </html>

@@ -60,6 +60,9 @@ public class MenuPermissionInterceptor implements HandlerInterceptor {
         if ("/".equals(uri)) {
             return true;
         }
+        if ("ADMIN".equals(loginUser.getRoleCode())) {
+            return true;
+        }
         if (isPermitted(uri, permittedUrls)) {
             return true;
         }
@@ -180,6 +183,10 @@ public class MenuPermissionInterceptor implements HandlerInterceptor {
             candidates.add("/pattern/calendar");
             candidates.add("/pattern/new");
             candidates.add("/pattern/edit/{workPatternCode}");
+        }
+
+        if (uri.equals("/users") || uri.startsWith("/users/")) {
+            candidates.add("/users/new");
         }
 
         if (uri.startsWith("/departments/employees/move")) {

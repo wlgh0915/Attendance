@@ -2,6 +2,7 @@ package com.company.attendancemanagement.controller;
 
 import com.company.attendancemanagement.dto.login.LoginUserDto;
 import com.company.attendancemanagement.dto.user.UserCreateDto;
+import com.company.attendancemanagement.dto.user.UserListDto;
 import com.company.attendancemanagement.dto.user.UserUpdateDto;
 import com.company.attendancemanagement.service.DepartmentService;
 import com.company.attendancemanagement.service.UserService;
@@ -16,6 +17,8 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+
+import java.util.List;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import static com.company.attendancemanagement.common.SessionConst.LOGIN_USER;
@@ -26,6 +29,17 @@ public class UserController {
 
     private final UserService userService;
     private final DepartmentService departmentService;
+
+    @GetMapping("/users")
+    public String listUsers(HttpSession session, Model model) {
+        LoginUserDto loginUser = (LoginUserDto) session.getAttribute(LOGIN_USER);
+        if (loginUser == null) return "redirect:/login";
+
+        String company = loginUser.getCompany();
+        model.addAttribute("users", userService.findAllUsers(company));
+        model.addAttribute("deptOptions", departmentService.findAllForDropdown(company));
+        return "user/list";
+    }
 
     @GetMapping("/users/new")
     public String createForm(HttpSession session, Model model) {
@@ -91,7 +105,7 @@ public class UserController {
         UserUpdateDto dto = userService.findUserForEdit(loginUser.getCompany(), empCode);
         if (dto == null) {
             redirectAttributes.addFlashAttribute("errorMessage", "존재하지 않는 사원입니다.");
-            return redirectToEmployeeList(loginUser.getCompany(), returnDeptCode);
+            return redirectToEmployeeList(returnDeptCode);
         }
 
         dto.setReturnDeptCode(returnDeptCode);
@@ -121,7 +135,14 @@ public class UserController {
             return "user/edit";
         }
 
-        boolean result = userService.updateUser(dto);
+        boolean result;
+        try {
+            result = userService.updateUser(dto);
+        } catch (IllegalArgumentException e) {
+            bindingResult.reject("invalidRole", e.getMessage());
+            addUserFormOptions(model, loginUser.getCompany());
+            return "user/edit";
+        }
         if (!result) {
             bindingResult.reject("updateFailed", "사원 수정에 실패했습니다.");
             addUserFormOptions(model, loginUser.getCompany());
@@ -129,7 +150,7 @@ public class UserController {
         }
 
         redirectAttributes.addFlashAttribute("successMessage", "사원 수정에 성공했습니다.");
-        return redirectToEmployeeList(loginUser.getCompany(), dto.getReturnDeptCode());
+        return redirectToEmployeeList(dto.getReturnDeptCode());
     }
 
     private void addUserFormOptions(Model model, String company) {
@@ -139,10 +160,10 @@ public class UserController {
         model.addAttribute("roleOptions", userService.findActiveRoles(company));
     }
 
-    private String redirectToEmployeeList(String company, String deptCode) {
+    private String redirectToEmployeeList(String deptCode) {
         if (deptCode == null || deptCode.isBlank()) {
-            return "redirect:/departments/employees/unassigned-manage?company=" + company;
+            return "redirect:/departments/employees/unassigned-manage";
         }
-        return "redirect:/departments/employees?company=" + company + "&deptCode=" + deptCode;
+        return "redirect:/departments/employees?deptCode=" + deptCode;
     }
 }

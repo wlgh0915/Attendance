@@ -43,9 +43,9 @@ function updateAnnualColumnVisibility() {
 }
 
 function visibleColumnCount() {
-    if (currentCategory === 'HOLIDAY') return 14;
-    if (currentCategory === 'LEAVE') return 17;
-    return 16;
+    if (currentCategory === 'HOLIDAY') return 13;
+    if (currentCategory === 'LEAVE') return 16;
+    return 15;
 }
 
 function buildTimeOptions(selected, allowQuarterHour) {
@@ -738,7 +738,6 @@ function renderTable(rows) {
             : statusBadge(existing.status);
 
         const reasonVal       = (existing.reason||'').replace(/"/g,'&quot;');
-        const reasonDetailVal = (existing.reasonDetail||'').replace(/"/g,'&quot;');
 
         return '<tr data-idx="'+idx+'">'
             + '<td class="td-check" onclick="clickCheckCell(this)"><input type="checkbox" '+checkDis+' onclick="event.stopPropagation();toggleCheck(this,'+idx+')"></td>'
@@ -753,7 +752,6 @@ function renderTable(rows) {
             + '<td class="leave-hidden">'+formatDay(r.annualBalanceDay)+'</td>'
             + '<td><select data-field="requestWorkCode" '+disFull+' onchange="onWorkCodeChange(this,'+idx+')">'+buildWorkCodeOptions(currentCategory,selectedWorkCode)+'</select></td>'
             + '<td><input type="text" data-field="reason" value="'+reasonVal+'" placeholder="사유" '+disFull+'></td>'
-            + '<td><input type="text" data-field="reasonDetail" value="'+reasonDetailVal+'" placeholder="사유 상세 입력" '+disFull+'></td>'
             + '<td><div style="display:flex;gap:3px;">'
             + '<select data-field="startTimeType" style="width:52px;" '+startTypeDis+' onchange="onTimeChange(this,'+idx+')">'+buildDayTypeOptions(ts.startType)+'</select>'
             + '<select data-field="startTime" style="flex:1;" '+startDis+' onchange="onTimeChange(this,'+idx+')">'+buildTimeOptions(ts.startTime, allowQuarterHour)+'</select>'
@@ -805,12 +803,9 @@ function applyRequestState(tr, r, workCode) {
     const endTypeEl   = tr.querySelector('[data-field="endTimeType"]');
     const endEl       = tr.querySelector('[data-field="endTime"]');
     const reasonEl    = tr.querySelector('[data-field="reason"]');
-    const detailEl    = tr.querySelector('[data-field="reasonDetail"]');
 
     reasonEl.value = state.reason || '';
-    detailEl.value = state.reasonDetail || '';
     reasonEl.disabled = locked;
-    detailEl.disabled = locked;
     startTypeEl.disabled = locked || ts.startTypeDis;
     startEl.disabled     = locked || ts.startDis;
     endTypeEl.disabled   = locked || ts.endTypeDis;
@@ -888,7 +883,7 @@ function rowToDto(tr) {
         requestCategory: currentCategory,
         requestWorkCode: requestWorkCode,
         reason:          tr.querySelector('[data-field="reason"]').value,
-        reasonDetail:    tr.querySelector('[data-field="reasonDetail"]').value,
+        reasonDetail:    '',
         startTimeType:   tr.querySelector('[data-field="startTimeType"]').value,
         startTime:       tr.querySelector('[data-field="startTime"]').value,
         endTimeType:     tr.querySelector('[data-field="endTimeType"]').value,

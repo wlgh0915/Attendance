@@ -10,102 +10,196 @@
 <body>
 <div layout:fragment="content">
 <div class="appr-page">
-    <div class="page-title">근태 승인</div>
 
-    <div class="status-tabs">
-        <div class="status-tab active" data-status="PENDING" onclick="switchStatus(this)">결재할 문서</div>
-        <div class="status-tab" data-status="APPROVED" onclick="switchStatus(this)">승인된 문서</div>
-        <div class="status-tab" data-status="REJECTED" onclick="switchStatus(this)">반려된 문서</div>
+    <!-- 페이지 헤더 + 상태 탭 -->
+    <div class="appr-top">
+        <div class="appr-top-left">
+            <h2 class="appr-title">근태 승인</h2>
+            <p class="appr-subtitle">근태 신청 내역을 조회하고 승인 또는 반려 처리합니다.</p>
+        </div>
+        <div class="status-tabs">
+            <div class="status-tab active" data-status="PENDING"  onclick="switchStatus(this)">결재할 문서</div>
+            <div class="status-tab"        data-status="APPROVED" onclick="switchStatus(this)">승인된 문서</div>
+            <div class="status-tab"        data-status="REJECTED" onclick="switchStatus(this)">반려된 문서</div>
+        </div>
     </div>
 
-    <div class="category-tabs">
-        <div class="category-tab active" data-cat="OVERTIME" onclick="switchCategory(this)">연장근로</div>
-        <div class="category-tab" data-cat="HOLIDAY" onclick="switchCategory(this)">휴일근로</div>
-        <div class="category-tab" data-cat="LEAVE" onclick="switchCategory(this)">조퇴/외출/반차</div>
-        <div class="category-tab" data-cat="OTHER" onclick="switchCategory(this)">기타근태</div>
-    </div>
-
+    <!-- 검색 필터 카드 -->
     <div class="search-panel">
         <div class="search-group">
-            <label>기간</label>
-            <div style="display:flex;gap:6px;align-items:center;">
-                <input type="date" id="fromDate">
-                <span style="font-size:13px;">~</span>
-                <input type="date" id="toDate">
+            <label class="search-label">기간</label>
+            <div class="date-range">
+                <input type="date" id="fromDate" class="search-input">
+                <span class="date-sep">~</span>
+                <input type="date" id="toDate" class="search-input">
             </div>
         </div>
         <div class="search-group">
-            <label>사번</label>
-            <input type="text" id="empCodeFilter" placeholder="전체" style="width:110px;">
+            <label class="search-label">사번</label>
+            <input type="text" id="empCodeFilter" class="search-input" placeholder="전체" style="width:130px;">
         </div>
-        <button class="btn-search" onclick="doSearch()">조회</button>
+        <div class="search-actions">
+            <button class="btn-search" onclick="doSearch()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                조회
+            </button>
+        </div>
     </div>
 
-    <div class="req-table-wrap">
-        <table class="req-table" id="apprTable">
-            <thead>
-            <tr id="tableHead">
-                <th style="width:36px;" class="th-check" onclick="clickCheckAllCell()"><input type="checkbox" id="checkAll" onclick="event.stopPropagation();toggleAll(this)"></th>
-                <th style="width:90px;">근무일</th>
-                <th style="width:80px;">사번</th>
-                <th style="width:75px;">성명</th>
-                <th style="width:100px;">부서</th>
-                <th style="width:110px;">신청유형</th>
-                <th style="width:130px;">사유</th>
-                <th style="width:110px;">시작시간</th>
-                <th style="width:125px;">종료/변경근무</th>
-                <th style="width:80px;">신청상태</th>
-                <th style="width:125px;">처리일시</th>
-                <th style="width:140px;">반려사유</th>
-                <th style="width:70px;">상세</th>
-            </tr>
-            </thead>
-            <tbody id="apprTableBody">
-                <tr><td colspan="13" class="no-data">조회 버튼을 클릭하세요.</td></tr>
-            </tbody>
-        </table>
+    <!-- 카테고리 서브탭 -->
+    <div class="category-tabs">
+        <div class="category-tab active" data-cat="OVERTIME" onclick="switchCategory(this)">연장근로</div>
+        <div class="category-tab"        data-cat="HOLIDAY"  onclick="switchCategory(this)">휴일근로</div>
+        <div class="category-tab"        data-cat="LEAVE"    onclick="switchCategory(this)">조퇴/외출/반차</div>
+        <div class="category-tab"        data-cat="OTHER"    onclick="switchCategory(this)">기타근태</div>
     </div>
 
-    <div class="action-bar" id="actionBar">
-        <button class="btn-act btn-approve" onclick="doBulkApprove()">일괄 승인</button>
-        <button class="btn-act btn-reject" onclick="openRejectModal()">일괄 반려</button>
+    <!-- 결과 테이블 카드 -->
+    <div class="req-table-card">
+        <div class="table-card-header">
+            <div class="table-card-header-left">
+                <h3 class="table-card-title">신청 목록</h3>
+                <span id="rowCountBadge" class="count-badge">총 0건</span>
+            </div>
+        </div>
+        <div class="req-table-wrap">
+            <table class="req-table" id="apprTable">
+                <thead>
+                <tr id="tableHead">
+                    <th class="th-check" onclick="clickCheckAllCell()">
+                        <input type="checkbox" id="checkAll" onclick="event.stopPropagation();toggleAll(this)">
+                    </th>
+                    <th>근무일</th>
+                    <th>사번</th>
+                    <th>성명</th>
+                    <th>부서</th>
+                    <th>신청유형</th>
+                    <th>사유</th>
+                    <th>시작시간</th>
+                    <th>종료/변경근무</th>
+                    <th>신청상태</th>
+                    <th>처리일시</th>
+                    <th>반려사유</th>
+                    <th>상세</th>
+                </tr>
+                </thead>
+                <tbody id="apprTableBody">
+                    <tr><td colspan="13" class="no-data">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                        </svg>
+                        <p>조회 버튼을 클릭하세요.</p>
+                    </td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div><!-- /appr-page -->
+
+<!-- 하단 액션 바 -->
+<div class="appr-footer" id="actionBar">
+    <div class="appr-footer-left">
+        <span class="select-dot"></span>
+        <p class="select-info"><strong id="selectedCount">0</strong>개 선택됨</p>
+    </div>
+    <div class="appr-footer-right">
+        <button class="btn-act btn-reject" onclick="openRejectModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="15" y1="9" x2="9" y2="15"/>
+                <line x1="9" y1="9" x2="15" y2="15"/>
+            </svg>
+            일괄 반려
+        </button>
+        <button class="btn-act btn-approve" onclick="doBulkApprove()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            일괄 승인
+        </button>
     </div>
 </div>
 
 <div id="toast"></div>
 
+<!-- 우측 상세 드로어 -->
 <div id="detailModal" class="detail-drawer">
     <div class="detail-drawer-header">
-        <span class="modal-title">근태 신청 상세</span>
-        <button class="btn-drawer-close" onclick="closeDetailModal()">✕</button>
+        <div class="detail-drawer-title">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                 fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            근태 신청 상세
+        </div>
+        <button class="btn-drawer-close" onclick="closeDetailModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        </button>
     </div>
-    <div class="detail-section">
-        <h4>신청 정보</h4>
-        <div class="detail-grid" id="detailInfo"></div>
-    </div>
-    <div class="detail-section">
-        <h4>결재선</h4>
-        <table class="chain-table">
-            <thead>
-                <tr><th>순번</th><th>구분</th><th>결재자</th><th>상태</th><th>처리일시</th><th>반려사유</th></tr>
-            </thead>
-            <tbody id="chainBody"></tbody>
-        </table>
+    <div class="detail-body">
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                     fill="none" stroke="#2563eb" stroke-width="2"><circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                신청 정보
+            </div>
+            <div class="detail-grid" id="detailInfo"></div>
+        </div>
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                     fill="none" stroke="#2563eb" stroke-width="2">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+                결재선
+            </div>
+            <table class="chain-table">
+                <thead>
+                    <tr><th>순번</th><th>구분</th><th>결재자</th><th>상태</th><th>처리일시</th><th>반려사유</th></tr>
+                </thead>
+                <tbody id="chainBody"></tbody>
+            </table>
+        </div>
     </div>
 </div>
 
+<!-- 반려 사유 모달 -->
 <div class="modal-overlay" id="rejectModal">
     <div class="modal-box reject-modal-box">
-        <div class="modal-title">반려 사유 입력</div>
-        <textarea id="rejectReasonInput" placeholder="반려 사유를 입력하세요."></textarea>
+        <div class="modal-header">
+            <div class="modal-title">반려 사유 입력</div>
+            <button class="btn-modal-x" onclick="closeRejectModal()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <textarea id="rejectReasonInput" class="reject-textarea" placeholder="반려 사유를 입력하세요."></textarea>
         <div class="modal-footer">
-            <button class="btn-close" onclick="closeRejectModal()">취소</button>
+            <button class="btn-modal-cancel" onclick="closeRejectModal()">취소</button>
             <button class="btn-confirm-reject" onclick="doBulkReject()">반려 확인</button>
         </div>
     </div>
 </div>
 
 <script th:src="@{/js/approval.js}"></script>
-</div>
+</div><!-- /layout:fragment="content" -->
 </body>
 </html>

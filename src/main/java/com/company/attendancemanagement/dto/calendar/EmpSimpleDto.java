@@ -9,4 +9,5 @@ public class EmpSimpleDto {
     private String empCode;
     private String empName;
     private String deptName;
+    private String positionName;
 }

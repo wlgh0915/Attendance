@@ -69,10 +69,14 @@ public class AttendanceApprovalServiceImpl implements AttendanceApprovalService 
                 annualLeaveService.refreshApprovedUsage(request);
             }
             if (request != null && ("연장".equals(request.getRequestWorkCode())
-                    || "조출연장".equals(request.getRequestWorkCode()))) {
+                    || "조출연장".equals(request.getRequestWorkCode())
+                    || "휴일근무".equals(request.getRequestWorkCode()))) {
                 String yyyymmdd = request.getWorkDate().replace("-", "");
                 recordService.recalculateIfRecordExists(
                         request.getCompany(), request.getEmpCode(), yyyymmdd);
+                recordService.autoSetCheckoutIfLater(
+                        request.getCompany(), request.getEmpCode(), yyyymmdd,
+                        request.getEndTime(), request.getEndTimeType());
             }
             // 근무변경(OTHER) 승인 시: 해당 기간 전체 날짜 실적 재계산
             if (request != null && "OTHER".equals(request.getRequestCategory())

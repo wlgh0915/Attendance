@@ -26,7 +26,7 @@ function getPatternDays() {
 
     if (!type || type === 'FIXED') return 28;
     if (unit === 'W') return count * 7;
-    return count * 4;
+    return count;
 }
 
 function getCycleSize() {

@@ -63,7 +63,7 @@ public class AttendanceDeptMonthController {
             LocalDate d = yearMonth.atDay(i + 1);
             dayDates[i]  = d.toString();
             int dow = d.getDayOfWeek().getValue() % 7; // 0=일,1=월,...,6=토
-            dayLabels[i] = (i + 1) + "(" + DAY_NAMES[dow] + ")";
+            dayLabels[i] = String.format("%02d(%s)", i + 1, DAY_NAMES[dow]);
         }
 
         model.addAttribute("monthData",    monthData);
@@ -74,7 +74,9 @@ public class AttendanceDeptMonthController {
         model.addAttribute("currentYm",    yearMonth.toString());
         model.addAttribute("prevYm",       yearMonth.minusMonths(1).toString());
         model.addAttribute("nextYm",       yearMonth.plusMonths(1).toString());
-        model.addAttribute("ymDisplay",    yearMonth.getYear() + "년 " + yearMonth.getMonthValue() + "월");
+        model.addAttribute("ymDisplay",      yearMonth.getYear() + "년 " + yearMonth.getMonthValue() + "월");
+        model.addAttribute("currentYmStart", yearMonth.atDay(1).toString());
+        model.addAttribute("currentYmEnd",   yearMonth.atEndOfMonth().toString());
 
         return "attendance/dept-month";
     }

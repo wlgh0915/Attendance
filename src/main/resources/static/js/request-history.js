@@ -78,7 +78,6 @@ async function openHistoryDetail(btn) {
         + '<div class="lbl">퇴근</div><div class="val">' + escapeHtml(formatCheckOut(d)) + '</div>'
         + '<div class="lbl">실근무분</div><div class="val">' + escapeHtml(d.recordWorkMin ?? '-') + '</div>'
         + '<div class="lbl">사유</div><div class="val">' + escapeHtml(d.reason || '-') + '</div>'
-        + '<div class="lbl">사유상세</div><div class="val">' + escapeHtml(d.reasonDetail || '-') + '</div>'
         + '<div class="lbl">신청상태</div><div class="val">' + escapeHtml(statusLabel(d.requestStatus)) + '</div>';
 
     const chain = d.approvalChain || [];
@@ -88,7 +87,8 @@ async function openHistoryDetail(btn) {
             '<tr>'
             + '<td>' + escapeHtml(s.stepNo) + '</td>'
             + '<td>' + escapeHtml(stepTypeLabel(s.stepType)) + '</td>'
-            + '<td>' + escapeHtml(s.approverName || s.approverEmpCode || '-') + '</td>'
+            + '<td>' + escapeHtml((s.approverName || s.approverEmpCode || '-')
+                + (s.approverDeptName ? ' / ' + s.approverDeptName : '')) + '</td>'
             + '<td>' + stepStatusBadge(s.status) + '</td>'
             + '<td>' + escapeHtml(s.decisionAt || '-') + '</td>'
             + '<td style="text-align:left;max-width:140px;">' + escapeHtml(s.rejectReason || '-') + '</td>'

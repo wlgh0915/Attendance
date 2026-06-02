@@ -1,125 +1,864 @@
-.home-wrapper {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100%;
-    padding: 40px 20px;
-    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
-}
-
-.home-card {
+/* ===== Dashboard Container ===== */
+.dashboard {
+    max-width: 1400px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 8px 4px 48px;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 40px;
-    /* 카드 페이드인 애니메이션 */
-    animation: fadeUp 0.5s ease both;
-}
-
-/* 환영 문구 섹션 */
-.welcome-section {
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    gap: 12px; /* 이름 줄과 환영 문구 사이의 간격 */
-}
-
-/* 첫 번째 줄: [이름] 님 */
-.name-line {
-    font-size: 2.5rem;
-    color: #2c3e50;
-    line-height: 1.2;
-}
-
-.emp-name {
-    font-weight: 700;
-    position: relative;
-    display: inline-block;
-}
-
-/* 이름 밑줄 애니메이션 */
-.emp-name::after {
-    content: '';
-    display: block;
-    height: 4px;
-    background: #2c3e50;
-    border-radius: 2px;
-    margin-top: 4px;
-    transform: scaleX(0);
-    transform-origin: left;
-    animation: underlineIn 0.5s ease 0.3s forwards;
-}
-
-.name-suffix {
-    font-weight: 400;
-    font-size: 2.5rem;
-    margin-left: 6px;
-}
-
-/* 두 번째 줄: 환영합니다. */
-.welcome-line {
-    font-size: 1.8rem;
-    font-weight: 300; /* 가벼운 굵기로 세련된 대비 */
-    color: #5d6d7e;   /* 살짝 연한 슬레이트 블루 */
-    letter-spacing: -0.5px;
-}
-
-/* 버튼 묶음 */
-.home-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    width: 260px;
-}
-
-.home-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    padding: 15px 24px;
-    border-radius: 8px;
-    font-size: 15px;
-    font-weight: 600;
-    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
-    text-decoration: none;
-    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
-    cursor: pointer;
-
-    /* 기본 - 채운 버튼 */
-    background-color: #2c3e50;
-    color: #fff;
-    border: 2px solid #2c3e50;
-    box-shadow: 0 2px 8px rgba(44, 62, 80, 0.18);
-}
-
-.home-btn:hover {
-    background-color: #3e5871;
-    border-color: #3e5871;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(44, 62, 80, 0.22);
-}
-
-/* 외곽선 버튼 */
-.home-btn--outline {
-    background-color: transparent;
-    color: #2c3e50;
-    box-shadow: none;
-}
-
-.home-btn--outline:hover {
-    background-color: #f0f3f6;
-    border-color: #2c3e50;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(44, 62, 80, 0.12);
-}
-
-/* 애니메이션 키프레임 */
-@keyframes underlineIn {
-    to { transform: scaleX(1); }
+    gap: 24px;
+    animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(18px); }
+    from { opacity: 0; transform: translateY(16px); }
     to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== Hero Section ===== */
+.hero-section {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    border-radius: 28px;
+    padding: 48px 52px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 40px;
+    color: white;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.3);
+}
+
+.hero-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    width: fit-content;
+}
+
+.badge-dot {
+    width: 7px;
+    height: 7px;
+    background: #60a5fa;
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+}
+
+.hero-text {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.hero-greeting {
+    font-size: 2.6rem;
+    font-weight: 900;
+    margin: 0;
+    line-height: 1.15;
+    letter-spacing: -0.5px;
+}
+
+.hero-sub {
+    font-size: 0.97rem;
+    color: #94a3b8;
+    margin: 0;
+    max-width: 420px;
+    line-height: 1.65;
+}
+
+.hero-actions {
+    display: flex;
+    gap: 12px;
+    padding-top: 2px;
+}
+
+.btn-hero-primary {
+    padding: 12px 26px;
+    background: #3b82f6;
+    color: white;
+    font-weight: 700;
+    font-size: 14px;
+    border-radius: 12px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35);
+}
+
+.btn-hero-primary:hover {
+    background: #2563eb;
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px rgba(59, 130, 246, 0.45);
+    color: white;
+    text-decoration: none;
+}
+
+.btn-hero-outline {
+    padding: 12px 26px;
+    background: transparent;
+    border: 1px solid #334155;
+    color: white;
+    font-weight: 700;
+    font-size: 14px;
+    border-radius: 12px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.btn-hero-outline:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: #475569;
+    color: white;
+    transform: translateY(-2px);
+    text-decoration: none;
+}
+
+/* Clock Widget */
+.hero-clock {
+    position: relative;
+    z-index: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    padding: 32px 40px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    min-width: 230px;
+    flex-shrink: 0;
+}
+
+.clock-icon {
+    width: 54px;
+    height: 54px;
+    background: #3b82f6;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    margin-bottom: 4px;
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+}
+
+.clock-time {
+    font-size: 2.2rem;
+    font-weight: 900;
+    letter-spacing: -1px;
+    color: white;
+}
+
+.clock-date {
+    font-size: 13px;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+/* Background Decoration */
+.hero-deco {
+    position: absolute;
+    border-radius: 50%;
+    z-index: 0;
+}
+
+.hero-deco--1 {
+    width: 340px;
+    height: 340px;
+    background: rgba(59, 130, 246, 0.08);
+    filter: blur(80px);
+    top: -30%;
+    right: -8%;
+}
+
+.hero-deco--2 {
+    width: 220px;
+    height: 220px;
+    background: rgba(100, 116, 139, 0.08);
+    filter: blur(60px);
+    bottom: -25%;
+    left: -3%;
+}
+
+/* ===== Widget Grid ===== */
+.widget-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+    align-items: stretch;
+}
+
+/* ===== Card Base ===== */
+.card {
+    background: #ffffff;
+    border: 1px solid #f1f5f9;
+    border-radius: 20px;
+    padding: 26px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04),
+                0 10px 15px -5px rgba(0, 0, 0, 0.02);
+    display: flex;
+    flex-direction: column;
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+}
+
+.card-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+}
+
+.card-badge {
+    padding: 4px 10px;
+    background: #f1f5f9;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 8px;
+}
+
+/* ===== Stat Shared ===== */
+.stat-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+.stat-icon--blue   { background: #eff6ff; color: #3b82f6; }
+.stat-icon--red    { background: #fff1f2; color: #ef4444; }
+.stat-icon--indigo { background: #eef2ff; color: #6366f1; }
+
+.stat-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    margin-bottom: 4px;
+}
+
+.stat-value {
+    font-size: 1.7rem;
+    font-weight: 900;
+    color: #1e293b;
+    letter-spacing: -0.5px;
+    margin-bottom: 14px;
+}
+
+/* ===== Check-in Card ===== */
+.checkin-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.btn-checkin {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 15px 18px;
+    border-radius: 14px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+    font-family: inherit;
+    text-decoration: none;
+    box-sizing: border-box;
+}
+
+.btn-checkin--active {
+    background: #3b82f6;
+    color: white;
+}
+
+.btn-checkin--active:hover {
+    background: #2563eb;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+}
+
+.btn-checkin--secondary {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+}
+
+.btn-checkin--secondary:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #1e293b;
+    transform: translateY(-2px);
+    text-decoration: none;
+}
+
+.btn-checkin--secondary .checkin-icon {
+    background: #e2e8f0;
+    color: #64748b;
+}
+
+.checkin-icon {
+    width: 42px;
+    height: 42px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.btn-checkin--disabled {
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    color: #94a3b8;
+    cursor: default;
+    pointer-events: none;
+}
+.btn-checkin--disabled .checkin-icon {
+    background: #e2e8f0;
+    color: #94a3b8;
+}
+
+#homeToast {
+    position: fixed;
+    bottom: 32px;
+    right: 32px;
+    padding: 12px 20px;
+    border-radius: 10px;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    display: none;
+    z-index: 9999;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+#homeToast.success { background: #16a34a; }
+#homeToast.error   { background: #e11d48; }
+
+.checkin-label {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.checkin-label-main {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.checkin-label-sub {
+    font-size: 11px;
+    opacity: 0.65;
+}
+
+.work-hours-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 11px 15px;
+    background: #f8fafc;
+    border: 1px dashed #e2e8f0;
+    border-radius: 10px;
+    font-size: 13px;
+    color: #64748b;
+}
+
+.work-hours-val {
+    font-weight: 700;
+    color: #1e293b;
+    letter-spacing: -0.3px;
+}
+
+/* ===== Progress Section ===== */
+.progress-section {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 700;
+    color: #94a3b8;
+}
+
+.progress-pct { color: #3b82f6; }
+
+.progress-bar {
+    width: 100%;
+    height: 9px;
+    background: #f1f5f9;
+    border-radius: 99px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
+    border-radius: 99px;
+}
+
+.progress-hint {
+    font-size: 11px;
+    color: #94a3b8;
+    font-style: italic;
+    text-align: center;
+    margin: 2px 0 0;
+}
+
+/* ===== Hours 카드 하단 지각 한 줄 ===== */
+.hours-late-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 14px;
+    padding: 10px 14px;
+    background: #f8fafc;
+    border-radius: 10px;
+}
+
+.hours-late-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #94a3b8;
+}
+
+.hours-late-val {
+    font-size: 14px;
+    font-weight: 900;
+    letter-spacing: -0.3px;
+}
+
+.hours-late-ok   { color: #3b82f6; }
+.hours-late-warn { color: #ef4444; }
+
+/* ===== Late Card ===== */
+.late-badge-box--warn {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: 12px;
+    padding: 11px 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: 700;
+    color: #ea580c;
+}
+
+.late-badge-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 15px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #3b82f6;
+}
+
+/* ===== Leave Card ===== */
+.leave-split {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    flex: 1;
+}
+
+.leave-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.leave-item:first-child {
+    padding-right: 16px;
+}
+
+.leave-item:last-child {
+    padding-left: 16px;
+}
+
+.leave-item .leave-link {
+    margin-top: auto;
+}
+
+.leave-divider {
+    width: 1px;
+    background: #e2e8f0;
+    flex-shrink: 0;
+}
+
+.stat-value--used {
+    color: #f59e0b;
+}
+
+.leave-link {
+    display: block;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #3b82f6;
+    text-decoration: none;
+    padding: 10px;
+    border-radius: 10px;
+    background: #eff6ff;
+    transition: all 0.2s ease;
+}
+
+.leave-link:hover {
+    background: #dbeafe;
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.leave-link--amber {
+    color: #f59e0b;
+    background: #fffbeb;
+}
+
+.leave-link--amber:hover {
+    background: #fef3c7;
+    color: #d97706;
+    text-decoration: none;
+}
+
+/* ===== No Records ===== */
+.no-records {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 20px 0;
+    color: #cbd5e1;
+    text-align: center;
+}
+
+.no-records p {
+    font-size: 13px;
+    color: #94a3b8;
+    margin: 0;
+}
+
+/* ===== Records Card ===== */
+.record-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.record-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.record-dot {
+    width: 7px;
+    height: 7px;
+    background: #3b82f6;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.record-date {
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 500;
+    flex: 1;
+}
+
+.record-time {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e293b;
+    letter-spacing: -0.3px;
+}
+
+.record-tag {
+    padding: 3px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.record-tag--normal {
+    background: #eff6ff;
+    color: #3b82f6;
+}
+
+.record-tag--late {
+    background: #fff1f2;
+    color: #ef4444;
+}
+
+/* ===== Notice Card ===== */
+.card--notice { width: 100%; }
+
+.notice-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.notice-item:hover {
+    background: #f8fafc;
+}
+
+.notice-dot {
+    width: 7px;
+    height: 7px;
+    background: #3b82f6;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.notice-text {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 600;
+    color: #334155;
+    margin: 0;
+}
+
+.notice-date {
+    font-size: 12px;
+    color: #94a3b8;
+    font-style: italic;
+    white-space: nowrap;
+}
+
+/* ===== 추가 stat-icon 색상 ===== */
+.stat-icon--green { background: #f0fdf4; color: #22c55e; }
+.stat-icon--amber { background: #fffbeb; color: #f59e0b; }
+
+/* stat-row는 widget-grid로 통합됨 (레거시 유지) */
+.stat-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+    align-items: stretch;
+}
+
+/* ===== 오늘 출퇴근 상태 ===== */
+.today-status-badge {
+    padding: 4px 12px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+}
+.tsb-absent  { background: #f1f5f9; color: #94a3b8; }
+.tsb-working { background: #eff6ff; color: #3b82f6; }
+.tsb-done    { background: #f0fdf4; color: #22c55e; }
+
+.today-ci-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 4px;
+}
+
+.today-ci-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: #f8fafc;
+    border-radius: 12px;
+}
+
+.today-ci-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.today-ci-icon--in  { background: #eff6ff; color: #3b82f6; }
+.today-ci-icon--out { background: #f0fdf4; color: #22c55e; }
+
+.today-ci-label {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.today-ci-time {
+    font-size: 16px;
+    font-weight: 900;
+    color: #1e293b;
+    letter-spacing: -0.3px;
+}
+
+/* ===== 이번달 근무 요약 ===== */
+.month-stats {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-top: 8px;
+}
+
+.ms-item {
+    flex: 1;
+    text-align: center;
+    padding: 16px 8px;
+}
+
+.ms-divider {
+    width: 1px;
+    height: 48px;
+    background: #f1f5f9;
+    flex-shrink: 0;
+}
+
+.ms-val {
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: #1e293b;
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+}
+.ms-val--red  { color: #ef4444; }
+.ms-val--blue { color: #3b82f6; }
+
+.ms-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ===== 대기 신청 링크 ===== */
+.pending-link {
+    display: block;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #f59e0b;
+    text-decoration: none;
+    padding: 10px;
+    border-radius: 10px;
+    background: #fffbeb;
+    transition: all 0.2s ease;
+}
+.pending-link:hover { background: #fef3c7; color: #d97706; text-decoration: none; }
+
+/* ===== 미출근자 카드 ===== */
+.absent-count-badge {
+    padding: 3px 10px;
+    background: #fff1f2;
+    color: #ef4444;
+    font-size: 12px;
+    font-weight: 800;
+    border-radius: 8px;
+}
+
+.absent-detail-link {
+    font-size: 12px;
+    font-weight: 700;
+    color: #3b82f6;
+    text-decoration: none;
+}
+.absent-detail-link:hover { color: #2563eb; text-decoration: none; }
+
+.absent-all-ok {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #16a34a;
+}
+
+.absent-table-wrap { overflow-x: auto; }
+
+.absent-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+.absent-table th {
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #f1f5f9;
+}
+.absent-table td {
+    padding: 10px 12px;
+    color: #334155;
+    font-weight: 500;
+    border-bottom: 1px solid #f8fafc;
+}
+.absent-table tr:last-child td { border-bottom: none; }
+.absent-table tr:hover td { background: #f8fafc; }
+
+/* ===== Footer ===== */
+.dashboard-footer {
+    text-align: center;
+    padding: 4px 0;
+}
+
+.dashboard-footer p {
+    font-size: 11px;
+    color: #cbd5e1;
+    font-weight: 500;
+    margin: 0;
 }

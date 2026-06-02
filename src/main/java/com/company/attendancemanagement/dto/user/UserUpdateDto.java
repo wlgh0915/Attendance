@@ -8,7 +8,6 @@ import lombok.Setter;
 @Setter
 public class UserUpdateDto {
 
-    @NotBlank(message = "회사코드는 필수입니다.")
     private String company;
 
     @NotBlank(message = "사번은 필수입니다.")

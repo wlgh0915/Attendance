@@ -79,7 +79,16 @@ public class DepartmentController {
             return "department/create";
         }
 
-        boolean result = departmentService.createDepartment(dto);
+        boolean result;
+        try {
+            result = departmentService.createDepartment(dto);
+        } catch (IllegalArgumentException e) {
+            bindingResult.reject("invalidDeptLeader", e.getMessage());
+            model.addAttribute("deptOptions", departmentService.findAllForDropdown(loginUser.getCompany()));
+            model.addAttribute("employeeOptions", departmentService.findActiveEmployees(loginUser.getCompany()));
+            model.addAttribute("workPatternOptions", workPatternService.getPatternList(loginUser.getCompany()));
+            return "department/create";
+        }
 
         if (!result) {
             bindingResult.reject("duplicate", "이미 존재하는 부서코드입니다.");
@@ -94,8 +103,7 @@ public class DepartmentController {
     }
 
     @GetMapping("/departments/employees")
-    public String employees(@RequestParam String company,
-                            @RequestParam String deptCode,
+    public String employees(@RequestParam String deptCode,
                             HttpSession session,
                             Model model) {
 
@@ -104,10 +112,10 @@ public class DepartmentController {
             return "redirect:/login";
         }
 
+        String company = loginUser.getCompany();
         DepartmentDto dept = departmentService.findByDeptCode(company, deptCode);
 
         model.addAttribute("company", company);
-        model.addAttribute("companyName", dept.getCompanyName());
         model.addAttribute("deptCode", deptCode);
         model.addAttribute("deptName", dept.getDeptName());
         model.addAttribute("employees", departmentService.findEmployeesByDept(company, deptCode));
@@ -117,8 +125,7 @@ public class DepartmentController {
     }
 
     @PostMapping("/departments/employees/move")
-    public String moveEmployees(@RequestParam("company") String company,
-                                @RequestParam("currentDeptCode") String currentDeptCode,
+    public String moveEmployees(@RequestParam("currentDeptCode") String currentDeptCode,
                                 @RequestParam(value = "empCodes", required = false) List<String> empCodes,
                                 @RequestParam("targetDeptCode") String targetDeptCode,
                                 @RequestParam(value = "transferDate", required = false) String transferDate,
@@ -130,24 +137,29 @@ public class DepartmentController {
             return "redirect:/login";
         }
 
+        String company = loginUser.getCompany();
+
         if (empCodes == null || empCodes.isEmpty()) {
             redirectAttributes.addFlashAttribute("errorMessage", "사원을 선택해주세요.");
         } else if (targetDeptCode == null || targetDeptCode.isBlank()) {
             redirectAttributes.addFlashAttribute("errorMessage", "이동할 부서를 선택해주세요.");
         } else {
-            departmentService.moveEmployeesToDept(company, empCodes, targetDeptCode, transferDate);
-            redirectAttributes.addFlashAttribute("successMessage", "부서 변경에 성공했습니다.");
+            try {
+                departmentService.moveEmployeesToDept(company, empCodes, targetDeptCode, transferDate);
+                redirectAttributes.addFlashAttribute("successMessage", "부서 변경에 성공했습니다.");
+            } catch (IllegalArgumentException e) {
+                redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            }
         }
 
         if (currentDeptCode == null || currentDeptCode.isEmpty()) {
-            return "redirect:/departments/employees/unassigned-manage?company=" + company;
+            return "redirect:/departments/employees/unassigned-manage";
         }
-        return "redirect:/departments/employees?company=" + company + "&deptCode=" + currentDeptCode;
+        return "redirect:/departments/employees?deptCode=" + currentDeptCode;
     }
 
     @GetMapping("/departments/employees/unassigned-manage")
-    public String unassignedManage(@RequestParam("company") String company,
-                                   HttpSession session,
+    public String unassignedManage(HttpSession session,
                                    Model model) {
 
         LoginUserDto loginUser = (LoginUserDto) session.getAttribute(LOGIN_USER);
@@ -155,8 +167,8 @@ public class DepartmentController {
             return "redirect:/login";
         }
 
+        String company = loginUser.getCompany();
         model.addAttribute("company", company);
-        model.addAttribute("companyName", departmentService.findCompanyName(company));
         model.addAttribute("deptCode", "");
         model.addAttribute("deptName", "부서 미지정");
         model.addAttribute("employees", departmentService.findUnassignedEmployees(company));
@@ -166,8 +178,7 @@ public class DepartmentController {
     }
 
     @GetMapping("/departments/employees/unassigned")
-    public String unassignedEmployees(@RequestParam("company") String company,
-                                      @RequestParam("deptCode") String deptCode,
+    public String unassignedEmployees(@RequestParam("deptCode") String deptCode,
                                       HttpSession session,
                                       Model model) {
 
@@ -176,6 +187,7 @@ public class DepartmentController {
             return "redirect:/login";
         }
 
+        String company = loginUser.getCompany();
         DepartmentDto dept = departmentService.findByDeptCode(company, deptCode);
 
         model.addAttribute("company", company);
@@ -187,8 +199,7 @@ public class DepartmentController {
     }
 
     @PostMapping("/departments/employees/add")
-    public String addEmployees(@RequestParam("company") String company,
-                               @RequestParam("deptCode") String deptCode,
+    public String addEmployees(@RequestParam("deptCode") String deptCode,
                                @RequestParam(value = "empCodes", required = false) List<String> empCodes,
                                HttpSession session,
                                RedirectAttributes redirectAttributes) {
@@ -198,14 +209,20 @@ public class DepartmentController {
             return "redirect:/login";
         }
 
+        String company = loginUser.getCompany();
+
         if (empCodes == null || empCodes.isEmpty()) {
             redirectAttributes.addFlashAttribute("errorMessage", "사원을 선택해주세요.");
-            return "redirect:/departments/employees/unassigned?company=" + company + "&deptCode=" + deptCode;
+            return "redirect:/departments/employees/unassigned?deptCode=" + deptCode;
         }
 
-        departmentService.moveEmployeesToDept(company, empCodes, deptCode, null);
-        redirectAttributes.addFlashAttribute("successMessage", "사원 추가에 성공했습니다.");
-        return "redirect:/departments/employees?company=" + company + "&deptCode=" + deptCode;
+        try {
+            departmentService.moveEmployeesToDept(company, empCodes, deptCode, null);
+            redirectAttributes.addFlashAttribute("successMessage", "사원 추가에 성공했습니다.");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/departments/employees?deptCode=" + deptCode;
     }
 
     @GetMapping("/departments/edit")
@@ -219,9 +236,8 @@ public class DepartmentController {
         return "department/edit-list";
     }
 
-    @GetMapping(value = "/departments/edit", params = {"company", "deptCode"})
-    public String editForm(String company,
-                           String deptCode,
+    @GetMapping(value = "/departments/edit", params = {"deptCode"})
+    public String editForm(String deptCode,
                            HttpSession session,
                            Model model) {
         LoginUserDto loginUser = (LoginUserDto) session.getAttribute(LOGIN_USER);
@@ -229,6 +245,7 @@ public class DepartmentController {
             return "redirect:/login";
         }
 
+        String company = loginUser.getCompany();
         DepartmentDto dept = departmentService.findByDeptCode(company, deptCode);
         if (dept == null) {
             return "redirect:/departments/edit";
@@ -265,6 +282,8 @@ public class DepartmentController {
             return "redirect:/login";
         }
 
+        dto.setCompany(loginUser.getCompany());
+
         if (bindingResult.hasErrors()) {
             model.addAttribute("deptOptions", departmentService.findAllForDropdown(loginUser.getCompany()));
             model.addAttribute("employeeOptions", departmentService.findActiveEmployees(loginUser.getCompany()));
@@ -272,7 +291,16 @@ public class DepartmentController {
             return "department/edit";
         }
 
-        boolean result = departmentService.updateDepartment(dto);
+        boolean result;
+        try {
+            result = departmentService.updateDepartment(dto);
+        } catch (IllegalArgumentException e) {
+            bindingResult.reject("invalidDeptLeader", e.getMessage());
+            model.addAttribute("deptOptions", departmentService.findAllForDropdown(loginUser.getCompany()));
+            model.addAttribute("employeeOptions", departmentService.findActiveEmployees(loginUser.getCompany()));
+            model.addAttribute("workPatternOptions", workPatternService.getPatternList(loginUser.getCompany()));
+            return "department/edit";
+        }
 
         if (!result) {
             bindingResult.reject("updateFailed", "부서에 소속된 직원이 있으면 사용 여부를 N으로 변경할 수 없습니다.");

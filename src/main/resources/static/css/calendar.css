@@ -1,129 +1,476 @@
-.cal-page { max-width: 1260px; padding: 20px 24px; margin: 0 auto; }
-.cal-top  { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-bottom: 16px; }
+/* ===== 페이지 전체 ===== */
+.cal-page {
+    max-width: 1500px;
+    margin: 0 auto;
+    padding: 8px 4px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
 
-.cal-nav  { display: flex; align-items: center; gap: 8px; }
+/* ===== 상단 헤더 ===== */
+.cal-top {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.cal-top-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cal-title {
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: #1e293b;
+    margin: 0;
+    letter-spacing: -0.3px;
+}
+
+.cal-subtitle {
+    font-size: 13px;
+    color: #3b82f6;
+    font-weight: 700;
+    margin: 0;
+}
+
+.cal-top-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* 날짜 네비게이션 */
+.cal-nav {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
 .cal-nav a {
-    padding: 5px 14px; border: 1px solid #2c3e50; border-radius: 4px;
-    color: #2c3e50; text-decoration: none; font-size: 13px; font-weight: 600;
-}
-.cal-nav a:hover { background: #2c3e50; color: #fff; }
-.ym-label { font-size: 16px; font-weight: 700; color: #2c3e50; min-width: 120px; text-align: center; }
-
-.filter-group { display: flex; flex-direction: column; gap: 3px; }
-.filter-group label { font-size: 11px; color: #666; font-weight: 600; }
-.filter-group select,
-.filter-group input {
-    padding: 5px 10px; border: 1px solid #ced4da; border-radius: 4px;
-    font-size: 13px; font-family: 'Malgun Gothic', sans-serif; min-width: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    color: #64748b;
+    text-decoration: none;
+    transition: all 0.15s ease;
 }
 
-.btn-generate-records {
-    align-self: flex-end;
-    padding: 6px 14px;
+.cal-nav a:hover {
+    background: #f8fafc;
+    color: #1e293b;
+    text-decoration: none;
+}
+
+.ym-label {
+    font-size: 15px;
+    font-weight: 800;
+    color: #1e293b;
+    padding: 0 16px;
+    border-left: 1px solid #e2e8f0;
+    border-right: 1px solid #e2e8f0;
+    line-height: 36px;
+    min-width: 120px;
+    text-align: center;
+    letter-spacing: -0.3px;
+}
+
+/* 자동생성 버튼 */
+.btn-generate {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 18px;
+    background: #1e293b;
+    color: white;
     border: none;
-    border-radius: 4px;
-    background: #2c3e50;
-    color: #fff;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
     cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.btn-generate:hover {
+    background: #0f172a;
+    transform: translateY(-1px);
+}
+
+/* ===== 필터 섹션 ===== */
+.cal-filters {
+    display: flex;
+    gap: 16px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 16px 20px;
+    flex-wrap: wrap;
+}
+
+.filter-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 180px;
+    flex: 1;
+}
+
+.filter-label {
+    font-size: 10px;
+    font-weight: 800;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+.filter-select {
+    padding: 9px 14px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #1e293b;
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.15s;
+    cursor: pointer;
+}
+
+.filter-select:focus {
+    border-color: #3b82f6;
+}
+
+.date-input-wrap {
+    position: relative;
+}
+
+.filter-date {
+    width: 100%;
+    padding: 9px 36px 9px 14px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #1e293b;
+    outline: none;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+}
+
+.filter-date:focus {
+    border-color: #3b82f6;
+}
+
+.date-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+}
+
+/* ===== 하단 통계 패널 ===== */
+.cal-stat-row {
+    display: flex;
+    gap: 16px;
+}
+
+.cal-stat-card {
+    flex: 1;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 20px 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.cal-stat-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cal-stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.icon-blue  { background: #eff6ff; }
+.icon-green { background: #f0fdf4; }
+
+.cal-stat-label {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #94a3b8;
+    margin: 0;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+
+.cal-stat-value {
+    font-size: 22px;
+    font-weight: 900;
+    color: #0f172a;
+    margin: 0;
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+}
+
+.cal-stat-desc {
+    font-size: 11px;
+    color: #94a3b8;
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* ===== 캘린더 컨테이너 ===== */
+.cal-container {
+    width: 100%;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04),
+                0 20px 40px -10px rgba(0, 0, 0, 0.06);
+}
+
+/* 요일 헤더 행 */
+.cal-header-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: #f8fafc;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.cal-header-cell {
+    padding: 14px 0;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 800;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+.cal-header-sun { color: #ef4444; }
+.cal-header-sat { color: #3b82f6; }
+
+/* 캘린더 그리드 */
+.cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    border-top: 1px solid #f1f5f9;
+    border-left: 1px solid #f1f5f9;
+}
+
+/* ===== 날짜 셀 ===== */
+.cal-cell {
+    min-height: 130px;
+    border-right: 1px solid #f1f5f9;
+    border-bottom: 1px solid #f1f5f9;
+    padding: 10px;
+    background: #ffffff;
+    transition: background 0.15s ease;
+    overflow: hidden;
+}
+
+.cal-cell:hover {
+    background: #fafbff;
+}
+
+.cal-cell.empty {
+    background: #fafbff;
+    cursor: default;
+}
+
+.cal-cell.empty:hover {
+    background: #fafbff;
+}
+
+/* 오늘 */
+.cal-cell.today {
+    background: #fffbeb !important;
+    outline: 2px solid #fbbf24;
+    outline-offset: -2px;
+    z-index: 1;
+}
+
+/* 이번 달 외 */
+.cal-cell.out-month {
+    background: #f8fafc;
+}
+
+.cal-cell.out-month .date-num {
+    color: #cbd5e1 !important;
+}
+
+.cal-cell.out-month .shift-badge,
+.cal-cell.out-month .rec-badge,
+.cal-cell.out-month .req-badge,
+.cal-cell.out-month .late-badge,
+.cal-cell.out-month .early-badge,
+.cal-cell.out-month .mismatch-badge,
+.cal-cell.out-month .absent-badge,
+.cal-cell.out-month .overnight-badge {
+    opacity: 0.45;
+}
+
+/* 날짜 숫자 */
+.date-num {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 14px;
+    font-weight: 900;
+    color: #1e293b;
+    margin-bottom: 6px;
+}
+
+.cal-cell.today .date-num::after {
+    content: 'Today';
+    font-size: 9px;
+    font-weight: 800;
+    background: #f59e0b;
+    color: white;
+    padding: 2px 7px;
+    border-radius: 99px;
+    font-style: italic;
+    letter-spacing: 0.3px;
+}
+
+/* 요일별 색상 */
+.cal-cell.col-sun .date-num { color: #ef4444; }
+.cal-cell.col-sat .date-num { color: #3b82f6; }
+.cal-cell.out-month.col-sun .date-num,
+.cal-cell.out-month.col-sat .date-num { color: #cbd5e1; }
+
+/* ===== 배지 공통 ===== */
+.badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.b-work    { background: #dbeafe; color: #1d4ed8; }
+.b-off     { background: #fce7f3; color: #be185d; }
+.b-holiday { background: #fce7f3; color: #be185d; }
+.b-draft    { background: #f1f5f9; color: #64748b; }
+.b-submit   { background: #d1fae5; color: #065f46; }
+.b-approved { background: #22c55e; color: #fff; }
+.b-rejected { background: #ef4444; color: #fff; }
+
+.shift-badge { display: block; margin-bottom: 3px; }
+.shift-time  { font-size: 9px; color: #94a3b8; font-weight: 500; }
+
+.rec-badge {
+    display: block;
+    margin-top: 3px;
+    font-size: 10px;
+    color: #166534;
+    background: #dcfce7;
+    padding: 2px 7px;
+    border-radius: 5px;
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.late-badge {
+    display: block;
+    margin-top: 2px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #991b1b;
+    background: #fee2e2;
+    padding: 2px 7px;
+    border-radius: 5px;
+    white-space: nowrap;
+}
+
+.early-badge {
+    display: block;
+    margin-top: 2px;
+    font-size: 10px;
+    color: #92400e;
+    background: #fef3c7;
+    padding: 2px 7px;
+    border-radius: 5px;
+    white-space: nowrap;
+}
+
+.mismatch-badge {
+    display: block;
+    margin-top: 2px;
+    font-size: 10px;
+    color: #5b21b6;
+    background: #ede9fe;
+    padding: 2px 7px;
+    border-radius: 5px;
+    white-space: nowrap;
+}
+
+.absent-badge {
+    display: block;
+    margin-top: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    background: #dc2626;
+    padding: 2px 7px;
+    border-radius: 5px;
+    white-space: nowrap;
+}
+
+.overnight-badge {
+    display: block;
+    margin-top: 2px;
+    font-size: 10px;
+    color: #92400e;
+    background: #ffedd5;
+    padding: 2px 7px;
+    border-radius: 5px;
+    white-space: nowrap;
+}
+
+.req-badge { display: block; margin-top: 2px; }
+
+/* ===== 토스트 ===== */
+#toast {
+    position: fixed;
+    bottom: 32px;
+    right: 24px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    color: #fff;
     font-size: 13px;
     font-weight: 600;
-    font-family: 'Malgun Gothic', sans-serif;
+    display: none;
+    z-index: 9999;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
-.btn-generate-records:hover { background: #1f2d3a; }
-
-.emp-badge {
-    margin-left: auto; align-self: center;
-    font-size: 13px; color: #2c3e50; font-weight: 600;
-    background: #f0f4f8; padding: 6px 14px; border-radius: 20px;
-}
-
-.cal-grid { width: 100%; border-collapse: collapse; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-radius: 6px; overflow: hidden; }
-.cal-grid th { background: #2c3e50; color: #fff; text-align: center; padding: 10px 0; font-size: 13px; font-weight: 600; }
-.cal-grid th.th-sun { color: #ff8a80; }
-.cal-grid th.th-sat { color: #80d8ff; }
-.cal-grid th.th-week { color: #aab4be; font-size: 11px; width: 160px; }
-.cal-grid th.th-week-sub { color: #aab4be; font-size: 10px; width: 80px; padding: 4px 0; }
-.cal-grid td { width: 14.28%; min-height: 130px; height: 130px; border: 1px solid #e8eaed; vertical-align: top; padding: 6px; cursor: pointer; transition: background 0.15s; }
-.week-total { width: 80px; min-width: 80px; text-align: center; vertical-align: middle; font-size: 11px; font-weight: 700; color: #2c3e50; background: #f0f4f8; cursor: default; border: 1px solid #e8eaed; }
-.week-total.over { color: #e74c3c; background: #fde8e8; }
-.cal-grid td:hover { background: #f0f4f8 !important; }
-.cal-grid td.empty { background: #fafafa; cursor: default; }
-.cal-grid td.empty:hover { background: #fafafa !important; }
-.cal-grid td.today { background: #fffde7 !important; }
-.cal-grid td.out-month { background: #f7f8fa; color: #8f9aa5; }
-.cal-grid td.out-month .date-num { color: #a6afb8; }
-.cal-grid td.out-month .shift-badge,
-.cal-grid td.out-month .rec-badge,
-.cal-grid td.out-month .req-badge,
-.cal-grid td.out-month .late-badge,
-.cal-grid td.out-month .early-badge,
-.cal-grid td.out-month .mismatch-badge,
-.cal-grid td.out-month .absent-badge,
-.cal-grid td.out-month .overnight-badge {
-    opacity: 0.58;
-}
-.cal-grid td.col-sun .date-num { color: #e74c3c; }
-.cal-grid td.col-sat .date-num { color: #2980b9; }
-.cal-grid td.out-month.col-sun .date-num,
-.cal-grid td.out-month.col-sat .date-num { color: #a6afb8; }
-
-.date-num { font-size: 13px; font-weight: 700; color: #2c3e50; margin-bottom: 4px; }
-.badge { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 10px; font-weight: 600; margin: 1px 0; white-space: nowrap; }
-.b-work    { background: #d5e8fd; color: #1a5276; }
-.b-off     { background: #fde8e8; color: #922b21; }
-.b-holiday { background: #fde8e8; color: #922b21; }
-.b-draft    { background: #e0e0e0; color: #555; }
-.b-submit   { background: #d5f5e3; color: #1e5f3a; }
-.b-approved { background: #27ae60; color: #fff; }
-.b-rejected { background: #e74c3c; color: #fff; }
-.shift-badge { display: block; margin-bottom: 2px; }
-.shift-time  { font-size: 9px; color: #888; }
-.req-badge   { display: block; margin-top: 1px; }
-.rec-badge   { display: block; margin-top: 2px; font-size: 9px; color: #1a5c1a;
-               background: #e8f5e9; padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
-.late-badge  { display: block; margin-top: 1px; font-size: 9px; color: #7b1f1f;
-               background: #fde8e8; padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
-.early-badge  { display: block; margin-top: 1px; font-size: 9px; color: #7a4c00;
-                background: #fff3cd; padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
-.mismatch-badge { display: block; margin-top: 1px; font-size: 9px; color: #5a2d82;
-                  background: #efe5ff; padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
-.absent-badge { display: block; margin-top: 2px; font-size: 9px; font-weight: 700; color: #fff;
-                background: #c0392b; padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
-.overnight-badge { display: block; margin-top: 1px; font-size: 9px; color: #7a4c00;
-                   background: #ffe0b2; padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
-
-.month-total {
-    text-align: right; margin-top: 8px; font-size: 13px;
-    font-weight: 700; color: #2c3e50;
-}
-
-.modal-bg {
-    display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,0.45); z-index: 1000; align-items: center; justify-content: center;
-}
-.modal-bg.open { display: flex; }
-.modal {
-    background: #fff; border-radius: 8px; padding: 28px 32px;
-    width: 420px; max-width: 95vw; box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-}
-.modal h3 { font-size: 16px; font-weight: 700; color: #2c3e50; margin: 0 0 20px; }
-.modal-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
-.modal-row label { font-size: 12px; color: #555; font-weight: 600; }
-.modal-row input,
-.modal-row select,
-.modal-row textarea {
-    padding: 7px 10px; border: 1px solid #ced4da; border-radius: 4px;
-    font-size: 13px; font-family: 'Malgun Gothic', sans-serif; width: 100%; box-sizing: border-box;
-}
-.modal-row textarea { resize: vertical; height: 70px; }
-.modal-row .row-2 { display: flex; gap: 10px; }
-.modal-row .row-2 select { flex: 1; }
-.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
-.btn-modal-save   { padding: 8px 22px; background: #27ae60; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; font-family: 'Malgun Gothic', sans-serif; }
-.btn-modal-cancel { padding: 8px 22px; background: #95a5a6; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-family: 'Malgun Gothic', sans-serif; }
-.btn-modal-save:hover   { background: #1e8449; }
-.btn-modal-cancel:hover { background: #7f8c8d; }
-
-#toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: 6px; color: #fff; font-size: 13px; display: none; z-index: 9999; }
-#toast.success { background: #27ae60; }
-#toast.error   { background: #e74c3c; }
+#toast.success { background: #22c55e; }
+#toast.error   { background: #ef4444; }

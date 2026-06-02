@@ -136,15 +136,31 @@
     <!-- 부서원 목록 -->
     <select id="findEmpsByDept"
             resultType="com.company.attendancemanagement.dto.calendar.EmpSimpleDto">
-        SELECT h.EMP_CODE  AS empCode,
-               h.EMP_NAME  AS empName,
-               d.DEPT_NAME AS deptName
+        WITH SubDepts AS (
+            SELECT DEPT_CODE
+            FROM ORGDEPTMASTER01
+            WHERE COMPANY   = #{company}
+              AND DEPT_CODE = #{deptCode}
+              AND USE_YN    = 'Y'
+            UNION ALL
+            SELECT d.DEPT_CODE
+            FROM ORGDEPTMASTER01 d
+            INNER JOIN SubDepts s ON d.PARENT_DEPT = s.DEPT_CODE
+            WHERE d.COMPANY = #{company}
+              AND d.USE_YN  = 'Y'
+        )
+        SELECT h.EMP_CODE      AS empCode,
+               h.EMP_NAME      AS empName,
+               d.DEPT_NAME     AS deptName,
+               p.POSITION_NAME AS positionName
         FROM HRIMASTER01 h
-        LEFT JOIN ORGDEPTMASTER01 d ON h.COMPANY = d.COMPANY AND h.DEPT_CODE = d.DEPT_CODE
+        LEFT JOIN ORGDEPTMASTER01 d ON d.COMPANY = h.COMPANY AND d.DEPT_CODE = h.DEPT_CODE
+        LEFT JOIN HRTGRADEINFO01  p ON p.COMPANY = h.COMPANY AND p.POSITION_CODE = h.POSITION_CODE
         WHERE h.COMPANY   = #{company}
-          AND h.DEPT_CODE = #{deptCode}
+          AND h.DEPT_CODE IN (SELECT DEPT_CODE FROM SubDepts)
           AND h.RETIRE_DATE IS NULL
-        ORDER BY h.EMP_CODE
+        ORDER BY d.DEPT_CODE, h.EMP_CODE
+        OPTION (MAXRECURSION 20)
     </select>
 
     <!-- 월별 출퇴근 실적 조회 (캘린더 표시용) -->
@@ -201,6 +217,19 @@
 
     <update id="generateDeptRecordsFromPlan">
         <![CDATA[
+        WITH SubDepts AS (
+            SELECT DEPT_CODE
+            FROM ORGDEPTMASTER01
+            WHERE COMPANY   = #{company}
+              AND DEPT_CODE = #{deptCode}
+              AND USE_YN    = 'Y'
+            UNION ALL
+            SELECT d.DEPT_CODE
+            FROM ORGDEPTMASTER01 d
+            INNER JOIN SubDepts s ON d.PARENT_DEPT = s.DEPT_CODE
+            WHERE d.COMPANY = #{company}
+              AND d.USE_YN  = 'Y'
+        )
         MERGE HRTDAILYATTENDANCE01 AS T
         USING (
             SELECT base.COMPANY,
@@ -254,7 +283,7 @@
                        END AS WORK_DAY_TYPE
             ) day_type
             WHERE h.COMPANY = #{company}
-              AND h.DEPT_CODE = #{deptCode}
+              AND h.DEPT_CODE IN (SELECT DEPT_CODE FROM SubDepts)
               AND h.RETIRE_DATE IS NULL
               AND day_type.WORK_DAY_TYPE = 'WORK'
               AND s.WORK_ON_HHMM IS NOT NULL

@@ -271,7 +271,6 @@ async function openDetail(requestId) {
         + timeInfo
         + attendanceInfo
         + '<div class="lbl">사유</div><div class="val">'+escapeHtml(d.reason || '-')+'</div>'
-        + '<div class="lbl">사유상세</div><div class="val">'+escapeHtml(d.reasonDetail || '-')+'</div>'
         + '<div class="lbl">신청상태</div><div class="val">'+escapeHtml(statusLabel[d.requestStatus] || d.requestStatus || '-')+'</div>';
 
     const chain = d.approvalChain || [];
@@ -281,7 +280,8 @@ async function openDetail(requestId) {
             '<tr>'
             + '<td>'+escapeHtml(s.stepNo)+'</td>'
             + '<td>'+escapeHtml(stepTypeName(s.stepType))+'</td>'
-            + '<td>'+escapeHtml(s.approverName || s.approverEmpCode || '-')+'</td>'
+            + '<td>'+escapeHtml((s.approverName || s.approverEmpCode || '-')
+                + (s.approverDeptName ? ' / ' + s.approverDeptName : ''))+'</td>'
             + '<td>'+stepStatusBadge(s.status)+'</td>'
             + '<td>'+escapeHtml(s.decisionAt || '-')+'</td>'
             + '<td style="text-align:left;max-width:140px;">'+escapeHtml(s.rejectReason || '-')+'</td>'

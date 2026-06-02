@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -46,14 +47,17 @@ public class AttendanceRecordController {
 
         String  company = loginUser.getCompany();
         boolean isAdmin = "ADMIN".equals(loginUser.getRoleCode());
+        String deptLeader = requestMapper.findDeptLeader(company, loginUser.getDeptCode());
+        boolean isDeptLeader = loginUser.getEmpCode().equals(deptLeader);
+        boolean canViewAll = isAdmin || isDeptLeader;
 
         YearMonth yearMonth = (ym == null || ym.isBlank()) ? YearMonth.now() : YearMonth.parse(ym);
 
-        List<DepartmentDto> depts = isAdmin
+        List<DepartmentDto> depts = canViewAll
                 ? calendarService.getAccessibleDepts(company, loginUser.getDeptCode()) : List.of();
 
         String selectedDept;
-        if (isAdmin && deptCode != null && !deptCode.isBlank()) {
+        if (canViewAll && deptCode != null && !deptCode.isBlank()) {
             boolean allowed = depts.stream().anyMatch(d -> d.getDeptCode().equals(deptCode));
             selectedDept = allowed ? deptCode : loginUser.getDeptCode();
         } else {
@@ -61,17 +65,18 @@ public class AttendanceRecordController {
         }
 
         String myEmp = loginUser.getEmpCode();
-        List<EmpSimpleDto> emps = isAdmin
+        List<EmpSimpleDto> emps = canViewAll
                 ? calendarService.getEmpsByDept(company, selectedDept) : List.of();
-        if (isAdmin) {
+        if (canViewAll) {
             emps.sort(Comparator.comparing((EmpSimpleDto e) -> e.getEmpCode().equals(myEmp) ? 0 : 1)
                     .thenComparing(EmpSimpleDto::getEmpCode));
         }
 
         String targetEmp;
-        if (isAdmin && empCode != null && !empCode.isBlank()) {
+        if (canViewAll && empCode != null && !empCode.isBlank()
+                && emps.stream().anyMatch(e -> e.getEmpCode().equals(empCode))) {
             targetEmp = empCode;
-        } else if (isAdmin && !emps.isEmpty()) {
+        } else if (canViewAll && !emps.isEmpty()) {
             boolean selfInList = emps.stream().anyMatch(e -> e.getEmpCode().equals(myEmp));
             targetEmp = selfInList ? myEmp : emps.get(0).getEmpCode();
         } else {
@@ -99,6 +104,39 @@ public class AttendanceRecordController {
             row.setWeekend(date.getDayOfWeek() == DayOfWeek.SATURDAY
                         || date.getDayOfWeek() == DayOfWeek.SUNDAY);
             row.setHasRecord(recordMap.containsKey(ymd));
+
+            // 계획 시프트 조회 (근태명 + checkOut 없을 때 퇴근시간 표시용)
+            Map<String, Object> planned = recordService.getPlannedShift(company, targetEmp, ymd);
+            Object shiftName = planned.get("shiftName");
+            if (shiftName != null && !shiftName.toString().isBlank()) {
+                row.setPlannedShiftName(shiftName.toString());
+            }
+            Object workDayType = planned.get("workDayType");
+            if (workDayType != null && !workDayType.toString().isBlank()) {
+                row.setPlannedWorkDayType(workDayType.toString());
+            }
+            boolean hasCheckIn  = row.getCheckIn()  != null && !row.getCheckIn().isBlank();
+            boolean hasCheckOut = row.getCheckOut() != null && !row.getCheckOut().isBlank();
+            if (hasCheckIn && !hasCheckOut) {
+                Object workOff = planned.get("workOffHhmm");
+                if (workOff != null && !workOff.toString().isBlank()) {
+                    row.setPlannedCheckOut(workOff.toString());
+                }
+            }
+
+            // WORK_MIN 없거나, 출장 등 OTHER 승인으로 0 세팅된 경우 → 표시용 재계산
+            boolean hasActualShift = row.getActualShiftCode() != null && !row.getActualShiftCode().isBlank();
+            boolean needsRecalc = (row.getWorkMin() == null && hasCheckIn)
+                    || (Integer.valueOf(0).equals(row.getWorkMin()) && !hasCheckIn && hasActualShift);
+            if (needsRecalc) {
+                row.setCompany(company);
+                row.setEmpCode(targetEmp);
+                try {
+                    int wm = recordService.calculateWorkMin(row);
+                    row.setWorkMin(wm);
+                } catch (Exception ignored) {}
+            }
+
             rows.add(row);
         }
 
@@ -117,12 +155,82 @@ public class AttendanceRecordController {
         model.addAttribute("targetEmp",    targetEmp);
         model.addAttribute("selectedDept", selectedDept);
         model.addAttribute("isAdmin",      isAdmin);
+        model.addAttribute("canViewAll",   canViewAll);
         model.addAttribute("ymDisplay",    yearMonth.getYear() + "년 " + yearMonth.getMonthValue() + "월");
         model.addAttribute("currentYm",    yearMonth.toString());
         model.addAttribute("prevYm",       yearMonth.minusMonths(1).toString());
         model.addAttribute("nextYm",       yearMonth.plusMonths(1).toString());
 
         return "attendance/record";
+    }
+
+    /* ───────── 자가 출근 처리 ───────── */
+    @PostMapping("/checkin")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> selfCheckIn(HttpSession session) {
+        LoginUserDto loginUser = getLoginUser(session);
+        if (loginUser == null) return ResponseEntity.status(401).body(fail("로그인이 필요합니다."));
+
+        String company  = loginUser.getCompany();
+        String empCode  = loginUser.getEmpCode();
+        String yyyymmdd = LocalDate.now().format(YMD_FMT);
+        String now      = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"));
+
+        AttendanceRecordDto existing = recordService.findByDay(company, empCode, yyyymmdd);
+        if (existing != null && existing.getCheckIn() != null && !existing.getCheckIn().isBlank()) {
+            return ResponseEntity.ok(fail("이미 출근 처리되었습니다. (" + existing.getCheckIn() + ")"));
+        }
+
+        AttendanceRecordDto dto = existing != null ? existing : new AttendanceRecordDto();
+        dto.setCompany(company);
+        dto.setEmpCode(empCode);
+        dto.setYyyymmdd(yyyymmdd);
+        dto.setDeptCode(loginUser.getDeptCode());
+        dto.setCheckIn(now);
+        if (dto.getOvernightYn() == null) dto.setOvernightYn("N");
+        try {
+            recordService.upsert(dto);
+            return ResponseEntity.ok(Map.of("success", true, "checkIn", now));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.ok(fail(e.getMessage()));
+        }
+    }
+
+    /* ───────── 자가 퇴근 처리 ───────── */
+    @PostMapping("/checkout")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> selfCheckOut(HttpSession session) {
+        LoginUserDto loginUser = getLoginUser(session);
+        if (loginUser == null) return ResponseEntity.status(401).body(fail("로그인이 필요합니다."));
+
+        String company  = loginUser.getCompany();
+        String empCode  = loginUser.getEmpCode();
+        String yyyymmdd = LocalDate.now().format(YMD_FMT);
+        String now      = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"));
+
+        AttendanceRecordDto existing = recordService.findByDay(company, empCode, yyyymmdd);
+        if (existing == null || existing.getCheckIn() == null || existing.getCheckIn().isBlank()) {
+            return ResponseEntity.ok(fail("출근 기록이 없습니다."));
+        }
+        if (existing.getCheckOut() != null && !existing.getCheckOut().isBlank()) {
+            return ResponseEntity.ok(fail("이미 퇴근 처리되었습니다. (" + existing.getCheckOut() + ")"));
+        }
+
+        existing.setCheckOut(now);
+        // 퇴근 시간이 출근 시간보다 이르면 익일 퇴근
+        int ciMin = toMin(existing.getCheckIn()), coMin = toMin(now);
+        existing.setOvernightYn(coMin < ciMin ? "Y" : "N");
+        try {
+            recordService.upsert(existing);
+            return ResponseEntity.ok(Map.of("success", true, "checkOut", now));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.ok(fail(e.getMessage()));
+        }
+    }
+
+    private int toMin(String hhmm) {
+        String[] p = hhmm.split(":");
+        return Integer.parseInt(p[0]) * 60 + Integer.parseInt(p[1]);
     }
 
     /* ───────── 근태코드 목록 (모달 드롭다운용) ───────── */

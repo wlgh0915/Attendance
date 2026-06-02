@@ -71,6 +71,7 @@
     <select id="findPlannedShift" resultType="java.util.HashMap">
         <![CDATA[
         SELECT ISNULL(COALESCE(NULLIF(os.SHIFT_CODE, ''), s.SHIFT_CODE), '')                    AS shiftCode,
+               ISNULL(COALESCE(NULLIF(os.SHIFT_NAME, ''), s.SHIFT_NAME), '')                  AS shiftName,
                CONVERT(VARCHAR(5), COALESCE(os.WORK_ON_HHMM,  s.WORK_ON_HHMM),  108)           AS workOnHhmm,
                CONVERT(VARCHAR(5), COALESCE(os.WORK_OFF_HHMM, s.WORK_OFF_HHMM), 108)           AS workOffHhmm,
                CONVERT(VARCHAR(5), COALESCE(os.BREAK1_START_HHMM, s.BREAK1_START_HHMM), 108)   AS break1StartHhmm,
@@ -150,6 +151,33 @@
           AND EMP_CODE = #{empCode}
           AND YYYYMMDD BETWEEN #{weekStart} AND #{weekEnd}
           AND YYYYMMDD != #{excludeYmd}
+    </select>
+
+    <!-- 오늘 미출근자 목록 (접근 가능 부서 기준) -->
+    <select id="findAbsentToday" resultType="java.util.Map">
+        SELECT h.EMP_CODE AS empCode,
+               h.EMP_NAME AS empName,
+               d.DEPT_CODE AS deptCode,
+               d.DEPT_NAME AS deptName
+        FROM HRIMASTER01 h
+        JOIN HRIDEPTTRANSFER01 tr
+               ON tr.COMPANY    = h.COMPANY
+              AND tr.EMP_CODE   = h.EMP_CODE
+              AND tr.START_DATE &lt;= CAST(#{today} AS DATE)
+              AND (tr.END_DATE IS NULL OR tr.END_DATE &gt;= CAST(#{today} AS DATE))
+        JOIN ORGDEPTMASTER01 d ON d.COMPANY = tr.COMPANY AND d.DEPT_CODE = tr.DEPT_CODE
+        LEFT JOIN HRTDAILYATTENDANCE01 rec
+               ON rec.COMPANY  = h.COMPANY
+              AND rec.EMP_CODE = h.EMP_CODE
+              AND rec.YYYYMMDD = #{today}
+        WHERE h.COMPANY = #{company}
+          AND (h.RETIRE_DATE IS NULL OR h.RETIRE_DATE &gt; CAST(#{today} AS DATE))
+          AND tr.DEPT_CODE IN
+          <foreach collection="deptCodes" item="code" open="(" separator="," close=")">#{code}</foreach>
+          AND (rec.YYYYMMDD IS NULL
+               OR (rec.CHECK_IN IS NULL
+                   AND (rec.ACTUAL_SHIFT_CODE IS NULL OR rec.ACTUAL_SHIFT_CODE = '')))
+        ORDER BY d.DEPT_CODE, h.EMP_CODE
     </select>
 
     <!-- 출퇴근 실적 삭제 -->

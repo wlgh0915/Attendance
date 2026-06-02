@@ -9,84 +9,259 @@
 </head>
 <body>
 <div layout:fragment="content">
-    <div class="content-wrapper">
-        <div th:if="${successMessage}" class="toast-data" data-type="success" th:data-message="${successMessage}" style="display:none"></div>
-        <div class="page-header">
-            <h2>부서 목록</h2>
-            <a th:href="@{/departments/new}" class="btn-toolbar btn-add-emp">+ 부서 등록</a>
+<div class="dept-page">
+
+    <!-- 성공 메시지 (토스트용) -->
+    <div th:if="${successMessage}" class="toast-data" data-type="success"
+         th:data-message="${successMessage}" style="display:none"></div>
+
+    <!-- 페이지 헤더 -->
+    <div class="dept-top">
+        <div class="dept-top-left">
+            <h2 class="dept-title">부서 목록</h2>
+            <p class="dept-subtitle">조직의 구조를 관리하고 부서별 설정을 구성합니다.</p>
         </div>
-        <table>
-            <thead>
-            <tr>
-                <th>회사명</th>
-                <th>부서코드</th>
-                <th>부서명</th>
-                <th>상위부서</th>
-                <th>부서장</th>
-                <th>부서분류</th>
-                <th>사용여부</th>
-                <th>운영 상태</th>
-                <th class="action-header">사원 목록</th>
-                <th class="action-header">부서 수정</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr th:each="dept : ${departments}">
-                <td th:text="${dept.companyName}"></td>
-                <td th:text="${dept.deptCode}"></td>
-                <td th:text="${dept.deptName}"></td>
-                <td th:text="${dept.parentDeptName != null ? dept.parentDeptName : ''}"></td>
-                <td th:text="${dept.deptLeaderName != null ? dept.deptLeaderName : ''}"></td>
-                <td>
-                    <span th:switch="${dept.deptCategory}">
-                        <span th:case="'10'">10 - CEO</span>
-                        <span th:case="'20'">20 - COO</span>
-                        <span th:case="'21'">21 - 위원회</span>
-                        <span th:case="'30'">30 - 본부</span>
-                        <span th:case="'40'">40 - 팀</span>
-                        <span th:case="'41'">41 - 부</span>
-                        <span th:case="'50'">50 - 과</span>
-                        <span th:case="'60'">60 - 그룹</span>
-                        <span th:case="'70'">70 - 파트</span>
-                        <span th:case="*"></span>
-                    </span>
-                </td>
-                <td th:text="${dept.useYn}"></td>
-                <td>
-                    <span th:if="${dept.dateStatus == 'ACTIVE'}"
-                          class="status-badge active"
-                          th:title="${dept.endDate != null ? '운영 중 (' + dept.startDate + ' ~ ' + dept.endDate + ')' : '운영 중 (' + dept.startDate + ' ~ )'}">운영중</span>
-                    <span th:if="${dept.dateStatus == 'INACTIVE'}"
-                          class="status-badge inactive"
-                          th:title="'운영 종료 (' + ${dept.startDate} + ' ~ ' + ${dept.endDate} + ')'">운영종료</span>
-                </td>
-                <td class="action-cell">
-                    <a th:href="@{/departments/employees(company=${dept.company}, deptCode=${dept.deptCode})}"
-                       class="btn-action btn-view">보기</a>
-                </td>
-                <td class="action-cell">
-                    <a th:href="@{/departments/edit(company=${dept.company}, deptCode=${dept.deptCode})}"
-                       class="btn-action btn-edit">수정</a>
-                </td>
-            </tr>
-            <tr class="unassigned-dept-row">
-                <td>-</td>
-                <td>-</td>
-                <td><strong>부서 미지정</strong></td>
-                <td>-</td>
-                <td>-</td>
-                <td>-</td>
-                <td>-</td>
-                <td>-</td>
-                <td class="action-cell">
-                    <a th:href="@{/departments/employees/unassigned-manage(company=${company})}"
-                       class="btn-action btn-view">보기</a>
-                </td>
-                <td class="action-cell">-</td>
-            </tr>
-            </tbody>
-        </table>
     </div>
-</div>
+
+    <!-- 요약 카드 -->
+    <div class="dept-summary-grid">
+        <div class="dept-summary-card">
+            <div class="dept-summary-top">
+                <div class="summary-icon icon-blue">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                         fill="none" stroke="#2563eb" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                </div>
+            </div>
+            <p class="summary-label">총 부서 수</p>
+            <p class="summary-value"><span id="statTotal">-</span><span class="summary-unit">개소</span></p>
+        </div>
+        <div class="dept-summary-card">
+            <div class="dept-summary-top">
+                <div class="summary-icon icon-green">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                         fill="none" stroke="#16a34a" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                </div>
+            </div>
+            <p class="summary-label">운영 중인 부서</p>
+            <p class="summary-value"><span id="statActive">-</span><span class="summary-unit">개소</span></p>
+        </div>
+        <div class="dept-summary-card">
+            <div class="dept-summary-top">
+                <div class="summary-icon icon-slate">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                         fill="none" stroke="#64748b" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="15" y1="9" x2="9" y2="15"/>
+                        <line x1="9" y1="9" x2="15" y2="15"/>
+                    </svg>
+                </div>
+            </div>
+            <p class="summary-label">운영 종료</p>
+            <p class="summary-value"><span id="statInactive">-</span><span class="summary-unit">개소</span></p>
+        </div>
+    </div>
+
+    <!-- 테이블 카드 -->
+    <div class="dept-table-card">
+
+        <!-- 카드 헤더 -->
+        <div class="dept-card-header">
+            <div class="dept-filter-tabs">
+                <button class="dept-tab-btn active" onclick="filterByCategory(this,'ALL')">전체</button>
+                <button class="dept-tab-btn" onclick="filterByCategory(this,'HQ')">본부</button>
+                <button class="dept-tab-btn" onclick="filterByCategory(this,'TEAM')">팀/부</button>
+                <button class="dept-tab-btn" onclick="filterByCategory(this,'INACTIVE')">운영 종료</button>
+            </div>
+            <span class="dept-row-count" id="rowCountLabel"></span>
+        </div>
+
+        <!-- 테이블 -->
+        <div class="dept-table-wrap">
+            <table class="dept-table">
+                <thead>
+                <tr>
+                    <th>부서코드</th>
+                    <th>부서명</th>
+                    <th>상위 부서</th>
+                    <th>부서장</th>
+                    <th>부서 분류</th>
+                    <th>사용 여부</th>
+                    <th>운영 상태</th>
+                    <th>관리</th>
+                </tr>
+                </thead>
+                <tbody>
+
+                <!-- 일반 부서 행 -->
+                <tr class="dept-row"
+                    th:each="dept : ${departments}"
+                    th:data-status="${dept.dateStatus}"
+                    th:data-cat="${dept.deptCategory}"
+                    th:classappend="${dept.dateStatus == 'INACTIVE' ? ' row-inactive' : ''}">
+
+                    <td class="td-code" th:text="${dept.deptCode}"></td>
+                    <td class="td-name" th:text="${dept.deptName}"></td>
+                    <td class="td-parent" th:text="${dept.parentDeptName != null ? dept.parentDeptName : '-'}"></td>
+                    <td class="td-leader" th:text="${dept.deptLeaderName != null ? dept.deptLeaderName : '-'}"></td>
+
+                    <td>
+                        <span th:switch="${dept.deptCategory}">
+                            <span th:case="'10'" class="cat-badge cat-top">CEO</span>
+                            <span th:case="'20'" class="cat-badge cat-top">COO</span>
+                            <span th:case="'21'" class="cat-badge cat-top">위원회</span>
+                            <span th:case="'30'" class="cat-badge cat-hq">본부</span>
+                            <span th:case="'40'" class="cat-badge cat-team">팀</span>
+                            <span th:case="'41'" class="cat-badge cat-team">부</span>
+                            <span th:case="'50'" class="cat-badge cat-sub">과</span>
+                            <span th:case="'60'" class="cat-badge cat-sub">그룹</span>
+                            <span th:case="'70'" class="cat-badge cat-sub">파트</span>
+                            <span th:case="*" class="cat-badge cat-sub" th:text="${dept.deptCategory}"></span>
+                        </span>
+                    </td>
+
+                    <td>
+                        <span class="use-yn-badge"
+                              th:classappend="${dept.useYn == 'Y' ? ' use-yn-y' : ' use-yn-n'}"
+                              th:text="${dept.useYn == 'Y' ? '사용' : '미사용'}"></span>
+                    </td>
+
+                    <td>
+                        <span th:if="${dept.dateStatus == 'ACTIVE'}" class="status-pill status-active"
+                              th:title="${dept.endDate != null ? '운영 중 (' + dept.startDate + ' ~ ' + dept.endDate + ')' : '운영 중 (' + dept.startDate + ' ~ )'}">
+                            <span class="status-dot dot-active"></span>운영 중
+                        </span>
+                        <span th:if="${dept.dateStatus == 'INACTIVE'}" class="status-pill status-inactive"
+                              th:title="'운영 종료 (' + ${dept.startDate} + ' ~ ' + ${dept.endDate} + ')'">
+                            <span class="status-dot dot-inactive"></span>운영 종료
+                        </span>
+                    </td>
+
+                    <td class="td-actions">
+                        <a th:href="@{/departments/employees(deptCode=${dept.deptCode})}"
+                           class="btn-dept-action btn-dept-view">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2.5">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                            사원 보기
+                        </a>
+                        <a th:href="@{/departments/edit(deptCode=${dept.deptCode})}"
+                           class="btn-dept-action btn-dept-edit">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2.5">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                            수정
+                        </a>
+                    </td>
+                </tr>
+
+                <!-- 부서 미지정 행 -->
+                <tr class="dept-row unassigned-dept-row" data-status="SPECIAL" data-cat="SPECIAL">
+                    <td class="td-code">-</td>
+                    <td class="td-name"><strong>부서 미지정</strong></td>
+                    <td class="td-parent">-</td>
+                    <td class="td-leader">-</td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td class="td-actions">
+                        <a th:href="@{/departments/employees/unassigned-manage}"
+                           class="btn-dept-action btn-dept-view">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2.5">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                            사원 보기
+                        </a>
+                    </td>
+                </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 테이블 푸터 -->
+        <div class="dept-table-footer">
+            <p class="dept-footer-count">총 <span id="visibleCount">-</span>건 표시 중</p>
+        </div>
+    </div>
+
+</div><!-- /dept-page -->
+
+<div id="toast"></div>
+
+<script>
+    const allRows = Array.from(document.querySelectorAll('tr.dept-row'));
+    const hqCats  = ['30'];
+    const teamCats = ['40', '41'];
+
+    function updateStats() {
+        const deptRows = allRows.filter(r => r.dataset.status !== 'SPECIAL');
+        const total    = deptRows.length + 1; // +1 미지정
+        const active   = deptRows.filter(r => r.dataset.status === 'ACTIVE').length;
+        const inactive = deptRows.filter(r => r.dataset.status === 'INACTIVE').length;
+        document.getElementById('statTotal').textContent    = total;
+        document.getElementById('statActive').textContent   = active;
+        document.getElementById('statInactive').textContent = inactive;
+    }
+
+    function filterByCategory(btn, cat) {
+        document.querySelectorAll('.dept-tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        allRows.forEach(r => {
+            const status = r.dataset.status;
+            const cat2   = r.dataset.cat;
+            let show = false;
+            if (cat === 'ALL') {
+                show = true;
+            } else if (cat === 'HQ') {
+                show = hqCats.includes(cat2);
+            } else if (cat === 'TEAM') {
+                show = teamCats.includes(cat2);
+            } else if (cat === 'INACTIVE') {
+                show = status === 'INACTIVE';
+            }
+            r.style.display = show ? '' : 'none';
+        });
+
+        const visible = allRows.filter(r => r.style.display !== 'none').length;
+        document.getElementById('visibleCount').textContent = visible;
+    }
+
+    function initRowCount() {
+        document.getElementById('visibleCount').textContent = allRows.length;
+    }
+
+    // 토스트 메시지
+    const toastData = document.querySelector('.toast-data');
+    if (toastData) {
+        const msg  = toastData.getAttribute('data-message');
+        const type = toastData.getAttribute('data-type') || 'success';
+        if (msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = type;
+            t.style.display = 'block';
+            setTimeout(() => { t.style.display = 'none'; }, 3000);
+        }
+    }
+
+    updateStats();
+    initRowCount();
+</script>
+</div><!-- /layout:fragment="content" -->
 </body>
 </html>
