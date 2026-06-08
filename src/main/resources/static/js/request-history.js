@@ -38,6 +38,10 @@ function formatRequestTimeRange(d) {
     return start + ' ~ ' + end + formatDurationHours(d.startTimeType, d.startTime, d.endTimeType, d.endTime);
 }
 
+function formatActualWorkName(d) {
+    return d.actualWorkName || d.actualWorkCode || '-';
+}
+
 function statusLabel(v) {
     return {
         DRAFT: '미상신',
@@ -98,6 +102,7 @@ async function openHistoryDetail(btn) {
         + '<div class="lbl">대상자</div><div class="val">' + escapeHtml((d.targetEmpName || '-') + ' (' + (d.targetEmpCode || '-') + ') / ' + (d.targetDeptName || '-')) + '</div>'
         + '<div class="lbl">신청자</div><div class="val">' + escapeHtml((d.requesterEmpName || '-') + ' (' + (d.requesterEmpCode || '-') + ') / ' + (d.requesterDeptName || '-')) + '</div>'
         + timeInfo
+        + '<div class="lbl">실제근태</div><div class="val">' + escapeHtml(formatActualWorkName(d)) + '</div>'
         + '<div class="lbl">출근</div><div class="val">' + escapeHtml(d.recordCheckIn || '-') + '</div>'
         + '<div class="lbl">퇴근</div><div class="val">' + escapeHtml(formatCheckOut(d)) + '</div>'
         + '<div class="lbl">실근무분</div><div class="val">' + escapeHtml(d.recordWorkMin ?? '-') + '</div>'

@@ -92,6 +92,10 @@ function formatRequestTimeRange(d) {
     return start + ' ~ ' + end + formatDurationHours(d.startTimeType, d.startTime, d.endTimeType, d.endTime);
 }
 
+function formatActualWorkName(d) {
+    return d.actualWorkName || d.actualWorkCode || '-';
+}
+
 function formatCheckOut(d) {
     if (!d.recordCheckOut) return '-';
     return (String(d.recordOvernightYn || '').trim().toUpperCase() === 'Y' ? '익일 ' : '') + d.recordCheckOut;
@@ -293,6 +297,7 @@ async function openDetail(requestId) {
         + '<div class="lbl">대상자</div><div class="val">'+escapeHtml(d.targetEmpName)+' ('+escapeHtml(d.targetEmpCode)+') / '+escapeHtml(d.targetDeptName)+'</div>'
         + '<div class="lbl">신청자</div><div class="val">'+escapeHtml(d.requesterEmpName || '-')+' ('+escapeHtml(d.requesterEmpCode || '-')+') / '+escapeHtml(d.requesterDeptName || '-')+'</div>'
         + timeInfo
+        + '<div class="lbl">실제근태</div><div class="val">'+escapeHtml(formatActualWorkName(d))+'</div>'
         + attendanceInfo
         + '<div class="lbl">사유</div><div class="val">'+escapeHtml(d.reason || '-')+'</div>'
         + '<div class="lbl">신청상태</div><div class="val">'+escapeHtml(statusLabel[d.requestStatus] || d.requestStatus || '-')+'</div>';
