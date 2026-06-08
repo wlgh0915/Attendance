@@ -531,3 +531,7 @@
     .weekly-top-actions, .refresh-btn { display: none; }
     .weekly-page { padding: 0; }
 }
+
+.weekly-summary-grid .summary-card:has(#stat-pending-count) {
+    display: none;
+}

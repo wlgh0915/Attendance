@@ -1216,15 +1216,10 @@
        AND T.EMP_CODE = S.EMP_CODE
        AND T.YYYYMMDD = S.YYYYMMDD
         -- 기존 레코드 있고 체크인 없음 → 시프트 계획분으로 WORK_MIN 세팅
-        WHEN MATCHED AND T.CHECK_IN IS NULL THEN
-            UPDATE SET
-                ACTUAL_SHIFT_CODE = S.CHANGE_SHIFT_CODE,
-                WORK_MIN          = S.SHIFT_WORK_MIN,
-                UPDATED_AT        = GETDATE()
-        -- 기존 레코드 있고 체크인 있음 → ACTUAL_SHIFT_CODE만 변경 (실적은 유지)
         WHEN MATCHED THEN
             UPDATE SET
                 ACTUAL_SHIFT_CODE = S.CHANGE_SHIFT_CODE,
+                WORK_MIN          = CASE WHEN T.CHECK_IN IS NULL THEN S.SHIFT_WORK_MIN ELSE T.WORK_MIN END,
                 UPDATED_AT        = GETDATE()
         -- 레코드 없음 → 시프트 계획분으로 신규 INSERT
         WHEN NOT MATCHED THEN

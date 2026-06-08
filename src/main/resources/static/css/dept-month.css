@@ -537,3 +537,7 @@
     .dm-top-actions, .refresh-btn { display: none; }
     .dm-page { padding: 0; }
 }
+
+.dm-summary-grid .summary-card:has(#dm-stat-pending-count) {
+    display: none;
+}

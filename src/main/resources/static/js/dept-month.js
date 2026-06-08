@@ -11,7 +11,7 @@ function effectiveWorkMin(day) {
         return day.record.workMin;
     }
     const activeOtherReq = (day.requests || []).find(
-        r => r.requestCategory === 'OTHER' && ['SUBMITTED', 'APPROVED'].includes(r.status)
+        r => r.requestCategory === 'OTHER' && r.status === 'APPROVED'
     );
     const isLeaveDay   = activeOtherReq != null && !activeOtherReq.changeShiftOnHhmm;
     const isBizTripDay = activeOtherReq != null &&
@@ -58,10 +58,7 @@ function renderDayCell(day, dateStr) {
     if (dateStr === today) cls += ' today';
 
     const activeOtherReq = (day.requests || []).find(r =>
-        r.requestCategory === 'OTHER' && (
-            r.status === 'APPROVED' ||
-            (r.status === 'SUBMITTED' && r.changeShiftOnHhmm)
-        )
+        r.requestCategory === 'OTHER' && r.status === 'APPROVED'
     );
     const isLeaveDay = activeOtherReq != null && !activeOtherReq.changeShiftOnHhmm;
     const isBizTrip  = activeOtherReq != null && activeOtherReq.changeShiftName &&
@@ -145,7 +142,7 @@ function renderMonth() {
         let absentCount = 0, lateCount = 0;
         (emp.days || []).forEach(d => {
             const aOther = (d.requests || []).find(
-                r => r.requestCategory === 'OTHER' && ['SUBMITTED', 'APPROVED'].includes(r.status)
+                r => r.requestCategory === 'OTHER' && r.status === 'APPROVED'
             );
             const isLv   = aOther != null && !aOther.changeShiftOnHhmm;
             const isBt   = aOther != null && aOther.changeShiftName && aOther.changeShiftName.includes('출장');
@@ -219,14 +216,10 @@ function renderSummaryCards(data) {
 
     data.forEach(emp => {
         (emp.days || []).forEach(day => {
-            (day.requests || []).forEach(r => {
-                if (r.status === 'SUBMITTED') pendingCnt++;
-            });
-
             if (day.workDayType !== 'WORK') return;
 
             const aOther = (day.requests || []).find(
-                r => r.requestCategory === 'OTHER' && ['SUBMITTED', 'APPROVED'].includes(r.status)
+                r => r.requestCategory === 'OTHER' && r.status === 'APPROVED'
             );
             const isLv  = aOther != null && !aOther.changeShiftOnHhmm;
             const isBt  = aOther != null && aOther.changeShiftName && aOther.changeShiftName.includes('출장');
@@ -275,5 +268,12 @@ function renderSummaryCards(data) {
     if (pendDesc) pendDesc.textContent = pendingCnt === 0 ? '대기 중인 신청 없음' : '승인 대기 중인 근태 신청';
 }
 
+function removePendingSummaryCard() {
+    const pendingEl = document.getElementById('dm-stat-pending-count');
+    const card = pendingEl ? pendingEl.closest('.summary-card') : null;
+    if (card) card.remove();
+}
+
 renderMonth();
 renderSummaryCards(MONTH_DATA);
+removePendingSummaryCard();
