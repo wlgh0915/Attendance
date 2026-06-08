@@ -168,10 +168,11 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         String deptLeader = requestMapper.findDeptLeader(loginUser.getCompany(), loginUser.getDeptCode());
         boolean isDeptLeader = loginUser.getEmpCode().equals(deptLeader);
         boolean isAdmin = "ADMIN".equals(loginUser.getRoleCode());
-        boolean allowed = loginUser.getEmpCode().equals(request.getRequesterCode())
+        boolean allowed = isAdmin
+                || loginUser.getEmpCode().equals(request.getRequesterCode())
                 || loginUser.getEmpCode().equals(request.getEmpCode());
 
-        if (!allowed && (isAdmin || isDeptLeader)) {
+        if (!allowed && isDeptLeader) {
             List<DepartmentDto> accessible = requestMapper.findAccessibleDepts(
                     loginUser.getCompany(), loginUser.getDeptCode());
             allowed = accessible.stream().anyMatch(d -> d.getDeptCode().equals(request.getDeptCode()));
