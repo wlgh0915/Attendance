@@ -19,6 +19,11 @@ spring:
     prefix: classpath:/templates/
     suffix: .html
 
+  web:
+    resources:
+      cache:
+        period: 0
+
 mybatis:
   mapper-locations: classpath:/mapper/**/*.xml
   type-aliases-package: com.company.attendancemanagement.dto

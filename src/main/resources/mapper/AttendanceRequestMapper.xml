@@ -1215,16 +1215,11 @@
         ON T.COMPANY  = S.COMPANY
        AND T.EMP_CODE = S.EMP_CODE
        AND T.YYYYMMDD = S.YYYYMMDD
-        -- 기존 레코드 있고 체크인 없음 → 시프트 계획분으로 WORK_MIN 세팅
-        WHEN MATCHED AND T.CHECK_IN IS NULL THEN
-            UPDATE SET
-                ACTUAL_SHIFT_CODE = S.CHANGE_SHIFT_CODE,
-                WORK_MIN          = S.SHIFT_WORK_MIN,
-                UPDATED_AT        = GETDATE()
-        -- 기존 레코드 있고 체크인 있음 → ACTUAL_SHIFT_CODE만 변경 (실적은 유지)
+        -- 체크인 없으면 WORK_MIN도 갱신, 있으면 실적 유지하고 ACTUAL_SHIFT_CODE만 변경
         WHEN MATCHED THEN
             UPDATE SET
                 ACTUAL_SHIFT_CODE = S.CHANGE_SHIFT_CODE,
+                WORK_MIN          = CASE WHEN T.CHECK_IN IS NULL THEN S.SHIFT_WORK_MIN ELSE T.WORK_MIN END,
                 UPDATED_AT        = GETDATE()
         -- 레코드 없음 → 시프트 계획분으로 신규 INSERT
         WHEN NOT MATCHED THEN
@@ -1298,11 +1293,15 @@
                    r.TARGET_EMP_CODE AS EMP_CODE,
                    CONVERT(VARCHAR(8), r.TARGET_DATE, 112) AS YYYYMMDD,
                    r.TARGET_DEPT_CODE AS DEPT_CODE,
-                   sm.SHIFT_CODE AS HOLIDAY_SHIFT_CODE
+                   sm.SHIFT_CODE AS HOLIDAY_SHIFT_CODE,
+                   ISNULL(g.WORK_MIN, 0) AS HOLIDAY_WORK_MIN
             FROM HRTATTENDANCEREQUEST01 r
             JOIN HRTSHIFTMASTER01 sm
               ON sm.COMPANY    = r.COMPANY
              AND sm.SHIFT_NAME = r.REQ_TYPE
+            LEFT JOIN HRTATTENDANCE_GENERAL01 g
+              ON g.COMPANY = r.COMPANY
+             AND g.REQ_ID  = r.REQ_ID
             WHERE r.REQ_ID = #{requestId}
               AND r.REQ_GROUP = 'GENERAL'
               AND r.REQ_TYPE = '휴일근무'
@@ -1314,12 +1313,13 @@
         WHEN MATCHED THEN
             UPDATE SET
                 ACTUAL_SHIFT_CODE = S.HOLIDAY_SHIFT_CODE,
+                WORK_MIN = CASE WHEN T.CHECK_IN IS NULL THEN S.HOLIDAY_WORK_MIN ELSE T.WORK_MIN END,
                 UPDATED_AT = GETDATE()
         WHEN NOT MATCHED THEN
             INSERT (COMPANY, EMP_CODE, YYYYMMDD, DEPT_CODE, SHIFT_CODE, ACTUAL_SHIFT_CODE,
                     WORK_MIN, OVERNIGHT_YN, LATE_YN, LATE_MIN, CREATED_AT, UPDATED_AT)
             VALUES (S.COMPANY, S.EMP_CODE, S.YYYYMMDD, S.DEPT_CODE, NULL, S.HOLIDAY_SHIFT_CODE,
-                    0, 'N', 'N', 0, GETDATE(), GETDATE());
+                    S.HOLIDAY_WORK_MIN, 'N', 'N', 0, GETDATE(), GETDATE());
     </update>
 
     <update id="revertCanceledHolidayAttendanceUpdate">
@@ -1447,6 +1447,14 @@
           AND tr.EMP_CODE   = #{empCode}
           AND tr.START_DATE <= CAST(#{workDate} AS DATE)
           AND (tr.END_DATE IS NULL OR tr.END_DATE >= CAST(#{workDate} AS DATE))
+          AND tr.START_DATE = (
+              SELECT MAX(tr2.START_DATE)
+              FROM HRIDEPTTRANSFER01 tr2
+              WHERE tr2.COMPANY    = #{company}
+                AND tr2.EMP_CODE   = #{empCode}
+                AND tr2.START_DATE <= CAST(#{workDate} AS DATE)
+                AND (tr2.END_DATE IS NULL OR tr2.END_DATE >= CAST(#{workDate} AS DATE))
+          )
           AND s.WORK_ON_HHMM IS NOT NULL
           AND s.WORK_OFF_HHMM IS NOT NULL
         ]]>
@@ -1542,6 +1550,14 @@
           AND tr.EMP_CODE   = #{empCode}
           AND tr.START_DATE <= CAST(#{workDate} AS DATE)
           AND (tr.END_DATE IS NULL OR tr.END_DATE >= CAST(#{workDate} AS DATE))
+          AND tr.START_DATE = (
+              SELECT MAX(tr2.START_DATE)
+              FROM HRIDEPTTRANSFER01 tr2
+              WHERE tr2.COMPANY    = #{company}
+                AND tr2.EMP_CODE   = #{empCode}
+                AND tr2.START_DATE <= CAST(#{workDate} AS DATE)
+                AND (tr2.END_DATE IS NULL OR tr2.END_DATE >= CAST(#{workDate} AS DATE))
+          )
           AND (
                 (dayType.WORK_DAY_TYPE IN ('OFF', 'HOLIDAY')
                  AND hReq.START_TIME IS NOT NULL
@@ -1739,6 +1755,14 @@
               AND tr.EMP_CODE   = #{empCode}
               AND tr.START_DATE <= CAST(#{workDate} AS DATE)
               AND (tr.END_DATE IS NULL OR tr.END_DATE >= CAST(#{workDate} AS DATE))
+              AND tr.START_DATE = (
+                  SELECT MAX(tr2.START_DATE)
+                  FROM HRIDEPTTRANSFER01 tr2
+                  WHERE tr2.COMPANY    = #{company}
+                    AND tr2.EMP_CODE   = #{empCode}
+                    AND tr2.START_DATE <= CAST(#{workDate} AS DATE)
+                    AND (tr2.END_DATE IS NULL OR tr2.END_DATE >= CAST(#{workDate} AS DATE))
+              )
               AND (
                     (dayType.WORK_DAY_TYPE IN ('OFF', 'HOLIDAY')
                      AND hReq.START_TIME IS NOT NULL
@@ -1837,7 +1861,10 @@
     <select id="findActiveHolidayWorkMin"
             parameterType="com.company.attendancemanagement.dto.request.AttendanceRequestDto"
             resultType="int">
-        SELECT ISNULL(MAX(g.WORK_MIN), 0)
+        SELECT ISNULL(MAX(
+            DATEDIFF(MINUTE, g.START_TIME, g.END_TIME)
+            + CASE WHEN g.END_TIME_TYPE = 'N1' THEN 1440 ELSE 0 END
+        ), 0)
         FROM HRTATTENDANCEREQUEST01 r
         JOIN HRTATTENDANCE_GENERAL01 g
           ON r.COMPANY = g.COMPANY
@@ -1847,7 +1874,7 @@
           AND r.TARGET_DATE = CAST(#{workDate} AS DATE)
           AND r.REQ_GROUP = 'GENERAL'
           AND r.REQ_TYPE = '휴일근무'
-          AND r.STATUS = 'APPROVED'
+          AND r.STATUS IN ('SUBMITTED', 'APPROVED')
           <if test="requestId != null and requestId != ''">
               AND r.REQ_ID &lt;&gt; #{requestId}
           </if>
@@ -2094,6 +2121,14 @@
           AND tr.EMP_CODE   = #{empCode}
           AND tr.START_DATE <= CAST(#{workDate} AS DATE)
           AND (tr.END_DATE IS NULL OR tr.END_DATE >= CAST(#{workDate} AS DATE))
+          AND tr.START_DATE = (
+              SELECT MAX(tr2.START_DATE)
+              FROM HRIDEPTTRANSFER01 tr2
+              WHERE tr2.COMPANY    = #{company}
+                AND tr2.EMP_CODE   = #{empCode}
+                AND tr2.START_DATE <= CAST(#{workDate} AS DATE)
+                AND (tr2.END_DATE IS NULL OR tr2.END_DATE >= CAST(#{workDate} AS DATE))
+          )
         ]]>
     </select>
 

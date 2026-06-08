@@ -236,6 +236,14 @@
           AND END_DATE IS NULL
     </update>
 
+    <delete id="deleteConflictingOpenTransfers">
+        DELETE FROM HRIDEPTTRANSFER01
+        WHERE COMPANY    = #{company}
+          AND EMP_CODE   = #{empCode}
+          AND START_DATE &gt;= #{startDate}
+          AND END_DATE   IS NULL
+    </delete>
+
     <update id="updateDepartment">
         UPDATE ORGDEPTMASTER01
         SET DEPT_NAME = #{deptName},

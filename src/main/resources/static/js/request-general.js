@@ -385,7 +385,13 @@ function validateNotPastNextDayWorkStart(dto, row) {
 function holidayWorkMinForOvertime(row) {
     return Object.values((row && row.requestsByWorkCode) || {})
         .filter(req => isApprovedRequest(req) && req.requestWorkCode === '휴일근무')
-        .reduce((max, req) => Math.max(max, req.requestWorkMin || 0), 0);
+        .reduce((max, req) => {
+            const s = absoluteMinute(req.startTimeType || 'N0', req.startTime);
+            const e = absoluteMinute(req.endTimeType || 'N0', req.endTime);
+            if (s == null || e == null) return Math.max(max, req.requestWorkMin || 0);
+            const grossMin = e < s ? e + 1440 - s : e - s;
+            return Math.max(max, grossMin);
+        }, 0);
 }
 
 function validateHolidayWorkMinForOvertime(dto, row) {
