@@ -1017,8 +1017,16 @@ async function doCancelSubmit() {
 
 function showToast(msg, type) {
     const t = document.getElementById('toast');
-    t.textContent = msg; t.className = type; t.style.display = 'block';
-    setTimeout(() => { t.style.display = 'none'; }, 3000);
+    if (!t) return;
+    if (type === 'error') console.error('[toast]', msg);
+    if (t._toastTimer) clearTimeout(t._toastTimer);
+    t.textContent = msg;
+    t.className = type;
+    t.style.display = 'block';
+    t._toastTimer = setTimeout(() => {
+        t.style.display = 'none';
+        t._toastTimer = null;
+    }, 3000);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

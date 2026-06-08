@@ -1,6 +1,7 @@
 let currentStatus = 'PENDING';
 let currentCategory = 'OVERTIME';
 let tableData = [];
+let toastTimer = null;
 
 function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -193,6 +194,42 @@ function getSelectedIds() {
         .filter(Boolean);
 }
 
+async function readErrorBody(res) {
+    const text = await res.text().catch(() => '');
+    if (!text) return null;
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        return { message: text };
+    }
+}
+
+function logApprovalError(context, error, detail) {
+    console.error('[attendance-approval] ' + context, {
+        error,
+        detail
+    });
+}
+
+async function fetchJson(url, options, context) {
+    try {
+        const res = await fetch(url, options);
+        if (!res.ok) {
+            const errorBody = await readErrorBody(res);
+            logApprovalError(context, 'HTTP ' + res.status + ' ' + res.statusText, errorBody);
+            return {
+                ok: false,
+                status: res.status,
+                message: (errorBody && errorBody.message) || '처리 중 오류가 발생했습니다.'
+            };
+        }
+        return { ok: true, data: await res.json() };
+    } catch (e) {
+        logApprovalError(context, e);
+        return { ok: false, message: '네트워크 오류가 발생했습니다.' };
+    }
+}
+
 async function doSearch() {
     const params = new URLSearchParams({
         stepStatus: currentStatus,
@@ -201,12 +238,12 @@ async function doSearch() {
         toDate: document.getElementById('toDate').value,
         empCode: document.getElementById('empCodeFilter').value
     });
-    const res = await fetch('/attendance/approval/list?' + params);
-    if (!res.ok) {
-        showToast('조회 중 오류가 발생했습니다.', 'error');
+    const result = await fetchJson('/attendance/approval/list?' + params, undefined, 'approval list');
+    if (!result.ok) {
+        showToast(result.message || '조회 중 오류가 발생했습니다.', 'error');
         return;
     }
-    renderTable(await res.json());
+    renderTable(result.data);
 }
 
 async function doBulkApprove() {
@@ -216,13 +253,18 @@ async function doBulkApprove() {
         return;
     }
     if (!confirm(ids.length + '건을 승인하시겠습니까?')) return;
-    const res = await fetch('/attendance/approval/approve', {
+    const result = await fetchJson('/attendance/approval/approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ requestIds: ids })
-    });
-    const json = await res.json();
+    }, 'bulk approve');
+    if (!result.ok) {
+        showToast(result.message || '처리 중 오류가 발생했습니다.', 'error');
+        return;
+    }
+    const json = result.data;
     if (!json.success) {
+        logApprovalError('bulk approve rejected', json);
         showToast(json.message || '처리 중 오류가 발생했습니다.', 'error');
         return;
     }
@@ -251,14 +293,19 @@ async function doBulkReject() {
         showToast('반려 사유를 입력하세요.', 'error');
         return;
     }
-    const res = await fetch('/attendance/approval/reject', {
+    const result = await fetchJson('/attendance/approval/reject', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ requestIds: ids, rejectReason: reason })
-    });
-    const json = await res.json();
+    }, 'bulk reject');
     closeRejectModal();
+    if (!result.ok) {
+        showToast(result.message || '처리 중 오류가 발생했습니다.', 'error');
+        return;
+    }
+    const json = result.data;
     if (!json.success) {
+        logApprovalError('bulk reject rejected', json);
         showToast(json.message || '처리 중 오류가 발생했습니다.', 'error');
         return;
     }
@@ -267,12 +314,12 @@ async function doBulkReject() {
 }
 
 async function openDetail(requestId) {
-    const res = await fetch('/attendance/approval/detail?requestId=' + encodeURIComponent(requestId));
-    if (!res.ok) {
-        showToast('상세 조회 중 오류가 발생했습니다.', 'error');
+    const result = await fetchJson('/attendance/approval/detail?requestId=' + encodeURIComponent(requestId), undefined, 'approval detail');
+    if (!result.ok) {
+        showToast(result.message || '상세 조회 중 오류가 발생했습니다.', 'error');
         return;
     }
-    const d = await res.json();
+    const d = result.data;
 
     const reqTypeName = escapeHtml(d.reqGroup === 'OTHER' ? (d.changeShiftName || d.changeShiftCode || '-') : (d.reqType || '-'));
     const groupName = d.reqGroup === 'OTHER' ? '기타근태' : '일반근태';
@@ -335,10 +382,19 @@ document.addEventListener('click', function(e) {
 
 function showToast(msg, type) {
     const t = document.getElementById('toast');
+    if (!t) return;
+    if (type === 'error') console.error('[toast]', msg);
+    if (toastTimer) {
+        clearTimeout(toastTimer);
+        toastTimer = null;
+    }
     t.textContent = msg;
     t.className = type;
     t.style.display = 'block';
-    setTimeout(() => { t.style.display = 'none'; }, 3000);
+    toastTimer = setTimeout(() => {
+        t.style.display = 'none';
+        toastTimer = null;
+    }, 3000);
 }
 
 document.addEventListener('DOMContentLoaded', function () {
