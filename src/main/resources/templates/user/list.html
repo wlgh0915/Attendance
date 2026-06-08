@@ -189,8 +189,6 @@
 
 </div>
 
-<div id="toast"></div>
-
 <script>
     const allRows  = Array.from(document.querySelectorAll('tr.user-row'));
     let currentFilter = 'ALL';
@@ -240,18 +238,6 @@
             if (show) visible++;
         });
         document.getElementById('visibleCount').textContent = visible;
-    }
-
-    // 토스트
-    const toastData = document.querySelector('.toast-data');
-    if (toastData) {
-        const msg  = toastData.getAttribute('data-message');
-        const type = toastData.getAttribute('data-type') || 'success';
-        if (msg) {
-            const t = document.getElementById('toast');
-            t.textContent = msg; t.className = type; t.style.display = 'block';
-            setTimeout(() => { t.style.display = 'none'; }, 3000);
-        }
     }
 
     updateStats();

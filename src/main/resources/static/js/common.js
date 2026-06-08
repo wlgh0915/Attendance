@@ -8,6 +8,7 @@ function toggleSidebar() {
 function showToast(message, type) {
     const container = document.getElementById('toast-container');
     if (!container) return;
+    if (type === 'error') console.error('[toast]', message);
 
     const icon = type === 'success' ? '✓' : '✕';
 
@@ -19,10 +20,23 @@ function showToast(message, type) {
         '<button class="toast-close" onclick="closeToast(this)" aria-label="닫기">×</button>';
 
     container.appendChild(card);
+    card._toastTimer = setTimeout(function () {
+        closeToastCard(card);
+    }, 3000);
 }
 
 function closeToast(btn) {
     const card = btn.closest('.toast-card');
+    closeToastCard(card);
+}
+
+function closeToastCard(card) {
+    if (!card) return;
+    if (card._toastTimer) {
+        clearTimeout(card._toastTimer);
+        card._toastTimer = null;
+    }
+    if (card.classList.contains('toast-hide')) return;
     card.classList.add('toast-hide');
     card.addEventListener('animationend', function () { card.remove(); });
 }

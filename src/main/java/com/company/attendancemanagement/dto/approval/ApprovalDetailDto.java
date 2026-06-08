@@ -29,6 +29,8 @@ public class ApprovalDetailDto {
     private String endTimeType;      // N0: 당일 / N1: 익일
     private String changeShiftCode;
     private String changeShiftName;
+    private String actualWorkCode;
+    private String actualWorkName;
     private String recordCheckIn;
     private String recordCheckOut;
     private Integer recordWorkMin;

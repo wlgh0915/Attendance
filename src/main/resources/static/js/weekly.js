@@ -33,7 +33,7 @@ function effectiveWorkMin(day) {
         return day.record.workMin;
     }
     const activeOtherReq = (day.requests || []).find(
-        r => r.requestCategory === 'OTHER' && ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(r.status)
+        r => r.requestCategory === 'OTHER' && r.status === 'APPROVED'
     );
     const isLeaveDay   = activeOtherReq != null && !activeOtherReq.changeShiftOnHhmm;
     const isBizTripDay = activeOtherReq != null &&
@@ -77,12 +77,9 @@ function renderDayCell(day, colIdx) {
     const colCls = colIdx === 0 ? 'col-sun' : colIdx === 6 ? 'col-sat' : '';
     const todCls = day.workDate === today ? 'today' : '';
 
-    // 연차 등 휴가성 OTHER는 승인된 것만, 출장·근무변경 등 근무시간 있는 OTHER는 승인중도 표시
+    // 승인된 OTHER 신청만 화면에 반영
     const activeOtherReq = (day.requests || []).find(r =>
-        r.requestCategory === 'OTHER' && (
-            r.status === 'APPROVED' ||
-            (r.status === 'SUBMITTED' && r.changeShiftOnHhmm)
-        )
+        r.requestCategory === 'OTHER' && r.status === 'APPROVED'
     );
     const isLeaveDay   = activeOtherReq != null && !activeOtherReq.changeShiftOnHhmm;
     const isBizTripDay = activeOtherReq != null && activeOtherReq.changeShiftName && activeOtherReq.changeShiftName.includes('출장');
@@ -102,7 +99,7 @@ function renderDayCell(day, colIdx) {
     const dispWorkDayType = activeOtherReq ? (dispOnHhmm ? 'WORK' : 'OFF') : day.workDayType;
 
     const hasActiveHolidayReq = (day.requests || []).some(
-        r => r.requestWorkCode === '휴일근무' && ['SUBMITTED', 'APPROVED'].includes(r.status)
+        r => r.requestWorkCode === '휴일근무' && r.status === 'APPROVED'
     );
     const isOffOrHoliday = dispWorkDayType === 'OFF' || dispWorkDayType === 'HOLIDAY';
 
@@ -137,7 +134,7 @@ function renderDayCell(day, colIdx) {
     }
 
     // 5. 근태신청 배지 (OTHER는 시프트 배지에서 이미 표시되므로 제외)
-    (day.requests || []).filter(r => r.status !== 'DRAFT' && r.status !== 'CANCELED' && r.status !== 'REJECTED'
+    (day.requests || []).filter(r => r.status === 'APPROVED'
                                   && r.requestCategory !== 'OTHER').forEach(r => {
         const typeLabel = (r.requestCategory === 'OTHER' && r.changeShiftName)
             ? r.changeShiftName : (r.requestWorkCode || catLabel(r.requestCategory));
@@ -171,13 +168,11 @@ function renderWeekly() {
             const h = Math.floor(min / 60), m = min % 60;
             return h + '시간' + (m > 0 ? ' ' + m + '분' : '');
         };
-        const pendingCount = (emp.days || []).reduce((cnt, d) =>
-            cnt + (d.requests || []).filter(r => r.status === 'SUBMITTED').length, 0);
+        const pendingCount = 0;
         const actualStr = actualMin > 0 ? fmtHM(actualMin) : '0시간';
         const workCellHtml = `<div class="wc-actual">실 ${actualStr}</div>`
                            + `<div class="wc-planned">계획 ${fmtHM(plannedMin)}</div>`;
-        const pendingBadge = pendingCount > 0
-            ? `<span class="pending-badge">미승인 ${pendingCount}건</span>` : '';
+        const pendingBadge = '';
         html += `<tr${pendingCount > 0 ? ' class="has-pending"' : ''}>`;
         html += `<td class="emp-cell"><div class="emp-name">${emp.empName}${pendingBadge}</div><div class="emp-dept">${emp.deptName || ''}${emp.positionName ? ' · ' + emp.positionName : ''}</div><div class="emp-code">${emp.empCode}</div></td>`;
         html += `<td class="work-cell">${workCellHtml}</td>`;
@@ -211,7 +206,7 @@ function buildSummaryRow(data) {
     data.forEach(emp => {
         (emp.days || []).forEach((day, idx) => {
             const activeOtherReq = (day.requests || []).find(
-                r => r.requestCategory === 'OTHER' && ['DRAFT','SUBMITTED','APPROVED'].includes(r.status)
+                r => r.requestCategory === 'OTHER' && r.status === 'APPROVED'
             );
             const isLeaveDay = activeOtherReq != null && !activeOtherReq.changeShiftOnHhmm;
             const isBizTripDay = activeOtherReq != null && activeOtherReq.changeShiftName && activeOtherReq.changeShiftName.includes('출장');
@@ -290,7 +285,7 @@ function renderSummaryCards(data) {
             if (day.workDayType !== 'WORK') return;
 
             const activeOtherReq = (day.requests || []).find(
-                r => r.requestCategory === 'OTHER' && ['DRAFT','SUBMITTED','APPROVED'].includes(r.status)
+                r => r.requestCategory === 'OTHER' && r.status === 'APPROVED'
             );
             const isLeaveDay = activeOtherReq != null && !activeOtherReq.changeShiftOnHhmm;
             const isBizTripDay = activeOtherReq != null &&
@@ -339,5 +334,12 @@ function renderSummaryCards(data) {
     if (pendDesc) pendDesc.textContent = pendingCnt === 0 ? '대기 중인 신청 없음' : '승인 대기 중인 근태 신청';
 }
 
+function removePendingSummaryCard() {
+    const pendingEl = document.getElementById('stat-pending-count');
+    const card = pendingEl ? pendingEl.closest('.summary-card') : null;
+    if (card) card.remove();
+}
+
 renderWeekly();
 renderSummaryCards(WEEKLY_DATA);
+removePendingSummaryCard();

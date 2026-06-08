@@ -185,22 +185,6 @@
 
 </div><!-- /uc-page -->
 
-<div id="toast"></div>
-
-<script>
-    const toastData = document.querySelector('.toast-data');
-    if (toastData) {
-        const msg  = toastData.getAttribute('data-message');
-        const type = toastData.getAttribute('data-type') || 'error';
-        if (msg) {
-            const t = document.getElementById('toast');
-            t.textContent = msg;
-            t.className = type;
-            t.style.display = 'block';
-            setTimeout(() => { t.style.display = 'none'; }, 4000);
-        }
-    }
-</script>
 </div><!-- /layout:fragment="content" -->
 </body>
 </html>
