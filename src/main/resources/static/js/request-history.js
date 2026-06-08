@@ -12,6 +12,32 @@ function dayTypeLabel(v) {
     return v === 'N1' ? '익일' : '당일';
 }
 
+function timeToMinutes(time) {
+    if (!time || !/^\d{2}:\d{2}$/.test(time)) return null;
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+}
+
+function dayOffset(type) {
+    return type === 'N1' ? 1440 : 0;
+}
+
+function formatDurationHours(startType, startTime, endType, endTime) {
+    const startMin = timeToMinutes(startTime);
+    const endMin = timeToMinutes(endTime);
+    if (startMin == null || endMin == null) return '';
+
+    let diffMin = dayOffset(endType) + endMin - (dayOffset(startType) + startMin);
+    if (diffMin < 0) diffMin += 1440;
+    return ' (' + (diffMin / 60).toFixed(2) + ' 시간)';
+}
+
+function formatRequestTimeRange(d) {
+    const start = dayTypeLabel(d.startTimeType) + ' ' + (d.startTime || '-');
+    const end = dayTypeLabel(d.endTimeType) + ' ' + (d.endTime || '-');
+    return start + ' ~ ' + end + formatDurationHours(d.startTimeType, d.startTime, d.endTimeType, d.endTime);
+}
+
 function statusLabel(v) {
     return {
         DRAFT: '미상신',
@@ -59,9 +85,7 @@ async function openHistoryDetail(btn) {
         : (d.targetDate || '-');
     let timeInfo = '';
     if (d.reqGroup === 'GENERAL') {
-        const start = dayTypeLabel(d.startTimeType) + ' ' + (d.startTime || '-');
-        const end = dayTypeLabel(d.endTimeType) + ' ' + (d.endTime || '-');
-        timeInfo = '<div class="lbl">시간</div><div class="val">' + escapeHtml(start + ' ~ ' + end) + '</div>';
+        timeInfo = '<div class="lbl">시간</div><div class="val">' + escapeHtml(formatRequestTimeRange(d)) + '</div>';
     } else {
         timeInfo = '<div class="lbl">변경근무</div><div class="val">'
             + escapeHtml(d.changeShiftName || d.changeShiftCode || '-') + '</div>';
