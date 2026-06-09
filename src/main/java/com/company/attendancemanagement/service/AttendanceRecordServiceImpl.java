@@ -98,7 +98,7 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
         if (planned == null
                 || planned.get("workOnHhmm") == null
                 || planned.get("workOffHhmm") == null) {
-            // OFF/HOLIDAY 날: 휴일근무 승인 범위 내로 cap
+            // OFF/HOLIDAY 날: 휴일근무 승인 범위 내로 cap (승인된 연장도 포함)
             Map<String, Object> holidayWork = overtimes.stream()
                     .filter(r -> "휴일근무".equals(r.get("reqType")))
                     .findFirst().orElse(null);
@@ -107,8 +107,19 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
                     && holidayWork.get("endTime") != null) {
                 int approvedStart = toMinutes(holidayWork.get("startTime").toString());
                 int approvedEnd   = toMinutes(holidayWork.get("endTime").toString());
+                // 휴일에 추가 연장 승인이 있으면 종료 상한을 연장 종료시간까지 확장
+                Map<String, Object> overtimeApproval = overtimes.stream()
+                        .filter(r -> "연장".equals(r.get("reqType")))
+                        .findFirst().orElse(null);
+                int effectiveCap = approvedEnd;
+                if (overtimeApproval != null && overtimeApproval.get("endTime") != null) {
+                    int approvedOtEnd = toMinutes(overtimeApproval.get("endTime").toString());
+                    String ett = String.valueOf(overtimeApproval.getOrDefault("endTimeType", "N0"));
+                    if ("N1".equals(ett) || approvedOtEnd == 0) approvedOtEnd += 1440;
+                    effectiveCap = Math.max(approvedEnd, approvedOtEnd);
+                }
                 int effIn  = Math.max(actualInMin, approvedStart);
-                int effOut = Math.min(actualOutMin, approvedEnd);
+                int effOut = Math.min(actualOutMin, effectiveCap);
                 return Math.max(0, effOut - effIn);
             }
             return Math.max(0, actualOutMin - actualInMin);

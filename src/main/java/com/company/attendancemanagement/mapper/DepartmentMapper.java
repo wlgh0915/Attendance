@@ -62,4 +62,8 @@ public interface DepartmentMapper {
                               @Param("startDate") String startDate,
                               @Param("endDate")  String endDate);
 
+    void deleteConflictingOpenTransfers(@Param("company")   String company,
+                                        @Param("empCode")   String empCode,
+                                        @Param("startDate") String startDate);
+
 }

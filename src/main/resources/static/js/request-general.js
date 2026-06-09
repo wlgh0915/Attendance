@@ -385,7 +385,13 @@ function validateNotPastNextDayWorkStart(dto, row) {
 function holidayWorkMinForOvertime(row) {
     return Object.values((row && row.requestsByWorkCode) || {})
         .filter(req => isApprovedRequest(req) && req.requestWorkCode === '휴일근무')
-        .reduce((max, req) => Math.max(max, req.requestWorkMin || 0), 0);
+        .reduce((max, req) => {
+            const s = absoluteMinute(req.startTimeType || 'N0', req.startTime);
+            const e = absoluteMinute(req.endTimeType || 'N0', req.endTime);
+            if (s == null || e == null) return Math.max(max, req.requestWorkMin || 0);
+            const grossMin = e < s ? e + 1440 - s : e - s;
+            return Math.max(max, grossMin);
+        }, 0);
 }
 
 function validateHolidayWorkMinForOvertime(dto, row) {
@@ -1017,8 +1023,16 @@ async function doCancelSubmit() {
 
 function showToast(msg, type) {
     const t = document.getElementById('toast');
-    t.textContent = msg; t.className = type; t.style.display = 'block';
-    setTimeout(() => { t.style.display = 'none'; }, 3000);
+    if (!t) return;
+    if (type === 'error') console.error('[toast]', msg);
+    if (t._toastTimer) clearTimeout(t._toastTimer);
+    t.textContent = msg;
+    t.className = type;
+    t.style.display = 'block';
+    t._toastTimer = setTimeout(() => {
+        t.style.display = 'none';
+        t._toastTimer = null;
+    }, 3000);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

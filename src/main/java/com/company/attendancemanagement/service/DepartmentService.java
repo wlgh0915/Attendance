@@ -70,12 +70,13 @@ public class DepartmentService {
 
         String startDate = (transferDate != null && !transferDate.isBlank())
                 ? transferDate
-                : "2000-01-01";
+                : LocalDate.now().toString();
         String endDate = LocalDate.parse(startDate).minusDays(1).toString();
 
         for (String empCode : empCodes) {
             validateDeptLeaderMove(company, empCode, deptCode);
             departmentMapper.closeCurrentTransfer(company, empCode, startDate, endDate);
+            departmentMapper.deleteConflictingOpenTransfers(company, empCode, startDate);
 
             DeptTransferDto transfer = new DeptTransferDto();
             transfer.setCompany(company);

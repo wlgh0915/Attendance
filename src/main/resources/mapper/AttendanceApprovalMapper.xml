@@ -107,6 +107,14 @@
             ISNULL(g.END_TIME_TYPE,   'N0')                  AS endTimeType,
             o.CHANGE_SHIFT_CODE                              AS changeShiftCode,
             s.SHIFT_NAME                                     AS changeShiftName,
+            CASE WHEN absenceInfo.isAbsent = 1
+                 THEN 'ABSENT'
+                 ELSE ISNULL(effectiveShift.SHIFT_CODE, '')
+            END                                               AS actualWorkCode,
+            CASE WHEN absenceInfo.isAbsent = 1
+                 THEN '결근'
+                 ELSE ISNULL(effectiveShift.SHIFT_NAME, '')
+            END                                               AS actualWorkName,
             LEFT(CONVERT(VARCHAR(8), ar.CHECK_IN,  108), 5) AS recordCheckIn,
             LEFT(CONVERT(VARCHAR(8), ar.CHECK_OUT, 108), 5) AS recordCheckOut,
             ar.WORK_MIN                                      AS recordWorkMin,
@@ -121,9 +129,116 @@
         LEFT JOIN HRTATTENDANCE_GENERAL01 g ON r.COMPANY = g.COMPANY AND r.REQ_ID = g.REQ_ID
         LEFT JOIN HRTATTENDANCE_OTHER01   o ON r.COMPANY = o.COMPANY AND r.REQ_ID = o.REQ_ID
         LEFT JOIN HRTSHIFTMASTER01        s ON r.COMPANY = s.COMPANY AND o.CHANGE_SHIFT_CODE = s.SHIFT_CODE
+        LEFT JOIN HRTWORKPATTERNMASTER01 pm
+               ON td.COMPANY = pm.COMPANY AND td.WORK_PATTERN_CODE = pm.WORK_PATTERN_CODE
+        LEFT JOIN (
+            SELECT COMPANY, WORK_PATTERN_CODE, COUNT(*) AS CYCLE_LEN
+            FROM HRTWORKPATTERNDETAIL01
+            GROUP BY COMPANY, WORK_PATTERN_CODE
+        ) pdcount
+               ON pm.COMPANY = pdcount.COMPANY
+              AND pm.WORK_PATTERN_CODE = pdcount.WORK_PATTERN_CODE
+        LEFT JOIN HRTWORKPATTERNDETAIL01 pd
+               ON pm.COMPANY = pd.COMPANY
+              AND pm.WORK_PATTERN_CODE = pd.WORK_PATTERN_CODE
+              AND pd.SEQ = (
+                    (DATEDIFF(DAY, pm.START_DATE, r.TARGET_DATE) % pdcount.CYCLE_LEN
+                      + pdcount.CYCLE_LEN) % pdcount.CYCLE_LEN + 1
+                  )
+        LEFT JOIN HRTSHIFTMASTER01 planShift
+               ON pd.COMPANY = planShift.COMPANY AND pd.SHIFT_CODE = planShift.SHIFT_CODE
         LEFT JOIN HRTDAILYATTENDANCE01   ar ON r.COMPANY = ar.COMPANY
                                             AND r.TARGET_EMP_CODE = ar.EMP_CODE
                                             AND ar.YYYYMMDD = CONVERT(VARCHAR(8), r.TARGET_DATE, 112)
+        OUTER APPLY (
+            SELECT TOP 1 offShift.SHIFT_CODE
+            FROM HRTATTENDANCEREQUEST01 offReq
+            LEFT JOIN HRTATTENDANCE_OTHER01 offOther
+                   ON offOther.COMPANY = offReq.COMPANY
+                  AND offOther.REQ_ID = offReq.REQ_ID
+            JOIN HRTSHIFTMASTER01 offShift
+                  ON offShift.COMPANY = offReq.COMPANY
+                 AND (
+                       (offReq.REQ_GROUP = 'OTHER'
+                        AND offShift.SHIFT_CODE = offOther.CHANGE_SHIFT_CODE
+                        AND offReq.TARGET_DATE &lt;= r.TARGET_DATE
+                        AND offOther.END_DATE &gt;= r.TARGET_DATE)
+                       OR
+                       (offReq.REQ_GROUP = 'GENERAL'
+                        AND offReq.TARGET_DATE = r.TARGET_DATE
+                        AND (offShift.SHIFT_CODE = offReq.REQ_TYPE OR offShift.SHIFT_NAME = offReq.REQ_TYPE))
+                     )
+            WHERE offReq.COMPANY = r.COMPANY
+              AND offReq.TARGET_EMP_CODE = r.TARGET_EMP_CODE
+              AND offReq.STATUS = 'APPROVED'
+              AND offShift.WORK_TYPE_CODE = 'OFF'
+            ORDER BY offReq.UPDATED_AT DESC, offReq.REQ_ID DESC
+        ) approvedOffShift
+        OUTER APPLY (
+            SELECT TOP 1 noRecordShift.SHIFT_CODE
+            FROM HRTATTENDANCEREQUEST01 noRecordReq
+            LEFT JOIN HRTATTENDANCE_OTHER01 noRecordOther
+                   ON noRecordOther.COMPANY = noRecordReq.COMPANY
+                  AND noRecordOther.REQ_ID = noRecordReq.REQ_ID
+            JOIN HRTSHIFTMASTER01 noRecordShift
+                  ON noRecordShift.COMPANY = noRecordReq.COMPANY
+                 AND (
+                       (noRecordReq.REQ_GROUP = 'OTHER'
+                        AND noRecordShift.SHIFT_CODE = noRecordOther.CHANGE_SHIFT_CODE
+                        AND noRecordReq.TARGET_DATE &lt;= r.TARGET_DATE
+                        AND noRecordOther.END_DATE &gt;= r.TARGET_DATE)
+                       OR
+                       (noRecordReq.REQ_GROUP = 'GENERAL'
+                        AND noRecordReq.TARGET_DATE = r.TARGET_DATE
+                        AND (noRecordShift.SHIFT_CODE = noRecordReq.REQ_TYPE OR noRecordShift.SHIFT_NAME = noRecordReq.REQ_TYPE))
+                     )
+            WHERE noRecordReq.COMPANY = r.COMPANY
+              AND noRecordReq.TARGET_EMP_CODE = r.TARGET_EMP_CODE
+              AND noRecordReq.STATUS = 'APPROVED'
+              AND noRecordShift.SHIFT_CODE IN ('10', '16')
+            ORDER BY noRecordReq.UPDATED_AT DESC, noRecordReq.REQ_ID DESC
+        ) approvedNoRecordShift
+        OUTER APPLY (
+            SELECT COALESCE(
+                       NULLIF(ar.ACTUAL_SHIFT_CODE, ''),
+                       NULLIF(approvedOffShift.SHIFT_CODE, ''),
+                       NULLIF(approvedNoRecordShift.SHIFT_CODE, ''),
+                       NULLIF(ar.SHIFT_CODE, ''),
+                       CASE WHEN r.REQ_GROUP = 'OTHER' AND r.STATUS = 'APPROVED'
+                            THEN NULLIF(o.CHANGE_SHIFT_CODE, '') END,
+                       NULLIF(planShift.SHIFT_CODE, '')
+                   ) AS SHIFT_CODE
+        ) effectiveShiftCode
+        LEFT JOIN HRTSHIFTMASTER01 effectiveShift
+               ON effectiveShift.COMPANY = r.COMPANY
+              AND effectiveShift.SHIFT_CODE = effectiveShiftCode.SHIFT_CODE
+        OUTER APPLY (
+            SELECT CASE
+                       WHEN effectiveShift.SHIFT_CODE IN ('10', '16')
+                            OR ISNULL(effectiveShift.WORK_DAY_TYPE, '') IN ('OFF', 'HOLIDAY')
+                            OR effectiveShift.SHIFT_NAME LIKE '%휴가%'
+                            OR effectiveShift.SHIFT_NAME LIKE '%반차%'
+                            OR effectiveShift.SHIFT_NAME LIKE '%출장%'
+                            OR effectiveShift.SHIFT_NAME LIKE '%외출%'
+                       THEN 'Y'
+                       ELSE 'N'
+                   END AS RECOGNIZED_NO_RECORD_YN
+        ) effectiveShiftCalc
+        OUTER APPLY (
+            SELECT CASE
+                       WHEN r.TARGET_DATE > CAST(GETDATE() AS DATE) THEN 0
+                       WHEN ar.CHECK_IN IS NOT NULL THEN 0
+                       WHEN CASE ISNULL(pd.WORK_DAY_TYPE, ISNULL(planShift.WORK_DAY_TYPE, ''))
+                                 WHEN 'WEEKDAY' THEN 'WORK'
+                                 WHEN 'ANYDAY'  THEN 'WORK'
+                                 WHEN 'WEEKEND' THEN 'OFF'
+                                 ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(planShift.WORK_DAY_TYPE, ''))
+                            END IN ('OFF', 'HOLIDAY') THEN 0
+                       WHEN approvedOffShift.SHIFT_CODE IS NOT NULL THEN 0
+                       WHEN effectiveShiftCalc.RECOGNIZED_NO_RECORD_YN = 'Y' THEN 0
+                       ELSE 1
+                   END AS isAbsent
+        ) absenceInfo
         WHERE r.REQ_ID = #{requestId}
           AND r.COMPANY = #{company}
           AND EXISTS (

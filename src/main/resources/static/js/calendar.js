@@ -141,17 +141,30 @@ function renderCalendar() {
             totalMin += requestAdjustMin(day);
         }
 
-        // 월 급여 산정 기준 합산
         const hasLeaveApproval = (day.requests || []).some(r => r.requestCategory === 'LEAVE' && r.status === 'APPROVED');
         const approvedBizTrip = (day.requests || []).some(
             r => r.requestCategory === 'OTHER' && r.status === 'APPROVED' &&
                  r.changeShiftName && r.changeShiftName.includes('출장')
         );
+        const hasApprovedHolidayWork = (day.requests || []).some(
+            r => r.requestWorkCode === '휴일근무' && r.status === 'APPROVED'
+        );
         if (day.inCurrentMonth) {
-            if (day.record && day.record.workMin != null && day.record.checkIn) {
+            if (day.record && day.record.workMin > 0 && day.record.checkIn) {
                 totalActualMin += day.record.workMin;
             } else if (hasLeaveApproval || approvedBizTrip || isLeaveDay) {
                 totalActualMin += plannedShiftMin(day);
+            } else if (hasApprovedHolidayWork) {
+                // 휴일근무 승인: 실 출근 없이 승인 시간 기준으로 급여 산정에 포함
+                const holidayWorkMin = (day.requests || [])
+                    .filter(r => r.requestWorkCode === '휴일근무' && r.status === 'APPROVED'
+                              && r.startTime && r.endTime)
+                    .reduce((sum, r) => {
+                        const s = toMinute(r.startTime), e = toMinute(r.endTime);
+                        if (s == null || e == null) return sum;
+                        return sum + (e < s ? 1440 - s + e : e - s);
+                    }, 0);
+                if (holidayWorkMin > 0) totalActualMin += holidayWorkMin;
             }
         }
 
@@ -285,8 +298,16 @@ async function generateDeptRecords() {
 
 function showToast(msg, type) {
     const t = document.getElementById('toast');
-    t.textContent = msg; t.className = type; t.style.display = 'block';
-    setTimeout(() => { t.style.display = 'none'; }, 3000);
+    if (!t) return;
+    if (type === 'error') console.error('[toast]', msg);
+    if (t._toastTimer) clearTimeout(t._toastTimer);
+    t.textContent = msg;
+    t.className = type;
+    t.style.display = 'block';
+    t._toastTimer = setTimeout(() => {
+        t.style.display = 'none';
+        t._toastTimer = null;
+    }, 3000);
 }
 
 initRecordGenerateDate();
