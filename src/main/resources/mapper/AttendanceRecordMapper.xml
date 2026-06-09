@@ -120,6 +120,14 @@
           AND tr.EMP_CODE   = #{empCode}
           AND tr.START_DATE <= CAST(#{yyyymmdd} AS DATE)
           AND (tr.END_DATE IS NULL OR tr.END_DATE >= CAST(#{yyyymmdd} AS DATE))
+          AND tr.START_DATE = (
+              SELECT MAX(tr2.START_DATE)
+              FROM HRIDEPTTRANSFER01 tr2
+              WHERE tr2.COMPANY    = #{company}
+                AND tr2.EMP_CODE   = #{empCode}
+                AND tr2.START_DATE <= CAST(#{yyyymmdd} AS DATE)
+                AND (tr2.END_DATE IS NULL OR tr2.END_DATE >= CAST(#{yyyymmdd} AS DATE))
+          )
         ]]>
     </select>
 
@@ -165,6 +173,14 @@
               AND tr.EMP_CODE   = h.EMP_CODE
               AND tr.START_DATE &lt;= CAST(#{today} AS DATE)
               AND (tr.END_DATE IS NULL OR tr.END_DATE &gt;= CAST(#{today} AS DATE))
+              AND tr.START_DATE = (
+                  SELECT MAX(tr2.START_DATE)
+                  FROM HRIDEPTTRANSFER01 tr2
+                  WHERE tr2.COMPANY    = h.COMPANY
+                    AND tr2.EMP_CODE   = h.EMP_CODE
+                    AND tr2.START_DATE &lt;= CAST(#{today} AS DATE)
+                    AND (tr2.END_DATE IS NULL OR tr2.END_DATE &gt;= CAST(#{today} AS DATE))
+              )
         JOIN ORGDEPTMASTER01 d ON d.COMPANY = tr.COMPANY AND d.DEPT_CODE = tr.DEPT_CODE
         LEFT JOIN HRTDAILYATTENDANCE01 rec
                ON rec.COMPANY  = h.COMPANY

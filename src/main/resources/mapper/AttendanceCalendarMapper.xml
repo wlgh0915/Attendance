@@ -43,6 +43,14 @@
               AND tr.EMP_CODE   = #{empCode}
               AND tr.START_DATE <= CAL.DT
               AND (tr.END_DATE IS NULL OR tr.END_DATE >= CAL.DT)
+              AND tr.START_DATE = (
+                  SELECT MAX(tr2.START_DATE)
+                  FROM HRIDEPTTRANSFER01 tr2
+                  WHERE tr2.COMPANY    = #{company}
+                    AND tr2.EMP_CODE   = #{empCode}
+                    AND tr2.START_DATE <= CAL.DT
+                    AND (tr2.END_DATE IS NULL OR tr2.END_DATE >= CAL.DT)
+              )
         LEFT JOIN ORGDEPTMASTER01 dept
                ON dept.COMPANY   = #{company}
               AND dept.DEPT_CODE = tr.DEPT_CODE

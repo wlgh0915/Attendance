@@ -50,7 +50,7 @@
 
 .filter-left {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     gap: 16px;
     flex-wrap: wrap;
 }
@@ -96,9 +96,10 @@
 
 .filter-divider {
     width: 1px;
-    height: 28px;
+    height: 36px;
     background: #e2e8f0;
     flex-shrink: 0;
+    margin-bottom: 1px;
 }
 
 /* 부서/사원 필터 */
