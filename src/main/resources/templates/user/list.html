@@ -133,7 +133,6 @@
                     <th>직책</th>
                     <th>권한</th>
                     <th>입사일</th>
-                    <th>재직상태</th>
                     <th>관리</th>
                 </tr>
                 </thead>
@@ -158,14 +157,6 @@
                               class="role-badge-user"   th:text="${u.roleName ?: (u.roleCode ?: '-')}"></span>
                     </td>
                     <td th:text="${u.hireDate != null ? u.hireDate : '-'}"></td>
-                    <td>
-                        <span th:if="${u.retireDate == null}"  class="status-pill status-active">
-                            <span class="status-dot dot-active"></span>재직 중
-                        </span>
-                        <span th:unless="${u.retireDate == null}" class="status-pill status-inactive">
-                            <span class="status-dot dot-inactive"></span>퇴직
-                        </span>
-                    </td>
                     <td class="td-actions">
                         <a th:href="@{/users/{code}/edit(code=${u.empCode})}"
                            class="btn-dept-action btn-dept-edit">
