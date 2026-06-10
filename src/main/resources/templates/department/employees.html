@@ -146,13 +146,17 @@
                     </tr>
                     </thead>
                     <tbody>
-                    <tr th:each="emp : ${employees}">
+                    <tr th:each="emp : ${employees}"
+                        th:classappend="${emp.empCode == deptLeader ? 'emp-leader-row' : ''}">
                         <td class="emp-td-check">
                             <input type="checkbox" name="empCodes"
                                    th:value="${emp.empCode}" class="emp-checkbox">
                         </td>
                         <td class="td-code" th:text="${emp.empCode}"></td>
-                        <td class="td-name" th:text="${emp.empName}"></td>
+                        <td class="td-name">
+                            <span th:text="${emp.empName}"></span>
+                            <span th:if="${emp.empCode == deptLeader}" class="emp-leader-badge">부서장</span>
+                        </td>
                         <td th:text="${emp.deptName}"></td>
                         <td>
                             <span class="role-badge" th:text="${emp.roleName}"></span>

@@ -108,7 +108,8 @@
         LEFT JOIN SYS_ROLE01 r ON h.COMPANY = r.COMPANY AND h.ROLE_CODE = r.ROLE_CODE
         WHERE h.COMPANY = #{company}
           AND h.DEPT_CODE = #{deptCode}
-        ORDER BY h.EMP_CODE
+        ORDER BY CASE WHEN d.DEPT_LEADER = h.EMP_CODE THEN 0 ELSE 1 END,
+                 h.EMP_CODE
     </select>
 
     <select id="findByDeptCode" resultType="com.company.attendancemanagement.dto.department.DepartmentDto">

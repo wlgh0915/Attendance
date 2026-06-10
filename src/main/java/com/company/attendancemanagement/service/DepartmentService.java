@@ -112,6 +112,7 @@ public class DepartmentService {
 
         int result = departmentMapper.updateDepartment(dto);
         if (result > 0) {
+            demotePreviousLeaderRole(dto.getCompany(), currentDept.getDeptLeader(), dto.getDeptLeader());
             moveDeptLeaderToDept(dto.getCompany(), dto.getDeptLeader(), dto.getDeptCode());
         }
         return result > 0;
@@ -158,6 +159,18 @@ public class DepartmentService {
         String roleCode = userMapper.findRoleCode(company, empCode);
         if ("User".equals(roleCode) || "USER".equals(roleCode)) {
             userMapper.updateRoleCode(company, empCode, "TEAM_LEADER");
+        }
+    }
+
+    private void demotePreviousLeaderRole(String company, String previousLeader, String currentLeader) {
+        if (previousLeader == null || previousLeader.isBlank()
+                || Objects.equals(normalize(previousLeader), normalize(currentLeader))) {
+            return;
+        }
+
+        String roleCode = userMapper.findRoleCode(company, previousLeader);
+        if ("TEAM_LEADER".equals(roleCode)) {
+            userMapper.updateRoleCode(company, previousLeader, "User");
         }
     }
 }
