@@ -44,6 +44,10 @@ public class AttendanceRecordServiceImpl implements AttendanceRecordService {
         String empCode = dto.getEmpCode();
         String yyyymmdd = dto.getYyyymmdd();
 
+        if (recordMapper.countRetiredOnDate(company, empCode, yyyymmdd) > 0) {
+            throw new IllegalArgumentException("퇴사일 이후에는 출퇴근을 등록할 수 없습니다.");
+        }
+
         int workMin = calculateWorkMin(dto);
         dto.setWorkMin(workMin);
 

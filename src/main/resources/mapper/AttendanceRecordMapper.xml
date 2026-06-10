@@ -50,6 +50,15 @@
                     #{overnightYn}, #{lateYn}, #{lateMin}, GETDATE(), GETDATE());
     </update>
 
+    <select id="countRetiredOnDate" resultType="int">
+        SELECT COUNT(*)
+        FROM HRIMASTER01
+        WHERE COMPANY = #{company}
+          AND EMP_CODE = #{empCode}
+          AND RETIRE_DATE IS NOT NULL
+          AND RETIRE_DATE &lt;= CONVERT(DATE, #{yyyymmdd}, 112)
+    </select>
+
     <!-- 단일 날짜 출퇴근 실적 조회 -->
     <select id="findByDay"
             resultType="com.company.attendancemanagement.dto.record.AttendanceRecordDto">
@@ -85,6 +94,9 @@
                    ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
                END AS workDayType
         FROM HRIDEPTTRANSFER01 tr
+        JOIN HRIMASTER01 emp
+               ON emp.COMPANY = tr.COMPANY
+              AND emp.EMP_CODE = tr.EMP_CODE
         JOIN ORGDEPTMASTER01 dept
                ON dept.COMPANY   = #{company}
               AND dept.DEPT_CODE = tr.DEPT_CODE
@@ -118,6 +130,7 @@
               AND os.SHIFT_CODE = oReq.CHANGE_SHIFT_CODE
         WHERE tr.COMPANY    = #{company}
           AND tr.EMP_CODE   = #{empCode}
+          AND (emp.RETIRE_DATE IS NULL OR CAST(#{yyyymmdd} AS DATE) < emp.RETIRE_DATE)
           AND tr.START_DATE <= CAST(#{yyyymmdd} AS DATE)
           AND (tr.END_DATE IS NULL OR tr.END_DATE >= CAST(#{yyyymmdd} AS DATE))
           AND tr.START_DATE = (

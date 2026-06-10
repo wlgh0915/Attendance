@@ -327,6 +327,8 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             validateNoSubmittedOtherRequestOnGeneralDate(dto);
         }
 
+        validateEmployeeAvailableForRequest(dto);
+
         applyFixedHalfDayTime(dto);
 
         if (!isOther && !"HOLIDAY".equals(dto.getRequestCategory())
@@ -816,6 +818,7 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
         } else {
             validateNoSubmittedOtherRequestOnGeneralDate(existing);
         }
+        validateEmployeeAvailableForRequest(existing);
         if ("APPROVED".equals(existing.getStatus())) {
             throw new IllegalArgumentException("이미 승인완료된 신청입니다.");
         }
@@ -871,6 +874,12 @@ public class AttendanceRequestServiceImpl implements AttendanceRequestService {
             }
         } else {
             requestMapper.updateStatus(requestId, "SUBMITTED");
+        }
+    }
+
+    private void validateEmployeeAvailableForRequest(AttendanceRequestDto dto) {
+        if (requestMapper.countUnavailableRetiredEmployee(dto) > 0) {
+            throw new IllegalArgumentException("퇴사일 이후에는 근태를 신청할 수 없습니다.");
         }
     }
 

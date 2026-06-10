@@ -17,6 +17,10 @@ public interface AttendanceRecordMapper {
 
     int upsert(AttendanceRecordDto dto);
 
+    int countRetiredOnDate(@Param("company") String company,
+                           @Param("empCode") String empCode,
+                           @Param("yyyymmdd") String yyyymmdd);
+
     int delete(@Param("company")  String company,
                @Param("empCode")  String empCode,
                @Param("yyyymmdd") String yyyymmdd);

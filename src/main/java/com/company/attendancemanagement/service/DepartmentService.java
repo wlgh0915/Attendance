@@ -74,6 +74,7 @@ public class DepartmentService {
         String endDate = LocalDate.parse(startDate).minusDays(1).toString();
 
         for (String empCode : empCodes) {
+            validateActiveEmployee(company, empCode);
             validateDeptLeaderMove(company, empCode, deptCode);
             departmentMapper.closeCurrentTransfer(company, empCode, startDate, endDate);
             departmentMapper.deleteConflictingOpenTransfers(company, empCode, startDate);
@@ -159,6 +160,14 @@ public class DepartmentService {
         String roleCode = userMapper.findRoleCode(company, empCode);
         if ("User".equals(roleCode) || "USER".equals(roleCode)) {
             userMapper.updateRoleCode(company, empCode, "TEAM_LEADER");
+        }
+    }
+
+    private void validateActiveEmployee(String company, String empCode) {
+        String retireDate = departmentMapper.findEmployeeRetireDate(company, empCode);
+        if (retireDate != null && !retireDate.isBlank()
+                && !LocalDate.parse(retireDate).isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException("퇴사일이 지난 사원은 부서를 이동할 수 없습니다.");
         }
     }
 

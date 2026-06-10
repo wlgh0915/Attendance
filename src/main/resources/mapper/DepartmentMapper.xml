@@ -87,7 +87,7 @@
             EMP_NAME AS empName
         FROM HRIMASTER01
         WHERE COMPANY = #{company}
-          AND RETIRE_DATE IS NULL
+          AND (RETIRE_DATE IS NULL OR RETIRE_DATE &gt; CAST(GETDATE() AS DATE))
         ORDER BY EMP_CODE
     </select>
 
@@ -108,6 +108,7 @@
         LEFT JOIN SYS_ROLE01 r ON h.COMPANY = r.COMPANY AND h.ROLE_CODE = r.ROLE_CODE
         WHERE h.COMPANY = #{company}
           AND h.DEPT_CODE = #{deptCode}
+          AND (h.RETIRE_DATE IS NULL OR h.RETIRE_DATE &gt; CAST(GETDATE() AS DATE))
         ORDER BY CASE WHEN d.DEPT_LEADER = h.EMP_CODE THEN 0 ELSE 1 END,
                  h.EMP_CODE
     </select>
@@ -161,6 +162,13 @@
           AND EMP_CODE = #{empCode}
     </select>
 
+    <select id="findEmployeeRetireDate" resultType="String">
+        SELECT CONVERT(VARCHAR(10), RETIRE_DATE, 23)
+        FROM HRIMASTER01
+        WHERE COMPANY = #{company}
+          AND EMP_CODE = #{empCode}
+    </select>
+
     <select id="findCompanyName" resultType="String">
         SELECT COMPANY_NAME
         FROM ORGCOMPANYMASTER01
@@ -184,7 +192,7 @@
         LEFT JOIN SYS_ROLE01 r ON h.COMPANY = r.COMPANY AND h.ROLE_CODE = r.ROLE_CODE
         WHERE h.COMPANY = #{company}
           AND h.DEPT_CODE IS NULL
-          AND h.RETIRE_DATE IS NULL
+          AND (h.RETIRE_DATE IS NULL OR h.RETIRE_DATE &gt; CAST(GETDATE() AS DATE))
         ORDER BY h.EMP_CODE
     </select>
 
@@ -235,6 +243,25 @@
           AND EMP_CODE = #{empCode}
           AND START_DATE &lt; #{startDate}
           AND END_DATE IS NULL
+    </update>
+
+    <update id="closeCurrentTransferForRetirement">
+        UPDATE HRIDEPTTRANSFER01
+        SET END_DATE = #{retireDate}
+        WHERE COMPANY = #{company}
+          AND EMP_CODE = #{empCode}
+          AND END_DATE IS NULL
+    </update>
+
+    <update id="closeTransfersForRetiredEmployees">
+        UPDATE t
+        SET t.END_DATE = h.RETIRE_DATE
+        FROM HRIDEPTTRANSFER01 t
+        INNER JOIN HRIMASTER01 h
+                ON h.COMPANY = t.COMPANY
+               AND h.EMP_CODE = t.EMP_CODE
+        WHERE h.RETIRE_DATE &lt;= CAST(GETDATE() AS DATE)
+          AND t.END_DATE IS NULL
     </update>
 
     <delete id="deleteConflictingOpenTransfers">

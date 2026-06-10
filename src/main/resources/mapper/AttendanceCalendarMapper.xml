@@ -38,9 +38,13 @@
                 ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
             END                                                         AS workDayType
         FROM CAL
+        LEFT JOIN HRIMASTER01 emp
+               ON emp.COMPANY = #{company}
+              AND emp.EMP_CODE = #{empCode}
         LEFT JOIN HRIDEPTTRANSFER01 tr
                ON tr.COMPANY    = #{company}
               AND tr.EMP_CODE   = #{empCode}
+              AND (emp.RETIRE_DATE IS NULL OR CAL.DT < emp.RETIRE_DATE)
               AND tr.START_DATE <= CAL.DT
               AND (tr.END_DATE IS NULL OR tr.END_DATE >= CAL.DT)
               AND tr.START_DATE = (
@@ -106,12 +110,14 @@
                 ELSE NULL
             END                                                      AS changeShiftWorkMin
         FROM HRTATTENDANCEREQUEST01 r
+        INNER JOIN HRIMASTER01 emp               ON r.COMPANY = emp.COMPANY AND r.TARGET_EMP_CODE = emp.EMP_CODE
         INNER JOIN HRTATTENDANCE_OTHER01 o    ON r.COMPANY = o.COMPANY AND r.REQ_ID = o.REQ_ID
         INNER JOIN CAL                        ON cal.DT BETWEEN r.TARGET_DATE AND ISNULL(o.END_DATE, r.TARGET_DATE)
         LEFT  JOIN HRTSHIFTMASTER01 cs        ON r.COMPANY = cs.COMPANY AND o.CHANGE_SHIFT_CODE = cs.SHIFT_CODE
         WHERE r.COMPANY         = #{company}
           AND r.TARGET_EMP_CODE = #{empCode}
           AND r.REQ_GROUP       = 'OTHER'
+          AND (emp.RETIRE_DATE IS NULL OR cal.DT < emp.RETIRE_DATE)
 
         UNION ALL
 
@@ -130,11 +136,13 @@
             NULL                                                     AS changeShiftOffHhmm,
             NULL                                                     AS changeShiftWorkMin
         FROM HRTATTENDANCEREQUEST01 r
+        INNER JOIN HRIMASTER01 emp              ON r.COMPANY = emp.COMPANY AND r.TARGET_EMP_CODE = emp.EMP_CODE
         LEFT JOIN HRTATTENDANCE_GENERAL01 g  ON r.COMPANY = g.COMPANY AND r.REQ_ID = g.REQ_ID
         WHERE r.COMPANY         = #{company}
           AND r.TARGET_EMP_CODE = #{empCode}
           AND r.REQ_GROUP      != 'OTHER'
           AND r.TARGET_DATE BETWEEN CAST(#{startDate} AS DATE) AND CAST(#{endDate} AS DATE)
+          AND (emp.RETIRE_DATE IS NULL OR r.TARGET_DATE < emp.RETIRE_DATE)
 
         ORDER BY workDate, requestId
         OPTION (MAXRECURSION 62)
@@ -166,7 +174,7 @@
         LEFT JOIN HRTGRADEINFO01  p ON p.COMPANY = h.COMPANY AND p.POSITION_CODE = h.POSITION_CODE
         WHERE h.COMPANY   = #{company}
           AND h.DEPT_CODE IN (SELECT DEPT_CODE FROM SubDepts)
-          AND h.RETIRE_DATE IS NULL
+          AND (h.RETIRE_DATE IS NULL OR h.RETIRE_DATE &gt; CAST(GETDATE() AS DATE))
         ORDER BY d.DEPT_CODE, h.EMP_CODE
         OPTION (MAXRECURSION 20)
     </select>
@@ -292,7 +300,7 @@
             ) day_type
             WHERE h.COMPANY = #{company}
               AND h.DEPT_CODE IN (SELECT DEPT_CODE FROM SubDepts)
-              AND h.RETIRE_DATE IS NULL
+              AND (h.RETIRE_DATE IS NULL OR h.RETIRE_DATE &gt; CONVERT(DATE, #{yyyymmdd}, 112))
               AND day_type.WORK_DAY_TYPE = 'WORK'
               AND s.WORK_ON_HHMM IS NOT NULL
               AND s.WORK_OFF_HHMM IS NOT NULL

@@ -41,6 +41,9 @@ public interface DepartmentMapper {
     String findEmployeeDeptCode(@Param("company") String company,
                                 @Param("empCode") String empCode);
 
+    String findEmployeeRetireDate(@Param("company") String company,
+                                  @Param("empCode") String empCode);
+
     int countEmployeesByDept(@Param("company") String company,
                              @Param("deptCode") String deptCode);
 
@@ -61,6 +64,12 @@ public interface DepartmentMapper {
                               @Param("empCode")  String empCode,
                               @Param("startDate") String startDate,
                               @Param("endDate")  String endDate);
+
+    void closeCurrentTransferForRetirement(@Param("company") String company,
+                                           @Param("empCode") String empCode,
+                                           @Param("retireDate") String retireDate);
+
+    int closeTransfersForRetiredEmployees();
 
     void deleteConflictingOpenTransfers(@Param("company")   String company,
                                         @Param("empCode")   String empCode,

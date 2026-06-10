@@ -57,6 +57,8 @@
             EMP_CODE AS empCode,
             EMP_NAME AS empName,
             CONVERT(VARCHAR(10), CREATED_AT, 23) AS hireDate,
+            CONVERT(VARCHAR(10), RETIRE_DATE, 23) AS retireDate,
+            RETIRE_REASON AS retireReason,
             DEPT_CODE AS deptCode,
             POSITION_CODE AS positionCode,
             CONVERT(VARCHAR(10), POSITION_DATE, 23) AS positionDate,
@@ -75,12 +77,18 @@
                 WHEN #{password} IS NULL OR #{password} = '' THEN PASSWORD_HASH
                 ELSE #{password}
             END,
-            DEPT_CODE = NULLIF(#{deptCode}, ''),
+            DEPT_CODE = CASE
+                WHEN NULLIF(#{retireDate}, '') IS NOT NULL
+                     AND CAST(NULLIF(#{retireDate}, '') AS DATE) &lt;= CAST(GETDATE() AS DATE) THEN NULL
+                ELSE NULLIF(#{deptCode}, '')
+            END,
             POSITION_CODE = NULLIF(#{positionCode}, ''),
             POSITION_DATE = NULLIF(#{positionDate}, ''),
             DUTY_CODE = NULLIF(#{dutyCode}, ''),
             DUTY_DATE = NULLIF(#{dutyDate}, ''),
             ROLE_CODE = #{roleCode},
+            RETIRE_DATE = NULLIF(#{retireDate}, ''),
+            RETIRE_REASON = NULLIF(#{retireReason}, ''),
             UPDATED_AT = GETDATE()
         WHERE COMPANY = #{company}
           AND EMP_CODE = #{empCode}
@@ -101,6 +109,14 @@
           AND EMP_CODE = #{empCode}
     </update>
 
+    <update id="clearDepartmentsForRetiredEmployees">
+        UPDATE HRIMASTER01
+        SET DEPT_CODE = NULL,
+            UPDATED_AT = GETDATE()
+        WHERE RETIRE_DATE &lt;= CAST(GETDATE() AS DATE)
+          AND DEPT_CODE IS NOT NULL
+    </update>
+
     <select id="findAllUsers" resultType="com.company.attendancemanagement.dto.user.UserListDto">
         SELECT h.EMP_CODE                                    AS empCode,
                h.EMP_NAME                                   AS empName,
@@ -110,7 +126,10 @@
                h.ROLE_CODE                                  AS roleCode,
                r.ROLE_NAME                                  AS roleName,
                CONVERT(VARCHAR(10), h.CREATED_AT, 23)       AS hireDate,
-               CONVERT(VARCHAR(10), h.RETIRE_DATE, 23)      AS retireDate
+               CASE
+                   WHEN h.RETIRE_DATE &lt;= CAST(GETDATE() AS DATE)
+                   THEN CONVERT(VARCHAR(10), h.RETIRE_DATE, 23)
+               END                                          AS retireDate
         FROM HRIMASTER01 h
         LEFT JOIN ORGDEPTMASTER01 d  ON d.COMPANY  = h.COMPANY AND d.DEPT_CODE      = h.DEPT_CODE
         LEFT JOIN HRTGRADEINFO01  p  ON p.COMPANY  = h.COMPANY AND p.POSITION_CODE  = h.POSITION_CODE

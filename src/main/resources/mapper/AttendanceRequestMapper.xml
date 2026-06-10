@@ -735,7 +735,7 @@
                   AND h.DEPT_CODE = #{deptCode}
               </otherwise>
           </choose>
-          AND h.RETIRE_DATE IS NULL
+          AND (h.RETIRE_DATE IS NULL OR h.RETIRE_DATE &gt; CAST(#{workDate} AS DATE))
           <if test="!deptLeader">
               AND h.EMP_CODE = #{loginEmpCode}
           </if>
@@ -1121,6 +1121,25 @@
                   ELSE ISNULL(pd.WORK_DAY_TYPE, ISNULL(s.WORK_DAY_TYPE, ''))
               END IN ('OFF', 'HOLIDAY')
         ]]>
+    </select>
+
+    <select id="countUnavailableRetiredEmployee"
+            parameterType="com.company.attendancemanagement.dto.request.AttendanceRequestDto"
+            resultType="int">
+        SELECT COUNT(*)
+        FROM HRIMASTER01
+        WHERE COMPANY = #{company}
+          AND EMP_CODE = #{empCode}
+          AND RETIRE_DATE IS NOT NULL
+          AND (
+              RETIRE_DATE &lt;= CAST(GETDATE() AS DATE)
+              OR RETIRE_DATE &lt;= CAST(
+                  CASE
+                      WHEN #{endDate} IS NOT NULL AND #{endDate} != '' THEN #{endDate}
+                      ELSE #{workDate}
+                  END AS DATE
+              )
+          )
     </select>
 
     <select id="countActiveGeneralRequestInOtherRange"
@@ -2046,6 +2065,10 @@
                             - ISNULL(DATEDIFF(MINUTE, s.BREAK2_START_HHMM, s.BREAK2_END_HHMM), 0)
                    END AS WORK_MIN
             FROM WEEK_DAYS wd
+            JOIN HRIMASTER01 emp
+                   ON emp.COMPANY = #{company}
+                  AND emp.EMP_CODE = #{empCode}
+                  AND (emp.RETIRE_DATE IS NULL OR wd.WORK_DATE < emp.RETIRE_DATE)
             JOIN HRIDEPTTRANSFER01 tr
                    ON tr.COMPANY    = #{company}
                   AND tr.EMP_CODE   = #{empCode}

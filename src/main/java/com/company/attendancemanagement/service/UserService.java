@@ -11,6 +11,7 @@ import com.company.attendancemanagement.mapper.DepartmentMapper;
 import com.company.attendancemanagement.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -122,6 +123,7 @@ public class UserService {
 
     @Transactional
     public boolean updateUser(UserUpdateDto dto) {
+        validateRetirement(dto);
         validateDeptLeaderRole(dto);
         validateDeptLeaderDeptChange(dto);
 
@@ -134,7 +136,10 @@ public class UserService {
             dto.setDutyDate(LocalDate.now().toString());
         }
         boolean updated = userMapper.updateUser(dto) > 0;
-        if (updated && isChanged(dto.getOriginalDeptCode(), dto.getDeptCode())
+        if (updated && isRetired(dto.getRetireDate())) {
+            departmentMapper.closeCurrentTransferForRetirement(
+                    dto.getCompany(), dto.getEmpCode(), dto.getRetireDate());
+        } else if (updated && isChanged(dto.getOriginalDeptCode(), dto.getDeptCode())
                 && !isBlank(dto.getDeptCode())) {
             String startDate;
             if (isBlank(dto.getOriginalDeptCode())) {
@@ -160,6 +165,28 @@ public class UserService {
             }
         }
         return updated;
+    }
+
+    @Scheduled(cron = "0 5 0 * * *", zone = "Asia/Seoul")
+    @Transactional
+    public void synchronizeRetiredEmployees() {
+        departmentMapper.closeTransfersForRetiredEmployees();
+        userMapper.clearDepartmentsForRetiredEmployees();
+    }
+
+    private void validateRetirement(UserUpdateDto dto) {
+        boolean hasRetireDate = !isBlank(dto.getRetireDate());
+        boolean hasRetireReason = !isBlank(dto.getRetireReason());
+        if (hasRetireDate != hasRetireReason) {
+            throw new IllegalArgumentException("퇴사일과 퇴사 사유를 함께 입력해 주세요.");
+        }
+        if (hasRetireReason && !dto.getRetireReason().matches("[1-6]")) {
+            throw new IllegalArgumentException("퇴사 사유는 지정된 항목만 선택할 수 있습니다.");
+        }
+    }
+
+    private boolean isRetired(String retireDate) {
+        return !isBlank(retireDate) && !LocalDate.parse(retireDate).isAfter(LocalDate.now());
     }
 
     private void validateDeptLeaderRole(UserUpdateDto dto) {

@@ -29,6 +29,8 @@ public interface AttendanceRequestMapper {
 
     int countOtherRangeNonWorkDays(AttendanceRequestDto dto);
 
+    int countUnavailableRetiredEmployee(AttendanceRequestDto dto);
+
     int countActiveGeneralRequestInOtherRange(AttendanceRequestDto dto);
 
     int countSubmittedOtherRequestOnGeneralDate(AttendanceRequestDto dto);

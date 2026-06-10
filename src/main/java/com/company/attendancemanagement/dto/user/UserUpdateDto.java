@@ -1,6 +1,7 @@
 package com.company.attendancemanagement.dto.user;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -19,6 +20,11 @@ public class UserUpdateDto {
     private String password;
 
     private String hireDate;
+
+    private String retireDate;
+
+    @Pattern(regexp = "^$|[1-6]", message = "퇴사 사유는 1부터 6까지의 값만 선택할 수 있습니다.")
+    private String retireReason;
 
     private String deptCode;
 

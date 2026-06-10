@@ -26,6 +26,8 @@ public interface UserMapper {
 
     int updateUser(UserUpdateDto dto);
 
+    int clearDepartmentsForRetiredEmployees();
+
     String findRoleCode(@Param("company") String company,
                         @Param("empCode") String empCode);
 
