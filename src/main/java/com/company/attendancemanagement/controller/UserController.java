@@ -162,7 +162,7 @@ public class UserController {
 
     private String redirectToEmployeeList(String deptCode) {
         if (deptCode == null || deptCode.isBlank()) {
-            return "redirect:/departments/employees/unassigned-manage";
+            return "redirect:/users";
         }
         return "redirect:/departments/employees?deptCode=" + deptCode;
     }

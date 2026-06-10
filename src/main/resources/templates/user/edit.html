@@ -17,7 +17,7 @@
             <h2 class="uc-title">사원 수정</h2>
             <p class="uc-subtitle">사원 정보를 수정하고 저장합니다.</p>
         </div>
-        <a th:href="${userUpdateDto.returnDeptCode != null and !#strings.isEmpty(userUpdateDto.returnDeptCode)} ? @{/departments/employees(deptCode=${userUpdateDto.returnDeptCode})} : @{/departments}" class="btn-uc-back">
+        <a th:href="${userUpdateDto.returnDeptCode != null and !#strings.isEmpty(userUpdateDto.returnDeptCode)} ? @{/departments/employees(deptCode=${userUpdateDto.returnDeptCode})} : @{/users}" class="btn-uc-back">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
                  fill="none" stroke="currentColor" stroke-width="2.5">
                 <polyline points="15 18 9 12 15 6"/>
@@ -169,7 +169,7 @@
 
         <!-- 폼 액션 -->
         <div class="uc-actions">
-            <a th:href="${userUpdateDto.returnDeptCode != null and !#strings.isEmpty(userUpdateDto.returnDeptCode)} ? @{/departments/employees(deptCode=${userUpdateDto.returnDeptCode})} : @{/departments}" class="btn-uc-cancel">취소</a>
+            <a th:href="${userUpdateDto.returnDeptCode != null and !#strings.isEmpty(userUpdateDto.returnDeptCode)} ? @{/departments/employees(deptCode=${userUpdateDto.returnDeptCode})} : @{/users}" class="btn-uc-cancel">취소</a>
             <button type="submit" class="btn-uc-submit">
                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
                      fill="none" stroke="currentColor" stroke-width="2.5">
