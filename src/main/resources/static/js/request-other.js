@@ -213,7 +213,7 @@ function renderTable(rows) {
     const tbody = document.getElementById('reqTableBody');
     const workDate = document.getElementById('workDate').value;
     if (!rows || rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="15" class="no-data">조회된 인원이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" class="no-data">조회된 인원이 없습니다.</td></tr>';
         tableData = [];
         return;
     }
@@ -240,10 +240,8 @@ function renderTable(rows) {
             + '<td>'+(r.empName||'')+'</td>'
             + '<td>'+(r.deptName||'')+'</td>'
             + '<td>'+(r.workPlanName||'-')+'</td>'
-            + '<td>'+formatWorkMin(r.plannedWorkMin || 0)+'</td>'
             + '<td>'+(r.actualWorkName || r.actualWorkCode || '-')+'</td>'
             + '<td data-field="shiftWorkMin">'+formatWorkMin(cumulativeEstimatedWorkMin(r))+'</td>'
-            + '<td>'+formatWorkMin(recognizedActualWorkMin(r))+'</td>'
             + '<td>'+formatDay(r.annualBalanceDay)+'</td>'
             + '<td><input type="date" data-field="endDate" min="'+workDate+'" value="'+endDateVal+'" '+dis+'></td>'
             + '<td><select data-field="requestWorkCode" '+dis+' onchange="onWorkCodeChange(this,'+idx+')">'+buildShiftOptions(selectedWorkCode)+'</select></td>'
