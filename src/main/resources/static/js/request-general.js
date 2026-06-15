@@ -43,9 +43,8 @@ function updateAnnualColumnVisibility() {
 }
 
 function visibleColumnCount() {
-    if (currentCategory === 'HOLIDAY') return 13;
-    if (currentCategory === 'LEAVE') return 16;
-    return 15;
+    if (currentCategory === 'LEAVE') return 14;
+    return 13;
 }
 
 function buildTimeOptions(selected, allowQuarterHour) {
@@ -751,9 +750,7 @@ function renderTable(rows) {
             + '<td>'+(r.empName||'')+'</td>'
             + '<td>'+(r.deptName||'')+'</td>'
             + '<td>'+(r.workPlanName||'-')+'</td>'
-            + '<td class="holiday-hidden">'+formatWorkMin(r.plannedWorkMin || 0)+'</td>'
             + '<td>'+(r.actualWorkName || r.actualWorkCode || '-')+'</td>'
-            + '<td class="holiday-hidden">'+formatWorkMin(recognizedActualWorkMin(r))+'</td>'
             + '<td data-field="shiftWorkMin">'+formatWorkMin(savedEstimatedWorkMin(r, existing, selectedWorkCode))+'</td>'
             + '<td class="leave-hidden">'+formatDay(r.annualBalanceDay)+'</td>'
             + '<td><select data-field="requestWorkCode" '+disFull+' onchange="onWorkCodeChange(this,'+idx+')">'+buildWorkCodeOptions(currentCategory,selectedWorkCode)+'</select></td>'
