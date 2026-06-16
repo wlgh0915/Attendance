@@ -124,6 +124,7 @@ public class UserService {
     public boolean updateUser(UserUpdateDto dto) {
         validateDeptLeaderRole(dto);
         validateDeptLeaderDeptChange(dto);
+        String currentDeptCode = departmentMapper.findEmployeeDeptCode(dto.getCompany(), dto.getEmpCode());
 
         if (isChanged(dto.getOriginalPositionCode(), dto.getPositionCode())
                 && !isChanged(dto.getOriginalPositionDate(), dto.getPositionDate())) {
@@ -134,18 +135,15 @@ public class UserService {
             dto.setDutyDate(LocalDate.now().toString());
         }
         boolean updated = userMapper.updateUser(dto) > 0;
-        if (updated && isChanged(dto.getOriginalDeptCode(), dto.getDeptCode())
-                && !isBlank(dto.getDeptCode())) {
-            String startDate;
-            if (isBlank(dto.getOriginalDeptCode())) {
-                startDate = !isBlank(dto.getHireDate())
-                        ? dto.getHireDate()
-                        : LocalDate.now().toString();
-            } else {
-                startDate = LocalDate.now().toString();
-            }
+        if (updated && isChanged(currentDeptCode, dto.getDeptCode())) {
+            String startDate = LocalDate.now().toString();
             String endDate = LocalDate.parse(startDate).minusDays(1).toString();
             departmentMapper.closeCurrentTransfer(dto.getCompany(), dto.getEmpCode(), startDate, endDate);
+            departmentMapper.deleteConflictingOpenTransfers(dto.getCompany(), dto.getEmpCode(), startDate);
+            if (isBlank(dto.getDeptCode())) {
+                return updated;
+            }
+
             DeptTransferDto transfer = new DeptTransferDto();
             transfer.setCompany(dto.getCompany());
             transfer.setEmpCode(dto.getEmpCode());

@@ -1002,6 +1002,26 @@ th.th-checkbox {
 }
 .emp-page .td-name { font-weight: 800; color: #1e293b; }
 
+.emp-page .emp-table tbody tr.emp-leader-row td {
+    background: #eff6ff;
+    border-bottom-color: #bfdbfe;
+}
+.emp-page .emp-table tbody tr.emp-leader-row td:first-child {
+    box-shadow: inset 4px 0 0 #2563eb;
+}
+.emp-leader-badge {
+    display: inline-block;
+    margin-left: 7px;
+    padding: 2px 7px;
+    border: 1px solid #93c5fd;
+    border-radius: 999px;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-size: 10px;
+    font-weight: 800;
+    vertical-align: middle;
+}
+
 /* 체크박스 */
 .emp-checkbox {
     width: 15px;

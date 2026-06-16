@@ -118,6 +118,7 @@ public class DepartmentController {
         model.addAttribute("company", company);
         model.addAttribute("deptCode", deptCode);
         model.addAttribute("deptName", dept.getDeptName());
+        model.addAttribute("deptLeader", dept.getDeptLeader());
         model.addAttribute("employees", departmentService.findEmployeesByDept(company, deptCode));
         model.addAttribute("allDepartments", departmentService.findAllForDropdown(company));
 

@@ -146,19 +146,23 @@
                     </tr>
                     </thead>
                     <tbody>
-                    <tr th:each="emp : ${employees}">
+                    <tr th:each="emp : ${employees}"
+                        th:classappend="${emp.empCode == deptLeader ? 'emp-leader-row' : ''}">
                         <td class="emp-td-check">
                             <input type="checkbox" name="empCodes"
                                    th:value="${emp.empCode}" class="emp-checkbox">
                         </td>
                         <td class="td-code" th:text="${emp.empCode}"></td>
-                        <td class="td-name" th:text="${emp.empName}"></td>
+                        <td class="td-name">
+                            <span th:text="${emp.empName}"></span>
+                            <span th:if="${emp.empCode == deptLeader}" class="emp-leader-badge">부서장</span>
+                        </td>
                         <td th:text="${emp.deptName}"></td>
                         <td>
                             <span class="role-badge" th:text="${emp.roleName}"></span>
                         </td>
                         <td class="emp-td-action">
-                            <a th:href="@{/users/{empCode}/edit(empCode=${emp.empCode}, returnDeptCode=${deptCode})}"
+                            <a th:href="@{/users/{empCode}/edit(empCode=${emp.empCode}, returnDeptCode=${#strings.isEmpty(deptCode) ? '__UNASSIGNED__' : deptCode})}"
                                class="btn-emp-edit">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24"
                                      fill="none" stroke="currentColor" stroke-width="2.5">
