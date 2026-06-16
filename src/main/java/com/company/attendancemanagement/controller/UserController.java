@@ -27,6 +27,8 @@ import static com.company.attendancemanagement.common.SessionConst.LOGIN_USER;
 @RequiredArgsConstructor
 public class UserController {
 
+    private static final String RETURN_UNASSIGNED = "__UNASSIGNED__";
+
     private final UserService userService;
     private final DepartmentService departmentService;
 
@@ -110,6 +112,7 @@ public class UserController {
 
         dto.setReturnDeptCode(returnDeptCode);
         model.addAttribute("userUpdateDto", dto);
+        model.addAttribute("returnUrl", resolveReturnUrl(returnDeptCode));
         addUserFormOptions(model, loginUser.getCompany());
         return "user/edit";
     }
@@ -131,6 +134,7 @@ public class UserController {
         dto.setEmpCode(empCode);
 
         if (bindingResult.hasErrors()) {
+            model.addAttribute("returnUrl", resolveReturnUrl(dto.getReturnDeptCode()));
             addUserFormOptions(model, loginUser.getCompany());
             return "user/edit";
         }
@@ -140,11 +144,13 @@ public class UserController {
             result = userService.updateUser(dto);
         } catch (IllegalArgumentException e) {
             bindingResult.reject("invalidRole", e.getMessage());
+            model.addAttribute("returnUrl", resolveReturnUrl(dto.getReturnDeptCode()));
             addUserFormOptions(model, loginUser.getCompany());
             return "user/edit";
         }
         if (!result) {
             bindingResult.reject("updateFailed", "사원 수정에 실패했습니다.");
+            model.addAttribute("returnUrl", resolveReturnUrl(dto.getReturnDeptCode()));
             addUserFormOptions(model, loginUser.getCompany());
             return "user/edit";
         }
@@ -161,9 +167,26 @@ public class UserController {
     }
 
     private String redirectToEmployeeList(String deptCode) {
+        if (isUnassignedReturn(deptCode)) {
+            return "redirect:/departments/employees/unassigned-manage";
+        }
         if (deptCode == null || deptCode.isBlank()) {
             return "redirect:/users";
         }
         return "redirect:/departments/employees?deptCode=" + deptCode;
+    }
+
+    private String resolveReturnUrl(String deptCode) {
+        if (isUnassignedReturn(deptCode)) {
+            return "/departments/employees/unassigned-manage";
+        }
+        if (deptCode == null || deptCode.isBlank()) {
+            return "/users";
+        }
+        return "/departments/employees?deptCode=" + deptCode;
+    }
+
+    private boolean isUnassignedReturn(String deptCode) {
+        return RETURN_UNASSIGNED.equals(deptCode) || "UNASSIGNED".equals(deptCode);
     }
 }
